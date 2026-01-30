@@ -35,6 +35,19 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 
+.badge {
+    display: inline-block;
+    padding: 8px 18px;
+    background: #fff;
+    border: 1px solid #e5e2dc;
+    border-radius: 24px;
+    font-size: 14px;
+    color: #5a5a5a;
+    margin-bottom: 24px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+
 .greeting {
     text-align: center;
     margin-bottom: 48px;
@@ -253,6 +266,16 @@ body {
     color: #2d2d2d;
     border: 1px solid #e5e2dc;
     border-bottom-left-radius: 6px;
+}
+
+.message-content a {
+    color: #2563eb;
+    text-decoration: underline;
+    word-break: break-all;
+}
+
+.message-content a:hover {
+    color: #1d4ed8;
 }
 
 .typing-indicator {
