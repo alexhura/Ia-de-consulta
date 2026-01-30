@@ -37,7 +37,7 @@ if (preg_match('/\.(?:css|js|png|jpg|gif|ico|svg|woff|woff2|ttf|eot)$/', $path))
     }
 }
 
-$greeting = 'Buen dia colaborador de ADL Digital, en que puedo ayudarte?';
+$greeting = 'Hola colaborador de ADL Digital';
 ?>
 <!DOCTYPE html>
 <html lang="es">
