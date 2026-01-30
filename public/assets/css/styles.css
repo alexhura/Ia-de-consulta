@@ -268,6 +268,16 @@ body {
     border-bottom-left-radius: 6px;
 }
 
+.message-content a {
+    color: #2563eb;
+    text-decoration: underline;
+    word-break: break-all;
+}
+
+.message-content a:hover {
+    color: #1d4ed8;
+}
+
 .typing-indicator {
     display: flex;
     align-items: center;
