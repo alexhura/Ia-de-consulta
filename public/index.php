@@ -36,85 +36,116 @@ if (preg_match('/\.(?:css|js|png|jpg|gif|ico|svg|woff|woff2|ttf|eot)$/', $path))
         exit;
     }
 }
+
+$hour = (int) date('H');
+if ($hour >= 5 && $hour < 12) {
+    $greeting = 'Buenos dias';
+} elseif ($hour >= 12 && $hour < 19) {
+    $greeting = 'Buenas tardes';
+} else {
+    $greeting = 'Buenas noches';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal de Consulta - Chat IA</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <title>Portal de Consulta</title>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/styles.css">
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
-    <div class="container mx-auto px-4 py-6 max-w-4xl">
-        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
-                <h1 class="text-2xl font-bold flex items-center gap-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                    </svg>
-                    Portal de Consulta de Clientes
-                </h1>
-                <p class="text-blue-100 mt-2">Consulta informacion de clientes usando lenguaje natural</p>
+<body>
+    <div class="container">
+        <div class="hero" id="heroSection">
+            <div class="greeting">
+                <span class="icon">✺</span>
+                <h1><?php echo $greeting; ?></h1>
             </div>
             
-            <div id="chatContainer" class="chat-container p-4 bg-gray-50">
-                <div class="message assistant">
-                    <div class="message-avatar">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            <div class="input-container">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    placeholder="Como puedo ayudarte hoy?"
+                    autocomplete="off"
+                />
+                <div class="input-actions">
+                    <button class="icon-btn" title="Adjuntar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
-                    </div>
-                    <div class="message-content">
-                        Hola! Soy tu asistente virtual. Puedo ayudarte a consultar informacion de clientes. Preguntame lo que necesites saber.
-                        <br><br>
-                        <span class="text-sm text-gray-500">Ejemplos de consultas:</span>
-                        <ul class="text-sm text-gray-500 mt-1 list-disc list-inside">
-                            <li>Quien es Juan Perez?</li>
-                            <li>Muestrame los clientes activos</li>
-                            <li>Cuantos clientes hay registrados?</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="typingIndicator" class="typing-indicator mx-4 mb-2">
-                <div class="message-avatar">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                </div>
-                <div class="typing-dots">
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                </div>
-            </div>
-            
-            <div class="p-4 bg-white border-t">
-                <div class="flex gap-3">
-                    <input 
-                        type="text" 
-                        id="messageInput" 
-                        placeholder="Escribe tu consulta aqui..."
-                        class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    />
-                    <button 
-                        id="sendButton"
-                        class="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-                    >
-                        <span>Enviar</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </button>
+                    <button id="sendButton" class="send-btn" title="Enviar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="19" x2="12" y2="5"></line>
+                            <polyline points="5 12 12 5 19 12"></polyline>
                         </svg>
                     </button>
                 </div>
             </div>
+            
+            <div class="quick-actions">
+                <button class="action-btn" data-query="Muestrame todos los clientes">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    Clientes
+                </button>
+                <button class="action-btn" data-query="Clientes activos">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 11 12 14 22 4"></polyline>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                    </svg>
+                    Activos
+                </button>
+                <button class="action-btn" data-query="Buscar por empresa">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    Buscar
+                </button>
+                <button class="action-btn" data-query="Estadisticas de clientes">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                    Estadisticas
+                </button>
+            </div>
         </div>
         
-        <div class="text-center mt-4 text-gray-500 text-sm">
-            Portal de Consulta con IA - Conectado a Google Sheets
+        <div class="chat-section" id="chatSection">
+            <button class="back-btn" id="backBtn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Nueva consulta
+            </button>
+            
+            <div id="chatContainer" class="chat-container"></div>
+            
+            <div class="chat-input-container">
+                <input 
+                    type="text" 
+                    id="chatInput" 
+                    placeholder="Escribe tu mensaje..."
+                    autocomplete="off"
+                />
+                <button id="chatSendBtn" class="send-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="19" x2="12" y2="5"></line>
+                        <polyline points="5 12 12 5 19 12"></polyline>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 
