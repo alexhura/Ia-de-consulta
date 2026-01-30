@@ -1,0 +1,1069 @@
+# Portal de Consulta con Chat IA + Google Sheets (PHP)
+
+## Descripción del Proyecto
+
+Crear una plataforma web que permita a los usuarios consultar información de clientes almacenada en Google Sheets a través de una interfaz de chat conversacional potenciada por Inteligencia Artificial, implementada con PHP.
+
+## Objetivos
+
+- Conectar múltiples Google Sheets con información de clientes
+- Implementar un chat inteligente que responda consultas en lenguaje natural
+- Procesar y buscar información relevante en las hojas de cálculo
+- Presentar respuestas contextualizadas y precisas basadas en los datos
+
+## Stack Tecnológico Propuesto
+
+### Backend
+- **Lenguaje:** PHP 8.1+
+- **Framework:** Laravel 10+ o PHP puro con Composer
+- **Librerías principales:**
+  - `google/apiclient` - Para Google Sheets API
+  - `guzzlehttp/guzzle` - Cliente HTTP para APIs de IA
+  - `vlucas/phpdotenv` - Gestión de variables de entorno
+  - `monolog/monolog` - Logging
+
+### Frontend
+- **Opción 1:** JavaScript Vanilla + AJAX
+- **Opción 2:** React/Vue (opcional)
+- **Estilos:** Tailwind CSS o Bootstrap
+- **AJAX:** Fetch API o Axios
+
+### Base de Datos
+- **MySQL/MariaDB** - Para usuarios y logs
+- **Redis** (Opcional) - Caché de respuestas
+
+### Servidor
+- **Apache** o **Nginx**
+- **PHP-FPM**
+- Certificado SSL (Let's Encrypt)
+
+## Arquitectura del Sistema
+
+```
+┌─────────────┐
+│   Usuario   │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────────┐
+│  Frontend (HTML/JS) │
+│  - Interfaz Chat    │
+│  - AJAX requests    │
+└──────┬──────────────┘
+       │ AJAX/Fetch
+       ▼
+┌─────────────────────┐
+│  Backend PHP        │
+│  - API Endpoints    │
+│  - Sessions         │
+│  - Lógica negocio   │
+└──────┬──────────────┘
+       │
+       ├──────────────────┐
+       ▼                  ▼
+┌─────────────┐    ┌──────────────┐
+│ Google      │    │  API IA      │
+│ Sheets API  │    │ (Claude/GPT) │
+│             │    │              │
+│ - Datos     │    │ - Procesa    │
+│ - Clientes  │    │ - Responde   │
+└─────────────┘    └──────────────┘
+```
+
+## Estructura de Carpetas Propuesta
+
+### Opción 1: PHP Puro (Sin Framework)
+
+```
+chat-portal/
+├── public/
+│   ├── index.php                   # Punto de entrada
+│   ├── assets/
+│   │   ├── css/
+│   │   │   └── styles.css
+│   │   └── js/
+│   │       └── chat.js
+│   └── .htaccess                   # Rewrite rules
+│
+├── src/
+│   ├── config/
+│   │   └── config.php              # Configuración
+│   ├── services/
+│   │   ├── GoogleSheetsService.php
+│   │   ├── AIService.php           # Claude/OpenAI
+│   │   └── CacheService.php
+│   ├── controllers/
+│   │   └── ChatController.php
+│   └── utils/
+│       ├── Response.php
+│       └── Logger.php
+│
+├── api/
+│   ├── chat.php                    # Endpoint principal
+│   └── health.php                  # Health check
+│
+├── vendor/                         # Composer dependencies
+├── credentials/
+│   └── google-credentials.json     # Google API (gitignore)
+│
+├── .env                            # Variables de entorno (gitignore)
+├── .env.example
+├── composer.json
+├── composer.lock
+├── .gitignore
+└── README.md
+```
+
+### Opción 2: Laravel
+
+```
+chat-portal/
+├── app/
+│   ├── Http/
+│   │   └── Controllers/
+│   │       └── ChatController.php
+│   └── Services/
+│       ├── GoogleSheetsService.php
+│       └── AIService.php
+├── routes/
+│   ├── web.php
+│   └── api.php
+├── resources/
+│   └── views/
+│       └── chat.blade.php
+├── public/
+│   └── js/
+│       └── chat.js
+├── .env
+└── composer.json
+```
+
+## Configuración Inicial
+
+### 1. Instalación de Composer
+
+```bash
+# Navegar a tu directorio del proyecto
+cd /var/www/chat-portal
+
+# Inicializar Composer
+composer init
+
+# Instalar dependencias
+composer require google/apiclient
+composer require guzzlehttp/guzzle
+composer require vlucas/phpdotenv
+composer require monolog/monolog
+```
+
+### 2. Configurar Google Sheets API
+
+**composer.json:**
+```json
+{
+    "require": {
+        "google/apiclient": "^2.15",
+        "guzzlehttp/guzzle": "^7.8",
+        "vlucas/phpdotenv": "^5.6",
+        "monolog/monolog": "^3.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    }
+}
+```
+
+### 3. Variables de Entorno (.env)
+
+```env
+# Google Sheets
+GOOGLE_APPLICATION_CREDENTIALS=./credentials/google-credentials.json
+SPREADSHEET_ID=tu_spreadsheet_id_aqui
+
+# API de IA - Opción A: Claude
+ANTHROPIC_API_KEY=sk-ant-xxxxx
+CLAUDE_MODEL=claude-sonnet-4-5-20250929
+
+# API de IA - Opción B: OpenAI
+OPENAI_API_KEY=sk-xxxxx
+OPENAI_MODEL=gpt-4
+
+# Base de datos (opcional)
+DB_HOST=localhost
+DB_NAME=chat_portal
+DB_USER=root
+DB_PASS=
+
+# Redis (opcional)
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+
+# App
+APP_ENV=production
+APP_DEBUG=false
+```
+
+### 4. Apache Configuration (.htaccess)
+
+```apache
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirigir a HTTPS
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+    
+    # Routing
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^api/(.*)$ /api/$1.php [L,QSA]
+    
+    # Bloquear acceso a archivos sensibles
+    RewriteRule ^(\.env|credentials/.*|vendor/.*)$ - [F,L]
+</IfModule>
+
+# Headers de seguridad
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+```
+
+## Código Base
+
+### 1. Configuración (src/config/config.php)
+
+```php
+<?php
+require_once __DIR__ . '/../../vendor/autoload.php';
+
+use Dotenv\Dotenv;
+
+// Cargar variables de entorno
+$dotenv = Dotenv::createImmutable(__DIR__ . '/../..');
+$dotenv->load();
+
+class Config {
+    public static function get($key, $default = null) {
+        return $_ENV[$key] ?? $default;
+    }
+    
+    public static function getGoogleCredentials() {
+        return __DIR__ . '/../../' . self::get('GOOGLE_APPLICATION_CREDENTIALS');
+    }
+    
+    public static function getSpreadsheetId() {
+        return self::get('SPREADSHEET_ID');
+    }
+    
+    public static function getAIConfig() {
+        return [
+            'provider' => self::get('AI_PROVIDER', 'claude'), // claude o openai
+            'api_key' => self::get('ANTHROPIC_API_KEY') ?: self::get('OPENAI_API_KEY'),
+            'model' => self::get('CLAUDE_MODEL') ?: self::get('OPENAI_MODEL')
+        ];
+    }
+}
+```
+
+### 2. Google Sheets Service (src/services/GoogleSheetsService.php)
+
+```php
+<?php
+namespace App\Services;
+
+use Google\Client;
+use Google\Service\Sheets;
+
+class GoogleSheetsService {
+    private $service;
+    private $spreadsheetId;
+    
+    public function __construct() {
+        $client = new Client();
+        $client->setApplicationName('Chat Portal');
+        $client->setScopes([Sheets::SPREADSHEETS_READONLY]);
+        $client->setAuthConfig(\Config::getGoogleCredentials());
+        
+        $this->service = new Sheets($client);
+        $this->spreadsheetId = \Config::getSpreadsheetId();
+    }
+    
+    /**
+     * Obtener datos de una hoja específica
+     */
+    public function getSheetData($range = 'A1:Z1000') {
+        try {
+            $response = $this->service->spreadsheets_values->get(
+                $this->spreadsheetId,
+                $range
+            );
+            
+            return $response->getValues();
+        } catch (\Exception $e) {
+            error_log("Error al leer Google Sheets: " . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
+     * Buscar clientes por nombre
+     */
+    public function searchClient($query) {
+        $data = $this->getSheetData();
+        
+        if (empty($data)) {
+            return [];
+        }
+        
+        // Asumir que la primera fila son headers
+        $headers = array_shift($data);
+        $results = [];
+        
+        foreach ($data as $row) {
+            // Combinar headers con valores
+            $client = array_combine($headers, $row);
+            
+            // Buscar coincidencias (case insensitive)
+            foreach ($client as $field => $value) {
+                if (stripos($value, $query) !== false) {
+                    $results[] = $client;
+                    break;
+                }
+            }
+        }
+        
+        return $results;
+    }
+    
+    /**
+     * Obtener todos los clientes como array asociativo
+     */
+    public function getAllClients() {
+        $data = $this->getSheetData();
+        
+        if (empty($data)) {
+            return [];
+        }
+        
+        $headers = array_shift($data);
+        $clients = [];
+        
+        foreach ($data as $row) {
+            // Asegurarse de que el row tenga el mismo número de columnas
+            $row = array_pad($row, count($headers), '');
+            $clients[] = array_combine($headers, $row);
+        }
+        
+        return $clients;
+    }
+}
+```
+
+### 3. AI Service (src/services/AIService.php)
+
+```php
+<?php
+namespace App\Services;
+
+use GuzzleHttp\Client;
+
+class AIService {
+    private $client;
+    private $apiKey;
+    private $model;
+    private $provider;
+    
+    public function __construct() {
+        $config = \Config::getAIConfig();
+        
+        $this->client = new Client();
+        $this->apiKey = $config['api_key'];
+        $this->model = $config['model'];
+        $this->provider = $config['provider'];
+    }
+    
+    /**
+     * Consultar a Claude (Anthropic)
+     */
+    private function queryClaude($context, $userMessage) {
+        $systemPrompt = "Eres un asistente virtual especializado en consultar información de clientes.
+
+INSTRUCCIONES:
+- Responde únicamente con la información disponible en los datos proporcionados
+- Si no tienes la información, dilo claramente
+- Sé conciso y directo en tus respuestas
+- Si hay múltiples coincidencias, menciónalas todas
+- Usa un tono profesional y amigable
+
+DATOS DISPONIBLES:
+" . $context;
+
+        try {
+            $response = $this->client->post('https://api.anthropic.com/v1/messages', [
+                'headers' => [
+                    'x-api-key' => $this->apiKey,
+                    'anthropic-version' => '2023-06-01',
+                    'Content-Type' => 'application/json'
+                ],
+                'json' => [
+                    'model' => $this->model,
+                    'max_tokens' => 1024,
+                    'system' => $systemPrompt,
+                    'messages' => [
+                        [
+                            'role' => 'user',
+                            'content' => $userMessage
+                        ]
+                    ]
+                ]
+            ]);
+            
+            $data = json_decode($response->getBody(), true);
+            return $data['content'][0]['text'] ?? 'No pude generar una respuesta';
+            
+        } catch (\Exception $e) {
+            error_log("Error en Claude API: " . $e->getMessage());
+            return "Error al procesar tu consulta. Intenta de nuevo.";
+        }
+    }
+    
+    /**
+     * Consultar a OpenAI
+     */
+    private function queryOpenAI($context, $userMessage) {
+        $systemPrompt = "Eres un asistente virtual especializado en consultar información de clientes. Responde solo con los datos proporcionados.";
+        
+        try {
+            $response = $this->client->post('https://api.openai.com/v1/chat/completions', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Content-Type' => 'application/json'
+                ],
+                'json' => [
+                    'model' => $this->model,
+                    'messages' => [
+                        [
+                            'role' => 'system',
+                            'content' => $systemPrompt . "\n\nDATOS:\n" . $context
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => $userMessage
+                        ]
+                    ],
+                    'max_tokens' => 1000
+                ]
+            ]);
+            
+            $data = json_decode($response->getBody(), true);
+            return $data['choices'][0]['message']['content'] ?? 'No pude generar una respuesta';
+            
+        } catch (\Exception $e) {
+            error_log("Error en OpenAI API: " . $e->getMessage());
+            return "Error al procesar tu consulta. Intenta de nuevo.";
+        }
+    }
+    
+    /**
+     * Método principal para consultar IA
+     */
+    public function query($context, $userMessage) {
+        if ($this->provider === 'claude') {
+            return $this->queryClaude($context, $userMessage);
+        } else {
+            return $this->queryOpenAI($context, $userMessage);
+        }
+    }
+    
+    /**
+     * Formatear datos de clientes como contexto
+     */
+    public function formatContext($clients) {
+        if (empty($clients)) {
+            return "No hay datos disponibles.";
+        }
+        
+        $context = "Lista de clientes:\n\n";
+        
+        foreach ($clients as $index => $client) {
+            $context .= "Cliente " . ($index + 1) . ":\n";
+            foreach ($client as $key => $value) {
+                $context .= "  - $key: $value\n";
+            }
+            $context .= "\n";
+        }
+        
+        return $context;
+    }
+}
+```
+
+### 4. API Endpoint (api/chat.php)
+
+```php
+<?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+// Manejar preflight request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../src/config/config.php';
+
+use App\Services\GoogleSheetsService;
+use App\Services\AIService;
+
+// Validar método
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['error' => 'Método no permitido']);
+    exit();
+}
+
+// Obtener datos del request
+$input = json_decode(file_get_contents('php://input'), true);
+
+if (!isset($input['message']) || empty(trim($input['message']))) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Mensaje vacío']);
+    exit();
+}
+
+$userMessage = trim($input['message']);
+
+try {
+    // Inicializar servicios
+    $sheetsService = new GoogleSheetsService();
+    $aiService = new AIService();
+    
+    // Obtener datos de Google Sheets
+    $clients = $sheetsService->searchClient($userMessage);
+    
+    // Si no hay resultados específicos, obtener todos los datos
+    if (empty($clients)) {
+        $clients = $sheetsService->getAllClients();
+    }
+    
+    // Formatear contexto
+    $context = $aiService->formatContext(array_slice($clients, 0, 20)); // Limitar a 20 resultados
+    
+    // Consultar IA
+    $response = $aiService->query($context, $userMessage);
+    
+    // Respuesta exitosa
+    echo json_encode([
+        'success' => true,
+        'response' => $response,
+        'timestamp' => date('c'),
+        'results_count' => count($clients)
+    ]);
+    
+} catch (\Exception $e) {
+    error_log("Error en chat.php: " . $e->getMessage());
+    
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Error interno del servidor',
+        'message' => Config::get('APP_DEBUG') ? $e->getMessage() : null
+    ]);
+}
+```
+
+### 5. Frontend (public/index.php)
+
+```php
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Consulta - Chat IA</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        .message {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            max-width: 70%;
+        }
+        .message.user {
+            background-color: #3B82F6;
+            color: white;
+            margin-left: auto;
+        }
+        .message.assistant {
+            background-color: #E5E7EB;
+            color: #1F2937;
+        }
+        .typing-indicator {
+            display: none;
+            padding: 0.75rem;
+            background-color: #E5E7EB;
+            border-radius: 0.5rem;
+            max-width: 100px;
+        }
+        .typing-indicator.active {
+            display: block;
+        }
+        .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #6B7280;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h1 class="text-3xl font-bold mb-6 text-gray-800">Portal de Consulta de Clientes</h1>
+            
+            <!-- Área de mensajes -->
+            <div id="chatContainer" class="chat-container mb-4 p-4 bg-gray-50 rounded">
+                <div class="message assistant">
+                    ¡Hola! Soy tu asistente virtual. Puedo ayudarte a consultar información de clientes. ¿Qué necesitas saber?
+                </div>
+            </div>
+            
+            <!-- Indicador de escritura -->
+            <div id="typingIndicator" class="typing-indicator mb-4">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+            
+            <!-- Input de mensaje -->
+            <div class="flex gap-2">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    placeholder="Escribe tu consulta aquí..."
+                    class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button 
+                    id="sendButton"
+                    class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                    Enviar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/chat.js"></script>
+</body>
+</html>
+```
+
+### 6. JavaScript del Chat (public/assets/js/chat.js)
+
+```javascript
+const chatContainer = document.getElementById('chatContainer');
+const messageInput = document.getElementById('messageInput');
+const sendButton = document.getElementById('sendButton');
+const typingIndicator = document.getElementById('typingIndicator');
+
+// Agregar mensaje al chat
+function addMessage(content, role) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${role}`;
+    messageDiv.textContent = content;
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Enviar mensaje
+async function sendMessage() {
+    const message = messageInput.value.trim();
+    
+    if (!message) return;
+    
+    // Mostrar mensaje del usuario
+    addMessage(message, 'user');
+    messageInput.value = '';
+    
+    // Deshabilitar input mientras se procesa
+    sendButton.disabled = true;
+    messageInput.disabled = true;
+    typingIndicator.classList.add('active');
+    
+    try {
+        const response = await fetch('/api/chat.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            addMessage(data.response, 'assistant');
+        } else {
+            addMessage('Lo siento, ocurrió un error. Intenta de nuevo.', 'assistant');
+            console.error('Error:', data.error);
+        }
+        
+    } catch (error) {
+        addMessage('Error de conexión. Por favor verifica tu conexión a internet.', 'assistant');
+        console.error('Error:', error);
+    } finally {
+        // Rehabilitar input
+        sendButton.disabled = false;
+        messageInput.disabled = false;
+        typingIndicator.classList.remove('active');
+        messageInput.focus();
+    }
+}
+
+// Event listeners
+sendButton.addEventListener('click', sendMessage);
+
+messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+});
+
+// Focus automático en el input
+messageInput.focus();
+```
+
+## Despliegue en Servidor PHP
+
+### 1. Requisitos del Servidor
+
+```bash
+# PHP y extensiones
+sudo apt-get update
+sudo apt-get install php8.1 php8.1-fpm php8.1-cli php8.1-common \
+                     php8.1-mysql php8.1-curl php8.1-json \
+                     php8.1-mbstring php8.1-xml php8.1-zip
+
+# Composer
+curl -sS https://getcomposer.org/installer | php
+sudo mv composer.phar /usr/local/bin/composer
+
+# Servidor web (Apache o Nginx)
+sudo apt-get install apache2
+# O
+sudo apt-get install nginx
+```
+
+### 2. Configuración de Apache
+
+```apache
+<VirtualHost *:443>
+    ServerName chat.tudominio.com
+    DocumentRoot /var/www/chat-portal/public
+    
+    <Directory /var/www/chat-portal/public>
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+    
+    # SSL
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/chat.tudominio.com/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/chat.tudominio.com/privkey.pem
+    
+    # Logs
+    ErrorLog ${APACHE_LOG_DIR}/chat-error.log
+    CustomLog ${APACHE_LOG_DIR}/chat-access.log combined
+</VirtualHost>
+```
+
+### 3. Instalación en el Servidor
+
+```bash
+# Clonar o subir el proyecto
+cd /var/www
+git clone tu-repo.git chat-portal
+# O subir vía FTP/SFTP
+
+# Instalar dependencias
+cd chat-portal
+composer install --no-dev --optimize-autoloader
+
+# Configurar permisos
+sudo chown -R www-data:www-data /var/www/chat-portal
+sudo chmod -R 755 /var/www/chat-portal
+
+# Crear archivo .env desde ejemplo
+cp .env.example .env
+nano .env  # Configurar variables
+
+# Subir credenciales de Google
+# Copiar google-credentials.json a /var/www/chat-portal/credentials/
+
+# Reiniciar Apache
+sudo systemctl restart apache2
+```
+
+## Optimizaciones para PHP
+
+### 1. Cache Service (src/services/CacheService.php)
+
+```php
+<?php
+namespace App\Services;
+
+class CacheService {
+    private $cacheDir;
+    private $cacheDuration = 300; // 5 minutos
+    
+    public function __construct() {
+        $this->cacheDir = __DIR__ . '/../../cache';
+        if (!is_dir($this->cacheDir)) {
+            mkdir($this->cacheDir, 0755, true);
+        }
+    }
+    
+    public function get($key) {
+        $file = $this->getCacheFile($key);
+        
+        if (!file_exists($file)) {
+            return null;
+        }
+        
+        $data = unserialize(file_get_contents($file));
+        
+        if (time() - $data['time'] > $this->cacheDuration) {
+            unlink($file);
+            return null;
+        }
+        
+        return $data['value'];
+    }
+    
+    public function set($key, $value) {
+        $file = $this->getCacheFile($key);
+        $data = [
+            'time' => time(),
+            'value' => $value
+        ];
+        
+        file_put_contents($file, serialize($data));
+    }
+    
+    private function getCacheFile($key) {
+        return $this->cacheDir . '/' . md5($key) . '.cache';
+    }
+}
+```
+
+### 2. Session Management
+
+```php
+<?php
+// Agregar al inicio de chat.php
+session_start();
+
+// Guardar historial de conversación
+if (!isset($_SESSION['chat_history'])) {
+    $_SESSION['chat_history'] = [];
+}
+
+$_SESSION['chat_history'][] = [
+    'user' => $userMessage,
+    'assistant' => $response,
+    'timestamp' => time()
+];
+
+// Limitar historial a últimos 50 mensajes
+if (count($_SESSION['chat_history']) > 50) {
+    $_SESSION['chat_history'] = array_slice($_SESSION['chat_history'], -50);
+}
+```
+
+## Seguridad en PHP
+
+### 1. Validación de Inputs
+
+```php
+<?php
+// Sanitizar mensaje del usuario
+$userMessage = htmlspecialchars(strip_tags(trim($input['message'])), ENT_QUOTES, 'UTF-8');
+
+// Limitar longitud
+if (strlen($userMessage) > 500) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Mensaje demasiado largo']);
+    exit();
+}
+```
+
+### 2. Rate Limiting
+
+```php
+<?php
+// Agregar a chat.php
+session_start();
+
+$maxRequests = 30; // máximo de requests
+$timeWindow = 60; // en 60 segundos
+
+if (!isset($_SESSION['requests'])) {
+    $_SESSION['requests'] = [];
+}
+
+// Limpiar requests antiguos
+$_SESSION['requests'] = array_filter($_SESSION['requests'], function($time) use ($timeWindow) {
+    return time() - $time < $timeWindow;
+});
+
+// Verificar límite
+if (count($_SESSION['requests']) >= $maxRequests) {
+    http_response_code(429);
+    echo json_encode(['error' => 'Demasiadas solicitudes. Espera un momento.']);
+    exit();
+}
+
+// Registrar request
+$_SESSION['requests'][] = time();
+```
+
+## Testing
+
+### 1. Test de Google Sheets Connection
+
+```php
+<?php
+// test_sheets.php
+require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/src/config/config.php';
+
+use App\Services\GoogleSheetsService;
+
+$service = new GoogleSheetsService();
+$data = $service->getAllClients();
+
+echo "Total de clientes: " . count($data) . "\n";
+print_r(array_slice($data, 0, 3)); // Primeros 3 clientes
+```
+
+### 2. Test de AI Service
+
+```php
+<?php
+// test_ai.php
+require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/src/config/config.php';
+
+use App\Services\AIService;
+
+$service = new AIService();
+$context = "Cliente: Juan Pérez, Email: juan@example.com";
+$response = $service->query($context, "¿Cuál es el email de Juan?");
+
+echo "Respuesta: " . $response . "\n";
+```
+
+## Monitoreo y Logs
+
+```php
+<?php
+// src/utils/Logger.php
+namespace App\Utils;
+
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
+
+class AppLogger {
+    private static $logger;
+    
+    public static function getInstance() {
+        if (!self::$logger) {
+            self::$logger = new Logger('chat-portal');
+            self::$logger->pushHandler(
+                new StreamHandler(__DIR__ . '/../../logs/app.log', Logger::INFO)
+            );
+        }
+        return self::$logger;
+    }
+    
+    public static function info($message, $context = []) {
+        self::getInstance()->info($message, $context);
+    }
+    
+    public static function error($message, $context = []) {
+        self::getInstance()->error($message, $context);
+    }
+}
+```
+
+## Checklist de Deployment
+
+- [ ] Instalar PHP 8.1+ y extensiones necesarias
+- [ ] Instalar Composer
+- [ ] Configurar servidor web (Apache/Nginx)
+- [ ] Instalar certificado SSL
+- [ ] Subir código al servidor
+- [ ] Ejecutar `composer install`
+- [ ] Configurar archivo .env
+- [ ] Subir credenciales de Google
+- [ ] Configurar permisos de archivos
+- [ ] Crear directorios de cache y logs
+- [ ] Configurar cron jobs si es necesario
+- [ ] Probar endpoints de API
+- [ ] Configurar backups
+- [ ] Configurar monitoreo
+
+## Mantenimiento
+
+### Actualizar Dependencias
+
+```bash
+composer update
+```
+
+### Limpiar Caché
+
+```bash
+rm -rf cache/*
+```
+
+### Ver Logs
+
+```bash
+tail -f logs/app.log
+tail -f /var/log/apache2/chat-error.log
+```
+
+## Próximos Pasos
+
+1. **Implementar autenticación de usuarios**
+2. **Agregar dashboard de administración**
+3. **Implementar analytics y métricas**
+4. **Optimizar performance con Redis**
+5. **Agregar tests automatizados**
+
+---
+
+**¿Listo para comenzar?** Sigue los pasos de configuración inicial y comienza con el desarrollo del backend.
