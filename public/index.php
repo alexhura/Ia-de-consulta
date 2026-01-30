@@ -58,7 +58,7 @@ if ($hour >= 5 && $hour < 12) {
 <body>
     <div class="container">
         <div class="hero" id="heroSection">
-            <div class="badge">ADL IA Asistant</div>
+            <div class="badge">ADL IA Assistant</div>
             
             <div class="greeting">
                 <span class="icon">✺</span>
