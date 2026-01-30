@@ -17,6 +17,10 @@ class AIService {
         $this->apiKey = $config['api_key'];
         $this->baseUrl = $config['base_url'];
         $this->model = $config['model'];
+        
+        if (empty($this->baseUrl) || empty($this->apiKey)) {
+            error_log("AI Service: Missing AI_INTEGRATIONS_OPENAI_BASE_URL or AI_INTEGRATIONS_OPENAI_API_KEY");
+        }
     }
     
     public function query(string $context, string $userMessage): string {

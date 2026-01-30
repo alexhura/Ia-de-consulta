@@ -34,6 +34,12 @@ if (!isset($input['message']) || empty(trim($input['message']))) {
 
 $userMessage = trim($input['message']);
 
+if (strlen($userMessage) > 2000) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Mensaje demasiado largo (max 2000 caracteres)']);
+    exit();
+}
+
 try {
     $sheetsService = new GoogleSheetsService();
     $aiService = new AIService();
