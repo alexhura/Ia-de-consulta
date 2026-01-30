@@ -57,7 +57,7 @@ DATOS DISPONIBLES:
                             'content' => $userMessage
                         ]
                     ],
-                    'max_completion_tokens' => 8192
+                    'max_tokens' => 2048
                 ]
             ]);
             
