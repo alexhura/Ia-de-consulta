@@ -43,6 +43,17 @@ class Config {
     }
     
     public static function getAIConfig(): array {
+        $openrouterKey = self::get('OPENROUTER_API_KEY', '');
+        
+        if (!empty($openrouterKey)) {
+            return [
+                'api_key' => $openrouterKey,
+                'base_url' => 'https://openrouter.ai/api/v1',
+                'model' => self::get('OPENROUTER_MODEL', 'openai/gpt-4o-mini'),
+                'provider' => 'openrouter'
+            ];
+        }
+        
         $apiKey = self::get('AI_INTEGRATIONS_OPENAI_API_KEY', '') 
                   ?: self::get('OPENAI_API_KEY', '');
         
@@ -56,7 +67,8 @@ class Config {
         return [
             'api_key' => $apiKey,
             'base_url' => $baseUrl,
-            'model' => $model
+            'model' => $model,
+            'provider' => 'openai'
         ];
     }
     
