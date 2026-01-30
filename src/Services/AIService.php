@@ -9,6 +9,7 @@ class AIService {
     private string $apiKey;
     private string $baseUrl;
     private string $model;
+    private string $provider;
     
     public function __construct() {
         $config = Config::getAIConfig();
@@ -17,9 +18,10 @@ class AIService {
         $this->apiKey = $config['api_key'];
         $this->baseUrl = $config['base_url'];
         $this->model = $config['model'];
+        $this->provider = $config['provider'] ?? 'openai';
         
-        if (empty($this->baseUrl) || empty($this->apiKey)) {
-            error_log("AI Service: Missing AI_INTEGRATIONS_OPENAI_BASE_URL or AI_INTEGRATIONS_OPENAI_API_KEY");
+        if (empty($this->apiKey)) {
+            error_log("AI Service: Missing API key configuration");
         }
     }
     
@@ -40,11 +42,18 @@ DATOS DISPONIBLES:
         try {
             $url = rtrim($this->baseUrl, '/') . '/chat/completions';
             
+            $headers = [
+                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Content-Type' => 'application/json'
+            ];
+            
+            if ($this->provider === 'openrouter') {
+                $headers['HTTP-Referer'] = Config::get('APP_URL', 'https://adl-ia-assistant.com');
+                $headers['X-Title'] = 'ADL IA Assistant';
+            }
+            
             $response = $this->client->post($url, [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->apiKey,
-                    'Content-Type' => 'application/json'
-                ],
+                'headers' => $headers,
                 'json' => [
                     'model' => $this->model,
                     'messages' => [
