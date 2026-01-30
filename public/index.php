@@ -37,14 +37,7 @@ if (preg_match('/\.(?:css|js|png|jpg|gif|ico|svg|woff|woff2|ttf|eot)$/', $path))
     }
 }
 
-$hour = (int) date('H');
-if ($hour >= 5 && $hour < 12) {
-    $greeting = 'Buenos dias';
-} elseif ($hour >= 12 && $hour < 19) {
-    $greeting = 'Buenas tardes';
-} else {
-    $greeting = 'Buenas noches';
-}
+$greeting = 'Buen dia colaborador de ADL Digital, en que puedo ayudarte?';
 ?>
 <!DOCTYPE html>
 <html lang="es">
