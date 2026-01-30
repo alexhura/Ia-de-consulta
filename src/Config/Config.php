@@ -22,7 +22,6 @@ class Config {
                 
                 if (!array_key_exists($name, $_ENV)) {
                     $_ENV[$name] = $value;
-                    putenv("$name=$value");
                 }
             }
         }
