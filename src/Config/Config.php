@@ -44,10 +44,20 @@ class Config {
     }
     
     public static function getAIConfig(): array {
+        $apiKey = self::get('AI_INTEGRATIONS_OPENAI_API_KEY', '') 
+                  ?: self::get('OPENAI_API_KEY', '');
+        
+        $baseUrl = self::get('AI_INTEGRATIONS_OPENAI_BASE_URL', '') 
+                   ?: 'https://api.openai.com/v1';
+        
+        $model = self::get('AI_INTEGRATIONS_OPENAI_BASE_URL', '') 
+                 ? 'gpt-5' 
+                 : 'gpt-4o-mini';
+        
         return [
-            'api_key' => self::get('AI_INTEGRATIONS_OPENAI_API_KEY', ''),
-            'base_url' => self::get('AI_INTEGRATIONS_OPENAI_BASE_URL', ''),
-            'model' => 'gpt-5'
+            'api_key' => $apiKey,
+            'base_url' => $baseUrl,
+            'model' => $model
         ];
     }
     
