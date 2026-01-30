@@ -66,12 +66,6 @@ $greeting = 'Hola colaborador de ADL Digital';
                     autocomplete="off"
                 />
                 <div class="input-actions">
-                    <button class="icon-btn" title="Adjuntar">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                    </button>
                     <button id="sendButton" class="send-btn" title="Enviar">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="12" y1="19" x2="12" y2="5"></line>
