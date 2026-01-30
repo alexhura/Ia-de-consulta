@@ -35,6 +35,7 @@ INSTRUCCIONES:
 - Si hay multiples coincidencias, mencionalas todas
 - Usa un tono profesional y amigable
 - Responde siempre en espanol
+- NO uses formato Markdown. Escribe las URLs directamente sin corchetes ni parentesis
 
 DATOS DISPONIBLES:
 " . $context;
