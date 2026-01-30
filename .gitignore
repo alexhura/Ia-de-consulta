@@ -1,0 +1,41 @@
+# Dependencies
+vendor/
+node_modules/
+
+# Environment
+.env
+*.env.local
+
+# Credentials
+credentials/google-credentials.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Cache
+.cache/
+*.cache
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pythonlibs/
+.uv/
+.venv/
+venv/
+
+# Replit
+.replit.nix
+.breakpoints
