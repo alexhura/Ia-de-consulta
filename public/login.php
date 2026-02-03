@@ -1,7 +1,5 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+session_start();
 
 if (isset($_SESSION['user'])) {
     header('Location: /');
@@ -14,29 +12,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     
-    if ($username && $password) {
+    if ($username !== '' && $password !== '') {
         $user = null;
         
-        $pgHost = $_ENV['PGHOST'] ?? getenv('PGHOST');
+        // Detectar entorno: PostgreSQL (Replit) o MySQL (Cloudways)
+        $pgHost = getenv('PGHOST');
+        
         if ($pgHost) {
+            // Replit - PostgreSQL
             require_once __DIR__ . '/../vendor/autoload.php';
             $auth = new \App\Services\AuthService();
             $user = $auth->login($username, $password);
         } else {
-            try {
-                $pdo = new PDO("mysql:host=localhost;dbname=qcfxqmtkpt;charset=utf8mb4", "qcfxqmtkpt", "gjxv9npMnB");
-                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                
-                $stmt = $pdo->prepare("SELECT u.*, p.name as profile_name, p.permissions FROM users u LEFT JOIN profiles p ON u.profile_id = p.id WHERE u.username = ? AND u.is_active = 1");
-                $stmt->execute([$username]);
-                $userData = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($userData && password_verify($password, $userData['password_hash'])) {
-                    unset($userData['password_hash']);
-                    $user = $userData;
-                }
-            } catch (Exception $e) {
-                $error = "Error de conexion: " . $e->getMessage();
+            // Cloudways - MySQL directo
+            $pdo = new PDO("mysql:host=localhost;dbname=qcfxqmtkpt;charset=utf8mb4", "qcfxqmtkpt", "gjxv9npMnB");
+            
+            $stmt = $pdo->prepare("SELECT u.*, p.name as profile_name, p.permissions FROM users u LEFT JOIN profiles p ON u.profile_id = p.id WHERE u.username = ? AND u.is_active = 1");
+            $stmt->execute([$username]);
+            $userData = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($userData && password_verify($password, $userData['password_hash'])) {
+                unset($userData['password_hash']);
+                $user = $userData;
             }
         }
         
