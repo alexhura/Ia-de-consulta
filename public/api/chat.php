@@ -1,4 +1,5 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -10,11 +11,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
+if (!isset($_SESSION['user'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'No autenticado']);
+    exit();
+}
+
 require_once __DIR__ . '/../../vendor/autoload.php';
 
 use App\Config\Config;
 use App\Services\GoogleSheetsService;
 use App\Services\AIService;
+use App\Services\AuthService;
 
 Config::load();
 
@@ -53,6 +61,9 @@ try {
     $context = $aiService->formatContext(array_slice($clients, 0, 20));
     
     $response = $aiService->query($context, $userMessage);
+    
+    $authService = new AuthService();
+    $authService->logQuery($_SESSION['user']['id'], $userMessage, $response);
     
     echo json_encode([
         'success' => true,

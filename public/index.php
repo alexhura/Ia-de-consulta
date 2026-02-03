@@ -1,4 +1,13 @@
 <?php
+session_start();
+
+if (!isset($_SESSION['user'])) {
+    header('Location: /login.php');
+    exit;
+}
+
+$currentUser = $_SESSION['user'];
+
 $uri = $_SERVER['REQUEST_URI'];
 $path = parse_url($uri, PHP_URL_PATH);
 
@@ -49,6 +58,19 @@ $greeting = 'Hola colaborador de ADL Digital';
     <link rel="stylesheet" href="/assets/css/styles.css">
 </head>
 <body>
+    <div class="user-header">
+        <div class="user-info">
+            <span class="user-name"><?= htmlspecialchars($currentUser['full_name'] ?? $currentUser['username']) ?></span>
+            <span class="user-profile"><?= htmlspecialchars($currentUser['profile_name'] ?? '') ?></span>
+        </div>
+        <div class="user-actions">
+            <?php if ($currentUser['is_admin']): ?>
+            <a href="/admin/" class="header-btn">Panel Admin</a>
+            <?php endif; ?>
+            <a href="/api/logout.php" class="header-btn header-btn-logout">Salir</a>
+        </div>
+    </div>
+    
     <div class="container">
         <div class="hero" id="heroSection">
             <div class="badge">ADL IA Assistant</div>
