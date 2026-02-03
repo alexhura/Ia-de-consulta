@@ -16,6 +16,26 @@ class AuthService
     
     private function connect(): void
     {
+        $pgHost = $_ENV['PGHOST'] ?? getenv('PGHOST');
+        $pgPort = $_ENV['PGPORT'] ?? getenv('PGPORT') ?: '5432';
+        $pgDb = $_ENV['PGDATABASE'] ?? getenv('PGDATABASE');
+        $pgUser = $_ENV['PGUSER'] ?? getenv('PGUSER');
+        $pgPass = $_ENV['PGPASSWORD'] ?? getenv('PGPASSWORD');
+        
+        if ($pgHost && $pgDb && $pgUser) {
+            try {
+                $dsn = "pgsql:host=$pgHost;port=$pgPort;dbname=$pgDb";
+                $this->pdo = new PDO($dsn, $pgUser, $pgPass, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                ]);
+                $this->dbType = 'pgsql';
+                return;
+            } catch (\Exception $e) {
+                error_log("PostgreSQL connection error: " . $e->getMessage());
+            }
+        }
+        
         $mysqlHost = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: 'localhost';
         $mysqlDb = $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?: 'qcfxqmtkpt';
         $mysqlUser = $_ENV['DB_USER'] ?? getenv('DB_USER') ?: 'qcfxqmtkpt';
@@ -34,36 +54,23 @@ class AuthService
         } catch (\Exception $e) {
             error_log("MySQL connection error: " . $e->getMessage());
         }
-        
-        $host = $_ENV['PGHOST'] ?? getenv('PGHOST');
-        $port = $_ENV['PGPORT'] ?? getenv('PGPORT') ?: '5432';
-        $dbname = $_ENV['PGDATABASE'] ?? getenv('PGDATABASE');
-        $user = $_ENV['PGUSER'] ?? getenv('PGUSER');
-        $password = $_ENV['PGPASSWORD'] ?? getenv('PGPASSWORD');
-        
-        if ($host && $dbname && $user) {
-            try {
-                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
-                $this->pdo = new PDO($dsn, $user, $password, [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-                ]);
-                $this->dbType = 'pgsql';
-            } catch (\Exception $e) {
-                error_log("PostgreSQL connection error: " . $e->getMessage());
-            }
-        }
+    }
+    
+    private function getActiveCondition(): string
+    {
+        return $this->dbType === 'pgsql' ? 'TRUE' : '1';
     }
     
     public function login(string $username, string $password): ?array
     {
         if (!$this->pdo) return null;
         
+        $active = $this->getActiveCondition();
         $stmt = $this->pdo->prepare("
             SELECT u.*, p.name as profile_name, p.permissions 
             FROM users u 
             LEFT JOIN profiles p ON u.profile_id = p.id 
-            WHERE u.username = ? AND u.is_active = 1
+            WHERE u.username = ? AND u.is_active = $active
         ");
         $stmt->execute([$username]);
         $user = $stmt->fetch();
