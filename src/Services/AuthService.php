@@ -23,10 +23,12 @@ class AuthService
         
         if ($mysqlHost && $mysqlDb && $mysqlUser) {
             try {
-                $dsn = "mysql:host=$mysqlHost;dbname=$mysqlDb;charset=utf8mb4";
+                $port = $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?: '3306';
+                $dsn = "mysql:host=$mysqlHost;port=$port;dbname=$mysqlDb;charset=utf8mb4";
                 $this->pdo = new PDO($dsn, $mysqlUser, $mysqlPass, [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4"
                 ]);
                 $this->dbType = 'mysql';
                 return;
