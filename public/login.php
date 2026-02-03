@@ -1,7 +1,4 @@
 <?php
-ini_set('session.cookie_httponly', 1);
-ini_set('session.use_strict_mode', 1);
-ini_set('session.cookie_path', '/');
 session_start();
 
 if (isset($_SESSION['user'])) {
@@ -38,7 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         if ($user) {
-            session_regenerate_id(true);
             $_SESSION['user'] = $user;
             header('Location: /');
             exit;
