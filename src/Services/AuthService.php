@@ -16,25 +16,23 @@ class AuthService
     
     private function connect(): void
     {
-        $mysqlHost = $_ENV['DB_HOST'] ?? getenv('DB_HOST');
-        $mysqlDb = $_ENV['DB_NAME'] ?? getenv('DB_NAME');
-        $mysqlUser = $_ENV['DB_USER'] ?? getenv('DB_USER');
-        $mysqlPass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD');
+        $mysqlHost = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: 'localhost';
+        $mysqlDb = $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?: 'qcfxqmtkpt';
+        $mysqlUser = $_ENV['DB_USER'] ?? getenv('DB_USER') ?: 'qcfxqmtkpt';
+        $mysqlPass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?: 'gjxv9npMnB';
         
-        if ($mysqlHost && $mysqlDb && $mysqlUser) {
-            try {
-                $port = $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?: '3306';
-                $dsn = "mysql:host=$mysqlHost;port=$port;dbname=$mysqlDb;charset=utf8mb4";
-                $this->pdo = new PDO($dsn, $mysqlUser, $mysqlPass, [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4"
-                ]);
-                $this->dbType = 'mysql';
-                return;
-            } catch (\Exception $e) {
-                error_log("MySQL connection error: " . $e->getMessage());
-            }
+        try {
+            $port = $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?: '3306';
+            $dsn = "mysql:host=$mysqlHost;port=$port;dbname=$mysqlDb;charset=utf8mb4";
+            $this->pdo = new PDO($dsn, $mysqlUser, $mysqlPass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4"
+            ]);
+            $this->dbType = 'mysql';
+            return;
+        } catch (\Exception $e) {
+            error_log("MySQL connection error: " . $e->getMessage());
         }
         
         $host = $_ENV['PGHOST'] ?? getenv('PGHOST');
@@ -65,7 +63,7 @@ class AuthService
             SELECT u.*, p.name as profile_name, p.permissions 
             FROM users u 
             LEFT JOIN profiles p ON u.profile_id = p.id 
-            WHERE u.username = ? AND u.is_active = TRUE
+            WHERE u.username = ? AND u.is_active = 1
         ");
         $stmt->execute([$username]);
         $user = $stmt->fetch();
