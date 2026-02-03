@@ -7,6 +7,7 @@ use PDO;
 class AuthService
 {
     private ?PDO $pdo = null;
+    private string $dbType = 'pgsql';
     
     public function __construct()
     {
@@ -15,8 +16,27 @@ class AuthService
     
     private function connect(): void
     {
+        $mysqlHost = $_ENV['DB_HOST'] ?? getenv('DB_HOST');
+        $mysqlDb = $_ENV['DB_NAME'] ?? getenv('DB_NAME');
+        $mysqlUser = $_ENV['DB_USER'] ?? getenv('DB_USER');
+        $mysqlPass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD');
+        
+        if ($mysqlHost && $mysqlDb && $mysqlUser) {
+            try {
+                $dsn = "mysql:host=$mysqlHost;dbname=$mysqlDb;charset=utf8mb4";
+                $this->pdo = new PDO($dsn, $mysqlUser, $mysqlPass, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                ]);
+                $this->dbType = 'mysql';
+                return;
+            } catch (\Exception $e) {
+                error_log("MySQL connection error: " . $e->getMessage());
+            }
+        }
+        
         $host = $_ENV['PGHOST'] ?? getenv('PGHOST');
-        $port = $_ENV['PGPORT'] ?? getenv('PGPORT');
+        $port = $_ENV['PGPORT'] ?? getenv('PGPORT') ?: '5432';
         $dbname = $_ENV['PGDATABASE'] ?? getenv('PGDATABASE');
         $user = $_ENV['PGUSER'] ?? getenv('PGUSER');
         $password = $_ENV['PGPASSWORD'] ?? getenv('PGPASSWORD');
@@ -28,8 +48,9 @@ class AuthService
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
                 ]);
+                $this->dbType = 'pgsql';
             } catch (\Exception $e) {
-                error_log("Database connection error: " . $e->getMessage());
+                error_log("PostgreSQL connection error: " . $e->getMessage());
             }
         }
     }
@@ -62,7 +83,6 @@ class AuthService
         $stmt = $this->pdo->prepare("
             INSERT INTO users (username, password_hash, full_name, email, profile_id, is_admin) 
             VALUES (?, ?, ?, ?, ?, ?)
-            RETURNING id
         ");
         
         $stmt->execute([
@@ -74,8 +94,7 @@ class AuthService
             $data['is_admin'] ?? false
         ]);
         
-        $result = $stmt->fetch();
-        return $result ? $result['id'] : null;
+        return (int) $this->pdo->lastInsertId();
     }
     
     public function updateUser(int $id, array $data): bool
@@ -192,13 +211,12 @@ class AuthService
         
         $params = [];
         if ($search) {
-            $sql .= " WHERE q.query_text ILIKE ? OR u.username ILIKE ? OR u.full_name ILIKE ?";
+            $sql .= " WHERE q.query_text LIKE ? OR u.username LIKE ? OR u.full_name LIKE ?";
             $searchParam = "%$search%";
             $params = [$searchParam, $searchParam, $searchParam];
         }
         
-        $sql .= " ORDER BY q.created_at DESC LIMIT ?";
-        $params[] = $limit;
+        $sql .= " ORDER BY q.created_at DESC LIMIT " . intval($limit);
         
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
