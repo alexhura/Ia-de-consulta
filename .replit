@@ -33,3 +33,9 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[userenv]
+
+[userenv.shared]
+GIT_REPO_URL = "https://github.com/alexhura/Ia-de-consulta.git"
+GIT_USERNAME = "alexhura"
