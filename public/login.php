@@ -11,7 +11,7 @@ if (isset($_SESSION['user'])) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = $_POST['username'] ?? '';
+    $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     
     if ($username && $password) {
@@ -24,12 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $auth->login($username, $password);
         } else {
             try {
-                $host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: 'localhost';
-                $db = $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?: 'qcfxqmtkpt';
-                $dbUser = $_ENV['DB_USER'] ?? getenv('DB_USER') ?: 'qcfxqmtkpt';
-                $dbPass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?: 'gjxv9npMnB';
-                
-                $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $dbUser, $dbPass);
+                $pdo = new PDO("mysql:host=localhost;dbname=qcfxqmtkpt;charset=utf8mb4", "qcfxqmtkpt", "gjxv9npMnB");
                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 
                 $stmt = $pdo->prepare("SELECT u.*, p.name as profile_name, p.permissions FROM users u LEFT JOIN profiles p ON u.profile_id = p.id WHERE u.username = ? AND u.is_active = 1");
@@ -41,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $user = $userData;
                 }
             } catch (Exception $e) {
-                error_log("Login error: " . $e->getMessage());
+                $error = "Error de conexion: " . $e->getMessage();
             }
         }
         
