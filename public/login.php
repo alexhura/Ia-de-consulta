@@ -8,10 +8,6 @@ if (isset($_SESSION['user'])) {
     exit;
 }
 
-require_once __DIR__ . '/../vendor/autoload.php';
-
-use App\Services\AuthService;
-
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -19,9 +15,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     
     if ($username && $password) {
-        $auth = new AuthService();
-        $auth->initAdminUser();
-        $user = $auth->login($username, $password);
+        $user = null;
+        
+        $pgHost = $_ENV['PGHOST'] ?? getenv('PGHOST');
+        if ($pgHost) {
+            require_once __DIR__ . '/../vendor/autoload.php';
+            $auth = new \App\Services\AuthService();
+            $user = $auth->login($username, $password);
+        } else {
+            try {
+                $host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: 'localhost';
+                $db = $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?: 'qcfxqmtkpt';
+                $dbUser = $_ENV['DB_USER'] ?? getenv('DB_USER') ?: 'qcfxqmtkpt';
+                $dbPass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?: 'gjxv9npMnB';
+                
+                $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $dbUser, $dbPass);
+                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                
+                $stmt = $pdo->prepare("SELECT u.*, p.name as profile_name, p.permissions FROM users u LEFT JOIN profiles p ON u.profile_id = p.id WHERE u.username = ? AND u.is_active = 1");
+                $stmt->execute([$username]);
+                $userData = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($userData && password_verify($password, $userData['password_hash'])) {
+                    unset($userData['password_hash']);
+                    $user = $userData;
+                }
+            } catch (Exception $e) {
+                error_log("Login error: " . $e->getMessage());
+            }
+        }
         
         if ($user) {
             $_SESSION['user'] = $user;
