@@ -9,25 +9,22 @@ if (isset($_SESSION['user'])) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
+    $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
     
-    if ($username !== '' && $password !== '') {
+    if ($username && $password) {
         $user = null;
         
-        // Detectar entorno: PostgreSQL (Replit) o MySQL (Cloudways)
-        $pgHost = getenv('PGHOST');
-        
-        if ($pgHost) {
+        // Detectar entorno
+        if (getenv('PGHOST')) {
             // Replit - PostgreSQL
             require_once __DIR__ . '/../vendor/autoload.php';
             $auth = new \App\Services\AuthService();
             $user = $auth->login($username, $password);
         } else {
-            // Cloudways - MySQL directo
+            // Cloudways - MySQL
             $pdo = new PDO("mysql:host=localhost;dbname=qcfxqmtkpt;charset=utf8mb4", "qcfxqmtkpt", "gjxv9npMnB");
-            
-            $stmt = $pdo->prepare("SELECT u.*, p.name as profile_name, p.permissions FROM users u LEFT JOIN profiles p ON u.profile_id = p.id WHERE u.username = ? AND u.is_active = 1");
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? AND is_active = 1");
             $stmt->execute([$username]);
             $userData = $stmt->fetch(PDO::FETCH_ASSOC);
             
