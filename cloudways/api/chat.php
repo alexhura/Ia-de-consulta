@@ -69,7 +69,7 @@ IDENTIDAD:
                 ['role' => 'system', 'content' => $systemPrompt],
                 ['role' => 'user', 'content' => $message]
             ],
-            'max_tokens' => 2048
+            'max_completion_tokens' => 2048
         ])
     ]);
     
