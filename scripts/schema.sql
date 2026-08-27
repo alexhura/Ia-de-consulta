@@ -1,6 +1,9 @@
--- Esquema de tables para IA Consulta Chat (Supabase PostgreSQL)
--- Ejecuta este script UNA sola vez en: Supabase Dashboard > SQL Editor > New query
+-- Esquema de tablas para IA Consulta Chat (Supabase PostgreSQL)
+-- Ejecuta este script en: Supabase Dashboard > SQL Editor > New query
+-- Es SEGURO ejecutarlo las veces que sea necesario (todo es idempotente).
 -- Luego la app crea los datos por defecto automáticamente al arrancar.
+
+-- ============ TABLAS ============
 
 create table if not exists categories (
   id serial primary key,
@@ -36,11 +39,19 @@ create table if not exists users (
   last_login timestamptz
 );
 
--- Habilita RLS pero con política de acceso total para servicio backend
+-- ============ RLS / POLÍTICAS ============
+-- Importante: la app se conecta con la API key de Supabase (anon/publishable),
+-- así que debe poder leer/escribir estas tablas.
+
 alter table categories enable row level security;
 alter table knowledge_items enable row level security;
 alter table users enable row level security;
 
-create policy "categories_all" on categories for all using (true) with check (true);
-create policy "knowledge_items_all" on knowledge_items for all using (true) with check (true);
-create policy "users_all" on users for all using (true) with check (true);
+drop policy if exists "all_categories" on categories;
+create policy "all_categories" on categories for all using (true) with check (true);
+
+drop policy if exists "all_knowledge_items" on knowledge_items;
+create policy "all_knowledge_items" on knowledge_items for all using (true) with check (true);
+
+drop policy if exists "all_users" on users;
+create policy "all_users" on users for all using (true) with check (true);

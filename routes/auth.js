@@ -3,6 +3,15 @@ import { userService } from '../services/UserService.js';
 
 const router = express.Router();
 
+// Roles permitidos en el sistema
+export const VALID_ROLES = ['admin', 'call center', 'desarrollo', 'customer', 'sales'];
+
+export function normalizeRole(role) {
+  if (typeof role !== 'string') return null;
+  const normalized = role.trim().toLowerCase();
+  return VALID_ROLES.includes(normalized) ? normalized : null;
+}
+
 // Middleware de autenticación
 export async function authMiddleware(req, res, next) {
   try {
@@ -86,39 +95,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// POST /api/auth/register
-router.post('/register', async (req, res) => {
-  try {
-    const { username, email, password, fullName } = req.body;
-    
-    if (!username || !email || !password) {
-      return res.status(400).json({ success: false, error: 'Usuario, email y contraseña requeridos' });
-    }
-    
-    if (password.length < 6) {
-      return res.status(400).json({ success: false, error: 'La contraseña debe tener al menos 6 caracteres' });
-    }
-    
-    const user = await userService.createUser({ username, email, password, fullName, role: 'user' });
-    const token = userService.generateToken(user);
-    
-    res.status(201).json({
-      success: true,
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role
-      }
-    });
-  } catch (error) {
-    console.error('Register error:', error);
-    res.status(400).json({ success: false, error: error.message });
-  }
-});
-
 // GET /api/auth/me
 router.get('/me', authMiddleware, (req, res) => {
   res.json({ success: true, user: req.user });
@@ -127,6 +103,39 @@ router.get('/me', authMiddleware, (req, res) => {
 // POST /api/auth/logout
 router.post('/logout', authMiddleware, (req, res) => {
   res.json({ success: true, message: 'Sesión cerrada' });
+});
+
+// Admin: POST /api/admin/users - alta de usuario (user + password + rol)
+router.post('/admin/users', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const { username, password, role, fullName, email } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ success: false, error: 'Usuario y contraseña requeridos' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, error: 'La contraseña debe tener al menos 6 caracteres' });
+    }
+
+    const normalizedRole = normalizeRole(role);
+    if (!normalizedRole) {
+      return res.status(400).json({ success: false, error: `Rol inválido. Roles permitidos: ${VALID_ROLES.join(', ')}` });
+    }
+
+    const user = await userService.createUser({
+      username,
+      password,
+      role: normalizedRole,
+      fullName: fullName || null,
+      email: email || `${username}@ia-consulta.local`
+    });
+
+    const { passwordHash, ...safeUser } = user;
+    res.status(201).json({ success: true, user: safeUser });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
 });
 
 // Admin: GET /api/admin/users
@@ -144,6 +153,15 @@ router.get('/admin/users', authMiddleware, requireRole('admin'), async (req, res
 router.put('/admin/users/:id', authMiddleware, requireRole('admin'), async (req, res) => {
   try {
     const { fullName, email, role, isActive, password } = req.body;
+
+    if (role !== undefined) {
+      const normalizedRole = normalizeRole(role);
+      if (!normalizedRole) {
+        return res.status(400).json({ success: false, error: `Rol inválido. Roles permitidos: ${VALID_ROLES.join(', ')}` });
+      }
+      req.body.role = normalizedRole;
+    }
+
     const user = await userService.updateUser(req.params.id, { fullName, email, role, isActive, password });
     
     if (!user) {

@@ -35,37 +35,7 @@
                     </div>
                     <button type="submit" class="btn btn-primary btn-full">Entrar</button>
                 </form>
-                <p class="auth-switch">¿No tienes cuenta? <a href="#" id="showRegister">Regístrate</a></p>
-                <p class="auth-hint">Demo: <code>admin</code> / <code>admin123</code></p>
-            </div>
-            
-            <!-- Register Form -->
-            <div id="registerForm" class="auth-form hidden">
-                <div class="auth-header">
-                    <img src="/assets/images/ant-logo.png" alt="Logo" class="auth-logo">
-                    <h2>Crear Cuenta</h2>
-                    <p>Únete a IA Consulta</p>
-                </div>
-                <form id="registerFormElement">
-                    <div class="form-group">
-                        <label for="regFullName">Nombre completo</label>
-                        <input type="text" id="regFullName" required autocomplete="name">
-                    </div>
-                    <div class="form-group">
-                        <label for="regUsername">Usuario</label>
-                        <input type="text" id="regUsername" required autocomplete="username" minlength="3">
-                    </div>
-                    <div class="form-group">
-                        <label for="regEmail">Email</label>
-                        <input type="email" id="regEmail" required autocomplete="email">
-                    </div>
-                    <div class="form-group">
-                        <label for="regPassword">Contraseña</label>
-                        <input type="password" id="regPassword" required autocomplete="new-password" minlength="6">
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-full">Registrarse</button>
-                </form>
-                <p class="auth-switch">¿Ya tienes cuenta? <a href="#" id="showLogin">Inicia sesión</a></p>
+                <p class="auth-hint">Acceso autorizado por el administrador</p>
             </div>
         </div>
     </div>
@@ -82,6 +52,7 @@
             </div>
             <div class="user-actions">
                 <span id="userDisplay" class="user-display"></span>
+                <button id="adminBtn" class="header-btn header-btn-admin hidden" title="Panel de administración">👥 Usuarios</button>
                 <button id="logoutBtn" class="header-btn header-btn-logout" title="Cerrar sesión">Salir</button>
                 <button id="clearChatBtn" class="header-btn" title="Limpiar conversación">🗑️ Limpiar</button>
             </div>
@@ -170,6 +141,69 @@
                             <polyline points="5 12 12 5 19 12"></polyline>
                         </svg>
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="adminPanel" class="admin-panel hidden">
+            <div class="admin-header">
+                <button class="back-btn" id="adminBackBtn">← Volver al chat</button>
+                <h2>👥 Administración de Usuarios</h2>
+            </div>
+
+            <div class="admin-content">
+                <div class="admin-card">
+                    <h3>➕ Crear usuario</h3>
+                    <form id="createUserForm" class="admin-form">
+                        <div class="form-group">
+                            <label for="newUsername">Usuario</label>
+                            <input type="text" id="newUsername" required minlength="3" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="newPassword">Contraseña</label>
+                            <input type="password" id="newPassword" required minlength="6" autocomplete="new-password">
+                        </div>
+                        <div class="form-group">
+                            <label for="newFullName">Nombre completo</label>
+                            <input type="text" id="newFullName" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="newEmail">Email (opcional)</label>
+                            <input type="email" id="newEmail" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="newRole">Rol</label>
+                            <select id="newRole" class="admin-select">
+                                <option value="call center">Call Center</option>
+                                <option value="desarrollo">Desarrollo</option>
+                                <option value="customer">Customer</option>
+                                <option value="sales">Sales</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Crear usuario</button>
+                    </form>
+                    <p id="createUserMsg" class="admin-msg"></p>
+                </div>
+
+                <div class="admin-card">
+                    <h3>📋 Usuarios existentes</h3>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Nombre</th>
+                                    <th>Rol</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody"></tbody>
+                        </table>
+                    </div>
+                    <p id="usersMsg" class="admin-msg"></p>
                 </div>
             </div>
         </div>

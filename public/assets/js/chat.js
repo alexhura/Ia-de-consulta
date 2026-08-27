@@ -2,15 +2,19 @@
 let authToken = localStorage.getItem('authToken') || null;
 let currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
 
+// Roles del sistema
+const ROLE_LABELS = {
+    'admin': 'Admin',
+    'call center': 'Call Center',
+    'desarrollo': 'Desarrollo',
+    'customer': 'Customer',
+    'sales': 'Sales'
+};
+
 // DOM Elements
 const authModal = document.getElementById('authModal');
 const app = document.getElementById('app');
-const loginForm = document.getElementById('loginForm');
-const registerForm = document.getElementById('registerForm');
 const loginFormElement = document.getElementById('loginFormElement');
-const registerFormElement = document.getElementById('registerFormElement');
-const showRegister = document.getElementById('showRegister');
-const showLogin = document.getElementById('showLogin');
 const closeModal = document.getElementById('closeModal');
 const logoutBtn = document.getElementById('logoutBtn');
 const userDisplay = document.getElementById('userDisplay');
@@ -28,7 +32,20 @@ const backBtn = document.getElementById('backBtn');
 const actionBtns = document.querySelectorAll('.action-btn');
 const clearChatBtn = document.getElementById('clearChatBtn');
 
+// Admin Panel DOM
+const adminBtn = document.getElementById('adminBtn');
+const adminPanel = document.getElementById('adminPanel');
+const adminBackBtn = document.getElementById('adminBackBtn');
+const createUserForm = document.getElementById('createUserForm');
+const usersTableBody = document.getElementById('usersTableBody');
+const createUserMsg = document.getElementById('createUserMsg');
+const usersMsg = document.getElementById('usersMsg');
+
 let conversationHistory = [];
+
+function roleLabel(role) {
+    return ROLE_LABELS[role] || role || '—';
+}
 
 // Auth functions
 function setAuth(token, user) {
@@ -37,6 +54,7 @@ function setAuth(token, user) {
     localStorage.setItem('authToken', token);
     localStorage.setItem('currentUser', JSON.stringify(user));
     updateUIForAuth();
+    if (currentUser.role === 'admin') loadUsers();
 }
 
 function clearAuth() {
@@ -44,6 +62,7 @@ function clearAuth() {
     currentUser = null;
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
+    closeAdminPanel();
     updateUIForAuth();
 }
 
@@ -51,9 +70,10 @@ function updateUIForAuth() {
     if (currentUser) {
         authModal.classList.add('hidden');
         app.classList.remove('hidden');
-        userDisplay.textContent = `${currentUser.fullName || currentUser.username} (${currentUser.role})`;
-        userProfile.textContent = currentUser.role === 'admin' ? 'Administrador' : 'Usuario';
+        userDisplay.textContent = `${currentUser.fullName || currentUser.username} (${roleLabel(currentUser.role)})`;
+        userProfile.textContent = currentUser.role === 'admin' ? 'Administrador' : roleLabel(currentUser.role) + ' - Usuario';
         greetingText.textContent = `¡Hola, ${currentUser.fullName || currentUser.username}! ¿En qué te ayudo hoy?`;
+        adminBtn.classList.toggle('hidden', currentUser.role !== 'admin');
     } else {
         authModal.classList.remove('hidden');
         app.classList.add('hidden');
@@ -106,44 +126,7 @@ loginFormElement.addEventListener('submit', async (e) => {
     }
 });
 
-registerFormElement.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fullName = document.getElementById('regFullName').value;
-    const username = document.getElementById('regUsername').value;
-    const email = document.getElementById('regEmail').value;
-    const password = document.getElementById('regPassword').value;
-    
-    try {
-        const data = await apiRequest('/api/auth/register', {
-            method: 'POST',
-            body: JSON.stringify({ username, email, password, fullName })
-        });
-        
-        if (data.success) {
-            setAuth(data.token, data.user);
-            registerFormElement.reset();
-        } else {
-            alert(data.error || 'Error al registrarse');
-        }
-    } catch (error) {
-        alert(error.message);
-    }
-});
-
-showRegister.addEventListener('click', (e) => {
-    e.preventDefault();
-    loginForm.classList.add('hidden');
-    registerForm.classList.remove('hidden');
-});
-
-showLogin.addEventListener('click', (e) => {
-    e.preventDefault();
-    registerForm.classList.add('hidden');
-    loginForm.classList.remove('hidden');
-});
-
 closeModal.addEventListener('click', () => {
-    // Don't allow closing if not authenticated
     if (!currentUser) return;
 });
 
@@ -152,6 +135,172 @@ logoutBtn.addEventListener('click', async () => {
         await apiRequest('/api/auth/logout', { method: 'POST' });
     } catch (e) {}
     clearAuth();
+});
+
+// Admin panel functions
+function openAdminPanel() {
+    heroSection.classList.add('hidden');
+    chatSection.classList.remove('active');
+    adminPanel.classList.remove('hidden');
+    loadUsers();
+}
+
+function closeAdminPanel() {
+    adminPanel.classList.add('hidden');
+}
+
+async function loadUsers() {
+    try {
+        const data = await apiRequest('/api/auth/admin/users');
+        if (data.success) {
+            renderUsers(data.users);
+        } else {
+            usersMsg.textContent = data.error || 'Error al obtener usuarios';
+            usersMsg.classList.add('error');
+        }
+    } catch (error) {
+        usersMsg.textContent = error.message;
+        usersMsg.classList.add('error');
+    }
+}
+
+function renderUsers(users) {
+    usersTableBody.innerHTML = '';
+    users.forEach(user => {
+        const tr = document.createElement('tr');
+        tr.className = user.isActive ? '' : 'inactive';
+
+        const tdUser = document.createElement('td');
+        tdUser.innerHTML = `<strong>${escapeHtml(user.username)}</strong>`;
+        if (user.email && !user.email.endsWith('@ia-consulta.local')) {
+            tdUser.innerHTML += `<br><small>${escapeHtml(user.email)}</small>`;
+        }
+
+        const tdName = document.createElement('td');
+        tdName.textContent = user.fullName || '—';
+
+        const tdRole = document.createElement('td');
+        const roleSelect = document.createElement('select');
+        roleSelect.className = 'admin-select admin-role-select';
+        Object.keys(ROLE_LABELS).forEach(role => {
+            const opt = document.createElement('option');
+            opt.value = role;
+            opt.textContent = ROLE_LABELS[role];
+            if (role === user.role) opt.selected = true;
+            roleSelect.appendChild(opt);
+        });
+        if (user.username === 'admin') {
+            roleSelect.disabled = true;
+        }
+        roleSelect.addEventListener('change', async () => {
+            if (roleSelect.value === user.role) return;
+            const data = await apiRequest(`/api/auth/admin/users/${user.id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ role: roleSelect.value })
+            });
+            if (!data.success) {
+                alert(data.error || 'Error al cambiar rol');
+                roleSelect.value = user.role;
+            } else {
+                usersMsg.textContent = `Rol de "${user.username}" actualizado a ${roleLabel(roleSelect.value)}`;
+                usersMsg.classList.remove('error');
+            }
+        });
+        tdRole.appendChild(roleSelect);
+
+        const tdStatus = document.createElement('td');
+        const statusBadge = document.createElement('span');
+        statusBadge.className = `status-badge ${user.isActive ? 'active' : 'inactive'}`;
+        statusBadge.textContent = user.isActive ? 'Activo' : 'Inactivo';
+        tdStatus.appendChild(statusBadge);
+
+        const tdActions = document.createElement('td');
+        tdActions.className = 'admin-actions';
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'admin-btn';
+        toggleBtn.textContent = user.isActive ? 'Desactivar' : 'Activar';
+        toggleBtn.disabled = user.username === 'admin';
+        toggleBtn.addEventListener('click', async () => {
+            if (user.username === 'admin') return;
+            const data = await apiRequest(`/api/auth/admin/users/${user.id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ isActive: !user.isActive })
+            });
+            if (data.success) {
+                loadUsers();
+            } else {
+                alert(data.error || 'Error al cambiar estado');
+            }
+        });
+        tdActions.appendChild(toggleBtn);
+
+        if (user.username !== 'admin') {
+            const delBtn = document.createElement('button');
+            delBtn.className = 'admin-btn admin-btn-danger';
+            delBtn.textContent = 'Eliminar';
+            delBtn.addEventListener('click', async () => {
+                if (!confirm(`¿Eliminar al usuario "${user.username}"? Esta acción no se puede deshacer.`)) return;
+                const data = await apiRequest(`/api/auth/admin/users/${user.id}`, {
+                    method: 'DELETE'
+                });
+                if (data.success) {
+                    loadUsers();
+                } else {
+                    alert(data.error || 'Error al eliminar usuario');
+                }
+            });
+            tdActions.appendChild(delBtn);
+        }
+
+        tr.appendChild(tdUser);
+        tr.appendChild(tdName);
+        tr.appendChild(tdRole);
+        tr.appendChild(tdStatus);
+        tr.appendChild(tdActions);
+        usersTableBody.appendChild(tr);
+    });
+}
+
+createUserForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    createUserMsg.textContent = '';
+    createUserMsg.classList.remove('error', 'success');
+
+    const payload = {
+        username: document.getElementById('newUsername').value.trim(),
+        password: document.getElementById('newPassword').value,
+        fullName: document.getElementById('newFullName').value.trim() || null,
+        email: document.getElementById('newEmail').value.trim() || null,
+        role: document.getElementById('newRole').value
+    };
+
+    try {
+        const data = await apiRequest('/api/auth/admin/users', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+
+        if (data.success) {
+            createUserMsg.textContent = `✅ Usuario "${data.user.username}" creado con rol ${roleLabel(data.user.role)}`;
+            createUserMsg.classList.add('success');
+            createUserForm.reset();
+            loadUsers();
+        } else {
+            createUserMsg.textContent = data.error || 'Error al crear usuario';
+            createUserMsg.classList.add('error');
+        }
+    } catch (error) {
+        createUserMsg.textContent = error.message;
+        createUserMsg.classList.add('error');
+    }
+});
+
+adminBtn.addEventListener('click', openAdminPanel);
+adminBackBtn.addEventListener('click', () => {
+    closeAdminPanel();
+    heroSection.classList.remove('hidden');
+    messageInput.focus();
 });
 
 // Check auth on load
@@ -174,6 +323,7 @@ async function checkAuth() {
 
 // Chat functions
 function showChat() {
+    closeAdminPanel();
     heroSection.classList.add('hidden');
     chatSection.classList.add('active');
     chatInput.focus();
