@@ -54,13 +54,23 @@ export class UserService {
   }
 
   async findByUsername(username) {
-    const { data, error } = await getSupabase()
+    // Caso exacto primero, luego coincidencia sin distinguir mayúsculas
+    let { data, error } = await getSupabase()
       .from('users')
       .select('*')
       .eq('username', username)
       .maybeSingle();
     if (error) throw error;
-    return data ? this.toUser(data) : null;
+    if (data) return this.toUser(data);
+
+    ({ data, error } = await getSupabase()
+      .from('users')
+      .select('*')
+      .ilike('username', username)
+      .limit(1));
+    if (error) throw error;
+
+    return data && data[0] ? this.toUser(data[0]) : null;
   }
 
   async findByEmail(email) {

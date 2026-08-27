@@ -10,8 +10,27 @@ const app = express();
 const groqService = new GroqService();
 const kbService = new KnowledgeBaseService();
 
+// Validar variables de entorno requeridas antes de arrancar
+const missingEnv = [];
+if (!config.groq.apiKey) missingEnv.push('GROQ_API_KEY');
+if (!config.supabase.url) missingEnv.push('SUPABASE_URL');
+if (!config.supabase.key) missingEnv.push('SUPABASE_API_KEY');
+
+if (missingEnv.length > 0) {
+  console.error('❌ Faltan variables de entorno requeridas:');
+  missingEnv.forEach(v => console.error('   - ' + v));
+  console.error('   Configúralas en el panel de Hostinger > Node.js > Environment Variables');
+  process.exit(1);
+}
+
 // Inicializar base de datos Supabase antes de aceptar requests
-await initDatabase();
+try {
+  await initDatabase();
+} catch (error) {
+  console.error('❌ No se pudo inicializar la base de datos:', error.message);
+  console.error('   Revisa SUPABASE_URL y SUPABASE_API_KEY. Si es un problema de conexión, revisa los logs.');
+  process.exit(1);
+}
 
 // Middleware
 app.use(cors({
