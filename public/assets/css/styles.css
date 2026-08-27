@@ -4,73 +4,8 @@
     box-sizing: border-box;
 }
 
-.user-header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 100;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 24px;
-    background: rgba(10, 10, 15, 0.9);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.logo-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    object-fit: cover;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 4px;
-}
-
-.user-name {
-    color: #ffffff;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.user-profile {
-    color: #00d4ff;
-    font-size: 13px;
-}
-
-.user-actions {
-    display: flex;
-    gap: 12px;
-}
-
-.header-btn {
-    padding: 8px 16px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    color: #a1a1aa;
-    font-size: 13px;
-    text-decoration: none;
-    transition: all 0.2s;
-}
-
-.header-btn:hover {
-    background: rgba(0, 212, 255, 0.1);
-    border-color: rgba(0, 212, 255, 0.3);
-    color: #00d4ff;
-}
-
-.header-btn-logout:hover {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.3);
-    color: #f87171;
+.hidden {
+    display: none !important;
 }
 
 body {
@@ -89,32 +24,186 @@ body::before {
     left: 0;
     right: 0;
     bottom: 0;
-    background: 
+    background:
         radial-gradient(ellipse at 20% 20%, rgba(0, 212, 255, 0.08) 0%, transparent 50%),
         radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
     pointer-events: none;
     z-index: 0;
 }
 
-.container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
-    padding-top: 80px;
-    min-height: 100vh;
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 212, 255, 0.3);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 212, 255, 0.5);
+}
+
+/* ============ Layout principal ============ */
+#app {
     display: flex;
-    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
     position: relative;
     z-index: 1;
 }
 
+/* ---- Sidebar ---- */
+.sidebar {
+    width: 76px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 0 24px;
+    background: rgba(10, 10, 15, 0.55);
+    backdrop-filter: blur(16px);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    z-index: 10;
+}
+
+.sidebar-top,
+.sidebar-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+}
+
+.sidebar-logo {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    cursor: pointer;
+    transition: transform 0.25s ease, filter 0.25s ease;
+    margin-bottom: 6px;
+}
+
+.sidebar-logo:hover {
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 12px rgba(0, 212, 255, 0.6));
+}
+
+.sidebar-btn {
+    width: 42px;
+    height: 42px;
+    border: none;
+    background: transparent;
+    border-radius: 12px;
+    padding: 9px;
+    color: #a1a1aa;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.sidebar-btn:hover {
+    background: rgba(0, 212, 255, 0.12);
+    color: #00d4ff;
+    box-shadow: 0 0 18px rgba(0, 212, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.sidebar-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00d4ff 0%, #8b5cf6 100%);
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 16px rgba(0, 212, 255, 0.35);
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.sidebar-avatar:hover {
+    box-shadow: 0 0 26px rgba(239, 68, 68, 0.5);
+    border-color: rgba(239, 68, 68, 0.6);
+    transform: scale(1.05);
+}
+
+/* ---- Main + Topbar limpio (sin fondo) ---- */
+.main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100vh;
+    position: relative;
+}
+
+.topbar {
+    height: 60px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    background: transparent;
+    border: none;
+}
+
+.topbar-title {
+    font-family: 'EB Garamond', Georgia, serif;
+    font-size: 22px;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+.topbar-user {
+    font-size: 13px;
+    color: #00d4ff;
+    background: rgba(0, 212, 255, 0.08);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    padding: 5px 12px;
+    border-radius: 20px;
+    max-width: 45%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---- Vistas ---- */
+.view {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.view.active {
+    display: flex;
+}
+
+/* ---- Hero (inicio) ---- */
 .hero {
     flex: 1;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 40px 20px;
+    padding: 32px 20px;
     animation: fadeIn 0.8s ease-out;
 }
 
@@ -224,6 +313,7 @@ body::before {
     justify-content: center;
     color: #6b7280;
     transition: all 0.2s ease;
+    font-size: 16px;
 }
 
 .icon-btn:hover {
@@ -294,48 +384,26 @@ body::before {
     color: inherit;
 }
 
+/* ---- Chat ---- */
 .chat-section {
     display: none;
     flex-direction: column;
-    height: 100vh;
-    padding: 20px 0;
+    flex: 1;
+    min-height: 0;
+    padding: 0 20px 20px;
 }
 
 .chat-section.active {
     display: flex;
 }
 
-.hero.hidden {
-    display: none;
-}
-
-.back-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 18px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #a1a1aa;
-    font-size: 14px;
-    font-family: inherit;
-    cursor: pointer;
-    margin-bottom: 20px;
-    border-radius: 12px;
-    transition: all 0.2s ease;
-    align-self: flex-start;
-}
-
-.back-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
 .chat-container {
     flex: 1;
     overflow-y: auto;
-    padding: 20px 0;
+    padding: 16px 8px;
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
 }
 
 .message {
@@ -360,6 +428,7 @@ body::before {
     font-size: 15px;
     white-space: pre-wrap;
     word-wrap: break-word;
+    display: inline-block;
 }
 
 .message.user .message-content {
@@ -438,8 +507,10 @@ body::before {
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     padding: 14px 20px;
-    margin-top: 20px;
+    margin: 8px auto 0;
     transition: all 0.3s ease;
+    width: 100%;
+    max-width: 880px;
 }
 
 .chat-input-container:focus-within {
@@ -461,47 +532,151 @@ body::before {
     color: #6b7280;
 }
 
-::-webkit-scrollbar {
-    width: 6px;
+/* ============ Ventanas overlay (historial / configuración) ============ */
+.window-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    background: rgba(6, 6, 10, 0.6);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    animation: fadeIn 0.25s ease-out;
 }
 
-::-webkit-scrollbar-track {
-    background: transparent;
+.window {
+    width: 100%;
+    max-width: 960px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, #14141f 0%, #101827 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 212, 255, 0.08);
+    overflow: hidden;
+    animation: modalSlideIn 0.28s ease-out;
 }
 
-::-webkit-scrollbar-thumb {
-    background: rgba(0, 212, 255, 0.3);
-    border-radius: 3px;
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: translateY(-14px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 212, 255, 0.5);
+.window-head {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-@media (max-width: 640px) {
-    .greeting h1 {
-        font-size: 28px;
-    }
-    
-    .greeting .icon {
-        font-size: 24px;
-    }
-    
-    .input-container {
-        padding: 14px 18px;
-    }
-    
-    .quick-actions {
-        gap: 8px;
-    }
-    
-    .action-btn {
-        padding: 10px 16px;
-        font-size: 13px;
-    }
+.window-head h2 {
+    color: #ffffff;
+    font-size: 20px;
+    font-family: 'EB Garamond', Georgia, serif;
+    font-weight: 500;
 }
 
-/* Auth Modal */
+.window-close {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+    color: #a1a1aa;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.window-close:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
+.window-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.edit-window,
+.history-window {
+    max-width: 560px;
+}
+
+.edit-window .window-body,
+.history-window .window-body {
+    display: block;
+}
+
+/* ---- Historial ---- */
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.history-item:hover {
+    background: rgba(0, 212, 255, 0.06);
+    border-color: rgba(0, 212, 255, 0.3);
+}
+
+.history-item.active {
+    border-color: rgba(0, 212, 255, 0.5);
+    background: rgba(0, 212, 255, 0.07);
+}
+
+.history-item-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.history-item-title {
+    color: #e4e4e7;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-item-date {
+    color: #6b7280;
+    font-size: 12px;
+}
+
+.history-del:hover {
+    color: #f87171;
+}
+
+/* ============ Auth Modal ============ */
 .modal {
     position: fixed;
     top: 0;
@@ -541,11 +716,6 @@ body::before {
     animation: modalSlideIn 0.3s ease-out;
 }
 
-@keyframes modalSlideIn {
-    from { opacity: 0; transform: translateY(-20px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
 .modal-close {
     position: absolute;
     top: 16px;
@@ -583,11 +753,8 @@ body::before {
 .auth-logo {
     width: 64px;
     height: 64px;
-    border-radius: 16px;
-    object-fit: cover;
+    object-fit: contain;
     margin-bottom: 16px;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 8px;
 }
 
 .auth-header h2 {
@@ -668,23 +835,6 @@ body::before {
     width: 100%;
 }
 
-.auth-switch {
-    text-align: center;
-    color: #a1a1aa;
-    font-size: 14px;
-    margin-top: 8px;
-}
-
-.auth-switch a {
-    color: #00d4ff;
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.auth-switch a:hover {
-    text-decoration: underline;
-}
-
 .auth-hint {
     text-align: center;
     color: #6b7280;
@@ -696,70 +846,13 @@ body::before {
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.auth-hint code {
-    background: rgba(0, 212, 255, 0.1);
-    padding: 2px 6px;
-    border-radius: 4px;
-    color: #00d4ff;
-    font-family: 'Monaco', 'Menlo', monospace;
-}
-
-.user-display {
-    color: #00d4ff;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 6px 12px;
-    background: rgba(0, 212, 255, 0.1);
-    border-radius: 20px;
-    border: 1px solid rgba(0, 212, 255, 0.2);
-}
-
-.header-btn-admin {
-    border-color: rgba(139, 92, 246, 0.3);
-    color: #c4b5fd;
-}
-
-.header-btn-admin:hover {
-    background: rgba(139, 92, 246, 0.15);
-    border-color: rgba(139, 92, 246, 0.5);
-    color: #a78bfa;
-}
-
-/* Admin Panel */
-.admin-panel {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 20px;
-    padding-top: 80px;
-    min-height: 100vh;
-    position: relative;
-    z-index: 1;
-}
-
-.admin-header {
-    margin-bottom: 24px;
-}
-
-.admin-header h2 {
-    color: #ffffff;
-    font-size: 24px;
-    margin-top: 16px;
-}
-
-.admin-content {
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    gap: 20px;
-    align-items: start;
-}
-
+/* ============ Panel de usuarios (admin) ============ */
 .admin-card {
     background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    padding: 22px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
 }
 
 .admin-card h3 {
@@ -879,6 +972,12 @@ body::before {
     color: #00d4ff;
 }
 
+.admin-btn-edit:hover {
+    background: rgba(139, 92, 246, 0.12);
+    border-color: rgba(139, 92, 246, 0.4);
+    color: #c4b5fd;
+}
+
 .admin-btn-danger:hover {
     background: rgba(239, 68, 68, 0.1);
     border-color: rgba(239, 68, 68, 0.3);
@@ -909,8 +1008,48 @@ body::before {
     border: 1px solid rgba(148, 163, 184, 0.3);
 }
 
+/* ============ Responsive ============ */
 @media (max-width: 768px) {
-    .admin-content {
+    .sidebar {
+        width: 62px;
+    }
+
+    .window-body {
         grid-template-columns: 1fr;
+    }
+
+    .topbar {
+        padding: 0 16px;
+    }
+
+    .topbar-user {
+        max-width: 55%;
+    }
+}
+
+@media (max-width: 480px) {
+    .greeting h1 {
+        font-size: 28px;
+    }
+
+    .greeting .icon {
+        font-size: 24px;
+    }
+
+    .input-container {
+        padding: 14px 18px;
+    }
+
+    .quick-actions {
+        gap: 8px;
+    }
+
+    .action-btn {
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+
+    .window-overlay {
+        padding: 12px;
     }
 }

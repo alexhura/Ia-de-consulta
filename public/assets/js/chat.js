@@ -16,11 +16,16 @@ const authModal = document.getElementById('authModal');
 const app = document.getElementById('app');
 const loginFormElement = document.getElementById('loginFormElement');
 const closeModal = document.getElementById('closeModal');
-const logoutBtn = document.getElementById('logoutBtn');
-const userDisplay = document.getElementById('userDisplay');
-const userProfile = document.getElementById('userProfile');
-const greetingText = document.getElementById('greetingText');
 
+const sidebarAvatar = document.getElementById('sidebarAvatar');
+const settingsBtn = document.getElementById('settingsBtn');
+const historyBtn = document.getElementById('historyBtn');
+const newChatBtn = document.getElementById('newChatBtn');
+const logoBtn = document.getElementById('logoBtn');
+const topbarTitle = document.getElementById('topbarTitle');
+const topbarUser = document.getElementById('topbarUser');
+
+const greetingText = document.getElementById('greetingText');
 const heroSection = document.getElementById('heroSection');
 const chatSection = document.getElementById('chatSection');
 const chatContainer = document.getElementById('chatContainer');
@@ -28,33 +33,74 @@ const messageInput = document.getElementById('messageInput');
 const sendButton = document.getElementById('sendButton');
 const chatInput = document.getElementById('chatInput');
 const chatSendBtn = document.getElementById('chatSendBtn');
-const backBtn = document.getElementById('backBtn');
 const actionBtns = document.querySelectorAll('.action-btn');
-const clearChatBtn = document.getElementById('clearChatBtn');
 
-// Admin Panel DOM
-const adminBtn = document.getElementById('adminBtn');
+// Admin windows DOM
 const adminPanel = document.getElementById('adminPanel');
-const adminBackBtn = document.getElementById('adminBackBtn');
+const adminCloseBtn = document.getElementById('adminCloseBtn');
 const createUserForm = document.getElementById('createUserForm');
 const usersTableBody = document.getElementById('usersTableBody');
 const createUserMsg = document.getElementById('createUserMsg');
 const usersMsg = document.getElementById('usersMsg');
 
+const editWindow = document.getElementById('editWindow');
+const editUserForm = document.getElementById('editUserForm');
+const editFullName = document.getElementById('editFullName');
+const editEmail = document.getElementById('editEmail');
+const editUserMsg = document.getElementById('editUserMsg');
+
+// History DOM
+const historyPanel = document.getElementById('historyPanel');
+const historyCloseBtn = document.getElementById('historyCloseBtn');
+const historyList = document.getElementById('historyList');
+const historyMsg = document.getElementById('historyMsg');
+
 let conversationHistory = [];
+let activeConvId = null;
+let editingUserId = null;
+
+const HISTORY_KEY_PREFIX = 'ia_chat_history_';
 
 function roleLabel(role) {
     return ROLE_LABELS[role] || role || '—';
 }
 
-// Auth functions
+// ---------------- Utils ----------------
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    let html = div.innerHTML.replace(/\n/g, '<br>');
+    const urlRegex = /(https?:\/\/[^\s<]+)/g;
+    html = html.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+    return html;
+}
+
+function openOverlay(el) {
+    el.classList.remove('hidden');
+}
+
+function closeOverlay(el) {
+    el.classList.add('hidden');
+}
+
+function initials(user) {
+    const name = (user.fullName || user.username || '?').trim();
+    const parts = name.split(/\s+/);
+    return ((parts[0][0] || '') + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+function formatDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+// ---------------- Auth ----------------
 function setAuth(token, user) {
     authToken = token;
     currentUser = user;
     localStorage.setItem('authToken', token);
     localStorage.setItem('currentUser', JSON.stringify(user));
     updateUIForAuth();
-    if (currentUser.role === 'admin') loadUsers();
 }
 
 function clearAuth() {
@@ -62,7 +108,9 @@ function clearAuth() {
     currentUser = null;
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
-    closeAdminPanel();
+    closeOverlay(adminPanel);
+    closeOverlay(editWindow);
+    closeOverlay(historyPanel);
     updateUIForAuth();
 }
 
@@ -70,10 +118,12 @@ function updateUIForAuth() {
     if (currentUser) {
         authModal.classList.add('hidden');
         app.classList.remove('hidden');
-        userDisplay.textContent = `${currentUser.fullName || currentUser.username} (${roleLabel(currentUser.role)})`;
-        userProfile.textContent = currentUser.role === 'admin' ? 'Administrador' : roleLabel(currentUser.role) + ' - Usuario';
+        topbarTitle.textContent = 'Chat';
+        topbarUser.textContent = `${currentUser.fullName || currentUser.username} · ${roleLabel(currentUser.role)}`;
         greetingText.textContent = `¡Hola, ${currentUser.fullName || currentUser.username}! ¿En qué te ayudo hoy?`;
-        adminBtn.classList.toggle('hidden', currentUser.role !== 'admin');
+        settingsBtn.classList.toggle('hidden', currentUser.role !== 'admin');
+        sidebarAvatar.textContent = initials(currentUser);
+        sidebarAvatar.title = `${currentUser.fullName || currentUser.username} — Cerrar sesión`;
     } else {
         authModal.classList.remove('hidden');
         app.classList.add('hidden');
@@ -85,21 +135,21 @@ async function apiRequest(endpoint, options = {}) {
         'Content-Type': 'application/json',
         ...options.headers
     };
-    
+
     if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
     }
-    
+
     const response = await fetch(endpoint, {
         ...options,
         headers
     });
-    
+
     if (response.status === 401) {
         clearAuth();
         throw new Error('Sesión expirada');
     }
-    
+
     return response.json();
 }
 
@@ -108,15 +158,16 @@ loginFormElement.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('loginUsername').value;
     const password = document.getElementById('loginPassword').value;
-    
+
     try {
         const data = await apiRequest('/api/auth/login', {
             method: 'POST',
             body: JSON.stringify({ username, password })
         });
-        
+
         if (data.success) {
             setAuth(data.token, data.user);
+            showHero();
             loginFormElement.reset();
         } else {
             alert(data.error || 'Error al iniciar sesión');
@@ -126,28 +177,242 @@ loginFormElement.addEventListener('submit', async (e) => {
     }
 });
 
-closeModal.addEventListener('click', () => {
-    if (!currentUser) return;
-});
+closeModal.addEventListener('click', () => {});
 
-logoutBtn.addEventListener('click', async () => {
+sidebarAvatar.addEventListener('click', async () => {
     try {
         await apiRequest('/api/auth/logout', { method: 'POST' });
     } catch (e) {}
     clearAuth();
 });
 
-// Admin panel functions
-function openAdminPanel() {
+logoBtn.addEventListener('click', showHero);
+
+// ---------------- Chat ----------------
+function showChat() {
+    closeOverlay(adminPanel);
+    closeOverlay(editWindow);
+    closeOverlay(historyPanel);
     heroSection.classList.add('hidden');
-    chatSection.classList.remove('active');
-    adminPanel.classList.remove('hidden');
-    loadUsers();
+    chatSection.classList.add('active');
+    chatInput.focus();
 }
 
-function closeAdminPanel() {
-    adminPanel.classList.add('hidden');
+function showHero() {
+    persistCurrentConversation();
+    heroSection.classList.remove('hidden');
+    chatSection.classList.remove('active');
+    chatContainer.innerHTML = '';
+    conversationHistory = [];
+    activeConvId = null;
+    messageInput.value = '';
+    messageInput.focus();
 }
+
+function addMessage(content, role) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${role}`;
+    messageDiv.innerHTML = `<div class="message-content">${escapeHtml(content)}</div>`;
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    conversationHistory.push({ role, content });
+    if (conversationHistory.length > 12) {
+        conversationHistory = conversationHistory.slice(-12);
+    }
+}
+
+function renderMessages(messages) {
+    chatContainer.innerHTML = '';
+    conversationHistory = [];
+    messages.forEach(m => addMessage(m.content, m.role));
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function showTyping() {
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message assistant';
+    typingDiv.id = 'typingIndicator';
+    typingDiv.innerHTML = `
+        <div class="typing-indicator">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+        </div>
+    `;
+    chatContainer.appendChild(typingDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function hideTyping() {
+    const typing = document.getElementById('typingIndicator');
+    if (typing) typing.remove();
+}
+
+async function sendMessage(message) {
+    if (!message.trim()) return;
+
+    showChat();
+    addMessage(message, 'user');
+
+    sendButton.disabled = true;
+    chatSendBtn.disabled = true;
+    messageInput.disabled = true;
+    chatInput.disabled = true;
+
+    showTyping();
+
+    try {
+        const data = await apiRequest('/api/chat', {
+            method: 'POST',
+            body: JSON.stringify({
+                message,
+                history: conversationHistory.slice(0, -1)
+            })
+        });
+
+        hideTyping();
+
+        if (data.success) {
+            addMessage(data.response, 'assistant');
+        } else {
+            addMessage('Lo siento, ocurrió un error. Por favor intenta de nuevo.', 'assistant');
+        }
+    } catch (error) {
+        hideTyping();
+        if (error.message === 'Sesión expirada') {
+            addMessage('Tu sesión ha expirado. Por favor inicia sesión de nuevo.', 'assistant');
+            setTimeout(() => clearAuth(), 1500);
+        } else {
+            addMessage('Error de conexión. Por favor verifica tu conexión a internet.', 'assistant');
+        }
+    } finally {
+        sendButton.disabled = false;
+        chatSendBtn.disabled = false;
+        messageInput.disabled = false;
+        chatInput.disabled = false;
+        chatInput.value = '';
+        chatInput.focus();
+    }
+}
+
+// ---------------- Historial (localStorage) ----------------
+function historyKey() {
+    return HISTORY_KEY_PREFIX + currentUser.id;
+}
+
+function loadHistory() {
+    try {
+        return JSON.parse(localStorage.getItem(historyKey()) || '[]');
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveHistory(list) {
+    localStorage.setItem(historyKey(), JSON.stringify(list));
+}
+
+function persistCurrentConversation() {
+    if (!currentUser || conversationHistory.length === 0) return;
+    const first = conversationHistory.find(m => m.role === 'user');
+    if (!first) return;
+
+    const list = loadHistory();
+    const entry = {
+        id: activeConvId || Date.now(),
+        title: first.content.length > 56 ? first.content.slice(0, 56) + '…' : first.content,
+        date: new Date().toISOString(),
+        messages: conversationHistory.slice()
+    };
+
+    const idx = list.findIndex(c => String(c.id) === String(entry.id));
+    if (idx !== -1) {
+        list[idx] = entry;
+    } else {
+        list.unshift(entry);
+        if (list.length > 50) list.length = 50;
+    }
+    activeConvId = entry.id;
+    saveHistory(list);
+}
+
+function openHistory() {
+    persistCurrentConversation();
+    renderHistory();
+    openOverlay(historyPanel);
+}
+
+function renderHistory() {
+    historyList.innerHTML = '';
+    const list = loadHistory();
+    if (list.length === 0) {
+        historyMsg.textContent = 'Aún no tienes conversaciones guardadas.';
+        historyMsg.classList.remove('error');
+        return;
+    }
+    historyMsg.textContent = '';
+
+    list.forEach(conv => {
+        const item = document.createElement('div');
+        item.className = 'history-item' + (String(conv.id) === String(activeConvId) ? ' active' : '');
+        item.innerHTML = `
+            <div class="history-item-main">
+                <span class="history-item-title">${escapeHtml(conv.title)}</span>
+                <span class="history-item-date">${formatDate(conv.date)} · ${conv.messages.filter(m => m.role === 'user').length} consultas</span>
+            </div>
+            <button class="icon-btn history-del" title="Eliminar">🗑</button>
+        `;
+
+        item.querySelector('.history-item-main').addEventListener('click', () => {
+            loadConversation(conv);
+        });
+
+        item.querySelector('.history-del').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!confirm(`¿Eliminar la conversación "${conv.title}"?`)) return;
+            const list2 = loadHistory().filter(c => String(c.id) !== String(conv.id));
+            saveHistory(list2);
+            if (String(activeConvId) === String(conv.id)) {
+                activeConvId = null;
+            }
+            renderHistory();
+        });
+
+        historyList.appendChild(item);
+    });
+}
+
+function loadConversation(conv) {
+    closeOverlay(historyPanel);
+    showChat();
+    renderMessages(conv.messages);
+    activeConvId = conv.id;
+}
+
+historyBtn.addEventListener('click', openHistory);
+historyCloseBtn.addEventListener('click', () => closeOverlay(historyPanel));
+
+newChatBtn.addEventListener('click', () => {
+    persistCurrentConversation();
+    showHero();
+});
+
+// ---------------- Ventana de usuarios (admin) ----------------
+function openAdminPanel() {
+    if (!currentUser || currentUser.role !== 'admin') return;
+    topbarTitle.textContent = 'Configuración';
+    closeOverlay(adminPanel);
+    loadUsers();
+    openOverlay(adminPanel);
+}
+
+adminCloseBtn.addEventListener('click', () => {
+    topbarTitle.textContent = 'Chat';
+    closeOverlay(adminPanel);
+});
+
+settingsBtn.addEventListener('click', openAdminPanel);
 
 async function loadUsers() {
     try {
@@ -218,6 +483,12 @@ function renderUsers(users) {
         const tdActions = document.createElement('td');
         tdActions.className = 'admin-actions';
 
+        const editBtn = document.createElement('button');
+        editBtn.className = 'admin-btn admin-btn-edit';
+        editBtn.textContent = 'Editar';
+        editBtn.addEventListener('click', () => openEditWindow(user));
+        tdActions.appendChild(editBtn);
+
         const toggleBtn = document.createElement('button');
         toggleBtn.className = 'admin-btn';
         toggleBtn.textContent = user.isActive ? 'Desactivar' : 'Activar';
@@ -263,6 +534,62 @@ function renderUsers(users) {
     });
 }
 
+// Editar usuario (nombre/email)
+function openEditWindow(user) {
+    editingUserId = user.id;
+    editFullName.value = user.fullName || '';
+    editEmail.value = user.email && !user.email.endsWith('@ia-consulta.local') ? user.email : '';
+    editUserMsg.textContent = '';
+    editUserMsg.classList.remove('error', 'success');
+    openOverlay(editWindow);
+    editFullName.focus();
+}
+
+editUserForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!editingUserId) return;
+    editUserMsg.textContent = '';
+
+    const payload = {};
+    if (editFullName.value.trim()) payload.fullName = editFullName.value.trim();
+    if (editEmail.value.trim()) payload.email = editEmail.value.trim();
+
+    if (Object.keys(payload).length === 0) {
+        editUserMsg.textContent = 'No hay cambios para guardar.';
+        editUserMsg.classList.add('error');
+        return;
+    }
+
+    try {
+        const data = await apiRequest(`/api/auth/admin/users/${editingUserId}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+        });
+        if (data.success) {
+            editUserMsg.textContent = '✅ Usuario actualizado.';
+            editUserMsg.classList.add('success');
+            const wasSelf = currentUser && currentUser.id === editingUserId;
+            loadUsers();
+            setTimeout(() => {
+                closeOverlay(editWindow);
+                if (wasSelf) {
+                    setAuth(authToken, Object.assign({}, currentUser, data.user));
+                }
+            }, 800);
+        } else {
+            editUserMsg.textContent = data.error || 'Error al actualizar usuario';
+            editUserMsg.classList.add('error');
+        }
+    } catch (error) {
+        editUserMsg.textContent = error.message;
+        editUserMsg.classList.add('error');
+    }
+});
+
+document.querySelectorAll('[data-close="editWindow"]').forEach(btn => {
+    btn.addEventListener('click', () => closeOverlay(editWindow));
+});
+
 createUserForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     createUserMsg.textContent = '';
@@ -297,13 +624,6 @@ createUserForm.addEventListener('submit', async (e) => {
     }
 });
 
-adminBtn.addEventListener('click', openAdminPanel);
-adminBackBtn.addEventListener('click', () => {
-    closeAdminPanel();
-    heroSection.classList.remove('hidden');
-    messageInput.focus();
-});
-
 // Check auth on load
 async function checkAuth() {
     if (authToken) {
@@ -311,6 +631,7 @@ async function checkAuth() {
             const data = await apiRequest('/api/auth/me');
             if (data.success) {
                 setAuth(authToken, data.user);
+                showHero();
             } else {
                 clearAuth();
             }
@@ -322,127 +643,9 @@ async function checkAuth() {
     }
 }
 
-// Chat functions
-function showChat() {
-    closeAdminPanel();
-    heroSection.classList.add('hidden');
-    chatSection.classList.add('active');
-    chatInput.focus();
-}
-
-function showHero() {
-    heroSection.classList.remove('hidden');
-    chatSection.classList.remove('active');
-    chatContainer.innerHTML = '';
-    conversationHistory = [];
-    messageInput.value = '';
-    messageInput.focus();
-}
-
-function addMessage(content, role) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${role}`;
-    messageDiv.innerHTML = `<div class="message-content">${escapeHtml(content)}</div>`;
-    chatContainer.appendChild(messageDiv);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-    
-    conversationHistory.push({ role, content });
-    if (conversationHistory.length > 12) {
-        conversationHistory = conversationHistory.slice(-12);
-    }
-}
-
-function showTyping() {
-    const typingDiv = document.createElement('div');
-    typingDiv.className = 'message assistant';
-    typingDiv.id = 'typingIndicator';
-    typingDiv.innerHTML = `
-        <div class="typing-indicator">
-            <span class="dot"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
-        </div>
-    `;
-    chatContainer.appendChild(typingDiv);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
-function hideTyping() {
-    const typing = document.getElementById('typingIndicator');
-    if (typing) typing.remove();
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    let html = div.innerHTML.replace(/\n/g, '<br>');
-    
-    const urlRegex = /(https?:\/\/[^\s<]+)/g;
-    html = html.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
-    
-    return html;
-}
-
-async function sendMessage(message) {
-    if (!message.trim()) return;
-    
-    showChat();
-    addMessage(message, 'user');
-    
-    sendButton.disabled = true;
-    chatSendBtn.disabled = true;
-    messageInput.disabled = true;
-    chatInput.disabled = true;
-    
-    showTyping();
-    
-    try {
-        const data = await apiRequest('/api/chat', {
-            method: 'POST',
-            body: JSON.stringify({ 
-                message, 
-                history: conversationHistory.slice(0, -1) 
-            })
-        });
-        
-        hideTyping();
-        
-        if (data.success) {
-            addMessage(data.response, 'assistant');
-        } else {
-            addMessage('Lo siento, ocurrió un error. Por favor intenta de nuevo.', 'assistant');
-        }
-        
-    } catch (error) {
-        hideTyping();
-        if (error.message === 'Sesión expirada') {
-            addMessage('Tu sesión ha expirado. Por favor inicia sesión de nuevo.', 'assistant');
-            setTimeout(() => clearAuth(), 1500);
-        } else {
-            addMessage('Error de conexión. Por favor verifica tu conexión a internet.', 'assistant');
-        }
-    } finally {
-        sendButton.disabled = false;
-        chatSendBtn.disabled = false;
-        messageInput.disabled = false;
-        chatInput.disabled = false;
-        chatInput.value = '';
-        chatInput.focus();
-    }
-}
-
-function clearChat() {
-    if (confirm('¿Limpiar toda la conversación?')) {
-        conversationHistory = [];
-        chatContainer.innerHTML = '';
-        showHero();
-    }
-}
-
-// Event listeners
+// ---------------- Event listeners ----------------
 sendButton.addEventListener('click', () => sendMessage(messageInput.value));
 chatSendBtn.addEventListener('click', () => sendMessage(chatInput.value));
-clearChatBtn.addEventListener('click', clearChat);
 
 messageInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -458,8 +661,6 @@ chatInput.addEventListener('keypress', (e) => {
     }
 });
 
-backBtn.addEventListener('click', showHero);
-
 actionBtns.forEach(btn => {
     btn.addEventListener('click', () => {
         const query = btn.getAttribute('data-query');
@@ -467,6 +668,5 @@ actionBtns.forEach(btn => {
     });
 });
 
-// Initialize
+// ---------------- Initialize ----------------
 checkAuth();
-messageInput.focus();
