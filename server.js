@@ -1,12 +1,17 @@
 import express from 'express';
 import cors from 'cors';
 import { config } from './config/index.js';
+import { initDatabase } from './services/db.js';
 import { GroqService } from './services/GroqService.js';
 import { KnowledgeBaseService } from './services/KnowledgeBaseService.js';
+import authRoutes, { authMiddleware } from './routes/auth.js';
 
 const app = express();
 const groqService = new GroqService();
 const kbService = new KnowledgeBaseService();
+
+// Inicializar base de datos Supabase antes de aceptar requests
+await initDatabase();
 
 // Middleware
 app.use(cors({
@@ -36,8 +41,11 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Chat endpoint
-app.post('/api/chat', async (req, res) => {
+// Auth routes
+app.use('/api/auth', authRoutes);
+
+// Chat endpoint (protected)
+app.post('/api/chat', authMiddleware, async (req, res) => {
   try {
     const { message, history = [] } = req.body;
 
@@ -56,7 +64,7 @@ app.post('/api/chat', async (req, res) => {
     }
 
     // Buscar conocimiento relevante
-    const context = kbService.getContextForQuery(message, 6);
+    const context = await kbService.getContextForQuery(message, 6);
 
     // Generar respuesta con Groq
     const response = await groqService.chat(message.trim(), context, history);
@@ -78,8 +86,8 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Streaming chat endpoint (opcional, para UX mejorada)
-app.post('/api/chat/stream', async (req, res) => {
+// Streaming chat endpoint (protected)
+app.post('/api/chat/stream', authMiddleware, async (req, res) => {
   try {
     const { message, history = [] } = req.body;
 
@@ -96,7 +104,7 @@ app.post('/api/chat/stream', async (req, res) => {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
-    const context = kbService.getContextForQuery(message, 6);
+    const context = await kbService.getContextForQuery(message, 6);
     let fullResponse = '';
 
     await groqService.chatStream(message.trim(), context, history, (chunk) => {
@@ -119,9 +127,9 @@ app.post('/api/chat/stream', async (req, res) => {
 });
 
 // Knowledge base endpoints
-app.get('/api/knowledge/categories', (req, res) => {
+app.get('/api/knowledge/categories', async (req, res) => {
   try {
-    const categories = kbService.getAllCategories();
+    const categories = await kbService.getAllCategories();
     res.json({ success: true, categories });
   } catch (error) {
     console.error('Error getting categories:', error);
@@ -129,9 +137,9 @@ app.get('/api/knowledge/categories', (req, res) => {
   }
 });
 
-app.get('/api/knowledge/category/:name', (req, res) => {
+app.get('/api/knowledge/category/:name', async (req, res) => {
   try {
-    const items = kbService.getByCategory(req.params.name);
+    const items = await kbService.getByCategory(req.params.name);
     res.json({ success: true, items });
   } catch (error) {
     console.error('Error getting category items:', error);
@@ -139,13 +147,13 @@ app.get('/api/knowledge/category/:name', (req, res) => {
   }
 });
 
-app.post('/api/knowledge/search', (req, res) => {
+app.post('/api/knowledge/search', async (req, res) => {
   try {
     const { query, limit = 10 } = req.body;
     if (!query) {
       return res.status(400).json({ success: false, error: 'Query requerido' });
     }
-    const results = kbService.search(query, limit);
+    const results = await kbService.search(query, limit);
     res.json({ success: true, results });
   } catch (error) {
     console.error('Error searching knowledge:', error);
@@ -153,14 +161,14 @@ app.post('/api/knowledge/search', (req, res) => {
   }
 });
 
-// Admin endpoints para gestionar knowledge base (proteger en producción)
-app.post('/api/admin/knowledge', (req, res) => {
+// Admin endpoints para gestionar knowledge base (protegidos con auth)
+app.post('/api/admin/knowledge', authMiddleware, async (req, res) => {
   try {
     const { category, title, content, keywords, priority } = req.body;
     if (!category || !title || !content) {
       return res.status(400).json({ success: false, error: 'Campos requeridos: category, title, content' });
     }
-    const result = kbService.addItem(category, title, content, keywords || '', priority || 0);
+    const result = await kbService.addItem(category, title, content, keywords || '', priority || 0);
     res.json({ success: true, id: result.lastInsertRowid });
   } catch (error) {
     console.error('Error adding knowledge item:', error);
@@ -168,9 +176,9 @@ app.post('/api/admin/knowledge', (req, res) => {
   }
 });
 
-app.put('/api/admin/knowledge/:id', (req, res) => {
+app.put('/api/admin/knowledge/:id', authMiddleware, async (req, res) => {
   try {
-    const result = kbService.updateItem(parseInt(req.params.id), req.body);
+    const result = await kbService.updateItem(parseInt(req.params.id), req.body);
     res.json({ success: true, changes: result.changes });
   } catch (error) {
     console.error('Error updating knowledge item:', error);
@@ -178,9 +186,9 @@ app.put('/api/admin/knowledge/:id', (req, res) => {
   }
 });
 
-app.delete('/api/admin/knowledge/:id', (req, res) => {
+app.delete('/api/admin/knowledge/:id', authMiddleware, async (req, res) => {
   try {
-    const result = kbService.deleteItem(parseInt(req.params.id));
+    const result = await kbService.deleteItem(parseInt(req.params.id));
     res.json({ success: true, changes: result.changes });
   } catch (error) {
     console.error('Error deleting knowledge item:', error);

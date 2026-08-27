@@ -1,3 +1,22 @@
+// Auth state
+let authToken = localStorage.getItem('authToken') || null;
+let currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
+// DOM Elements
+const authModal = document.getElementById('authModal');
+const app = document.getElementById('app');
+const loginForm = document.getElementById('loginForm');
+const registerForm = document.getElementById('registerForm');
+const loginFormElement = document.getElementById('loginFormElement');
+const registerFormElement = document.getElementById('registerFormElement');
+const showRegister = document.getElementById('showRegister');
+const showLogin = document.getElementById('showLogin');
+const closeModal = document.getElementById('closeModal');
+const logoutBtn = document.getElementById('logoutBtn');
+const userDisplay = document.getElementById('userDisplay');
+const userProfile = document.getElementById('userProfile');
+const greetingText = document.getElementById('greetingText');
+
 const heroSection = document.getElementById('heroSection');
 const chatSection = document.getElementById('chatSection');
 const chatContainer = document.getElementById('chatContainer');
@@ -11,6 +30,149 @@ const clearChatBtn = document.getElementById('clearChatBtn');
 
 let conversationHistory = [];
 
+// Auth functions
+function setAuth(token, user) {
+    authToken = token;
+    currentUser = user;
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('currentUser', JSON.stringify(user));
+    updateUIForAuth();
+}
+
+function clearAuth() {
+    authToken = null;
+    currentUser = null;
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
+    updateUIForAuth();
+}
+
+function updateUIForAuth() {
+    if (currentUser) {
+        authModal.classList.add('hidden');
+        app.classList.remove('hidden');
+        userDisplay.textContent = `${currentUser.fullName || currentUser.username} (${currentUser.role})`;
+        userProfile.textContent = currentUser.role === 'admin' ? 'Administrador' : 'Usuario';
+        greetingText.textContent = `¡Hola, ${currentUser.fullName || currentUser.username}! ¿En qué te ayudo hoy?`;
+    } else {
+        authModal.classList.remove('hidden');
+        app.classList.add('hidden');
+    }
+}
+
+async function apiRequest(endpoint, options = {}) {
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    
+    if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
+    const response = await fetch(endpoint, {
+        ...options,
+        headers
+    });
+    
+    if (response.status === 401) {
+        clearAuth();
+        throw new Error('Sesión expirada');
+    }
+    
+    return response.json();
+}
+
+// Auth form handlers
+loginFormElement.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('loginUsername').value;
+    const password = document.getElementById('loginPassword').value;
+    
+    try {
+        const data = await apiRequest('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ username, password })
+        });
+        
+        if (data.success) {
+            setAuth(data.token, data.user);
+            loginFormElement.reset();
+        } else {
+            alert(data.error || 'Error al iniciar sesión');
+        }
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+registerFormElement.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fullName = document.getElementById('regFullName').value;
+    const username = document.getElementById('regUsername').value;
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('regPassword').value;
+    
+    try {
+        const data = await apiRequest('/api/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({ username, email, password, fullName })
+        });
+        
+        if (data.success) {
+            setAuth(data.token, data.user);
+            registerFormElement.reset();
+        } else {
+            alert(data.error || 'Error al registrarse');
+        }
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+showRegister.addEventListener('click', (e) => {
+    e.preventDefault();
+    loginForm.classList.add('hidden');
+    registerForm.classList.remove('hidden');
+});
+
+showLogin.addEventListener('click', (e) => {
+    e.preventDefault();
+    registerForm.classList.add('hidden');
+    loginForm.classList.remove('hidden');
+});
+
+closeModal.addEventListener('click', () => {
+    // Don't allow closing if not authenticated
+    if (!currentUser) return;
+});
+
+logoutBtn.addEventListener('click', async () => {
+    try {
+        await apiRequest('/api/auth/logout', { method: 'POST' });
+    } catch (e) {}
+    clearAuth();
+});
+
+// Check auth on load
+async function checkAuth() {
+    if (authToken) {
+        try {
+            const data = await apiRequest('/api/auth/me');
+            if (data.success) {
+                setAuth(authToken, data.user);
+            } else {
+                clearAuth();
+            }
+        } catch (error) {
+            clearAuth();
+        }
+    } else {
+        updateUIForAuth();
+    }
+}
+
+// Chat functions
 function showChat() {
     heroSection.classList.add('hidden');
     chatSection.classList.add('active');
@@ -84,16 +246,14 @@ async function sendMessage(message) {
     showTyping();
     
     try {
-        const response = await fetch('/api/chat', {
+        const data = await apiRequest('/api/chat', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 message, 
                 history: conversationHistory.slice(0, -1) 
             })
         });
         
-        const data = await response.json();
         hideTyping();
         
         if (data.success) {
@@ -104,7 +264,12 @@ async function sendMessage(message) {
         
     } catch (error) {
         hideTyping();
-        addMessage('Error de conexión. Por favor verifica tu conexión a internet.', 'assistant');
+        if (error.message === 'Sesión expirada') {
+            addMessage('Tu sesión ha expirado. Por favor inicia sesión de nuevo.', 'assistant');
+            setTimeout(() => clearAuth(), 1500);
+        } else {
+            addMessage('Error de conexión. Por favor verifica tu conexión a internet.', 'assistant');
+        }
     } finally {
         sendButton.disabled = false;
         chatSendBtn.disabled = false;
@@ -123,6 +288,7 @@ function clearChat() {
     }
 }
 
+// Event listeners
 sendButton.addEventListener('click', () => sendMessage(messageInput.value));
 chatSendBtn.addEventListener('click', () => sendMessage(chatInput.value));
 clearChatBtn.addEventListener('click', clearChat);
@@ -150,4 +316,6 @@ actionBtns.forEach(btn => {
     });
 });
 
+// Initialize
+checkAuth();
 messageInput.focus();

@@ -12,8 +12,10 @@ export const config = {
   },
   
   db: {
-    path: process.env.DB_PATH || './data/knowledge.db'
-  }
+    connectionString: process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || null
+  },
+  
+  jwtSecret: process.env.JWT_SECRET || 'ia-consulta-super-secret-key-change-in-production-2024'
 };
 
 export const systemPrompt = `Eres un asistente especializado en procesos de desarrollo web para una agencia digital.

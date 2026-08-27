@@ -4,17 +4,18 @@ Chat IA funcional con base de conocimientos sobre procesos de desarrollo web, de
 
 ## 🚀 Características
 
-- **Groq API** como proveedor principal (llama-3.1-70b-versatile)
-- **Base de conocimiento local** (SQLite) con datos de:
+- **Groq API** como proveedor principal (openai/gpt-oss-20b)
+- **Supabase (PostgreSQL)** como base de datos con datos de:
   - Procesos de cambios y modificaciones
   - Planes de mantenimiento web
   - Tiempos de desarrollo estimados
   - Productos y servicios
   - Stack tecnológico
   - Flujos de trabajo y metodologías
+- **Sistema de login con roles** (admin / user) via JWT
 - **Tono conversacional amable** y profesional
 - **Frontend moderno** con diseño oscuro, responsive
-- **Deploy en Hostinger** (Node.js 20+)
+- **Deploy en Hostinger** (Node.js 20+, sin compilación nativa)
 
 ## 📦 Instalación Local
 
@@ -27,13 +28,20 @@ npm install
 
 # 3. Configurar variables de entorno
 cp .env.example .env
-# Edita .env y agrega tu GROQ_API_KEY
+# Edita .env con GROQ_API_KEY y DATABASE_URL (Supabase)
 
 # 4. Ejecutar en desarrollo
 npm run dev
 
 # 5. Abrir http://localhost:3000
+# Login demo: admin / admin123
 ```
+
+## 🔑 Credenciales Demo
+
+| Usuario | Contraseña | Rol |
+|---------|-----------|-----|
+| `admin` | `admin123` | admin |
 
 ## 🔑 Obtener Groq API Key
 

@@ -13,9 +13,8 @@ yarn-error.log*
 logs/
 *.log
 
-# Database
-data/knowledge.db
-data/knowledge.db-*
+# Database local
+data/
 
 # Build
 dist/
