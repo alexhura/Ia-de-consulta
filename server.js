@@ -227,7 +227,7 @@ app.listen(config.port, () => {
 ║  Puerto: ${config.port}                               ║
 ║  Entorno: ${config.nodeEnv}                          ║
 ║  Groq: ${config.groq.apiKey ? '✅ Configurado' : '❌ No configurado'}                      ║
-║  DB: ${config.db.connectionString ? '✅ Supabase (PostgreSQL)' : '❌ Sin DATABASE_URL'}                    ║
+║  DB: ${config.supabase.url ? '✅ Supabase (PostgreSQL)' : '❌ Sin SUPABASE_URL'}                    ║
 ╚═══════════════════════════════════════════════╝
   `);
 });

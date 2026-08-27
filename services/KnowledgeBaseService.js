@@ -1,4 +1,21 @@
-import { query } from './db.js';
+import { getSupabase } from './db.js';
+
+const KB_SELECT = 'id, category_id, title, content, keywords, priority, created_at, updated_at, categories(name, icon)';
+
+function mapItem(row) {
+  return {
+    id: row.id,
+    category_id: row.category_id,
+    title: row.title,
+    content: row.content,
+    keywords: row.keywords,
+    priority: row.priority,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    category: row.categories?.name ?? null,
+    icon: row.categories?.icon ?? null
+  };
+}
 
 export class KnowledgeBaseService {
   constructor() {}
@@ -10,59 +27,52 @@ export class KnowledgeBaseService {
 
     if (words.length === 0) return [];
 
-    const conditions = [];
-    const values = [];
-    let index = 1;
+    // PostgREST: cada palabra busca en keywords/title/content (OR), palabras en OR entre sí.
+    // '*' se traduce a '%' en ILIKE.
+    const perWord = words.map(w =>
+      `or(keywords.ilike.*${w}*,title.ilike.*${w}*,content.ilike.*${w}*)`
+    );
 
-    // PostgreSQL ILIKE para cada palabra
-    const wordPatterns = words.map(w => `%${w}%`);
-    for (const pattern of wordPatterns) {
-      conditions.push(`(ki.keywords ILIKE $${index} OR ki.title ILIKE $${index} OR ki.content ILIKE $${index})`);
-      values.push(pattern);
-      index++;
-    }
+    const { data, error } = await getSupabase()
+      .from('knowledge_items')
+      .select(KB_SELECT)
+      .or(perWord.join(','))
+      .order('priority', { ascending: false })
+      .order('updated_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
 
-    const { rows } = await query(`
-      SELECT ki.id, ki.category_id, ki.title, ki.content, ki.keywords, ki.priority,
-             ki.created_at, ki.updated_at, c.name as category, c.icon
-      FROM knowledge_items ki
-      JOIN categories c ON ki.category_id = c.id
-      WHERE ${conditions.join(' OR ')}
-      ORDER BY ki.priority DESC, ki.updated_at DESC
-      LIMIT $${index}
-    `, [...values, limit]);
+    return (data || []).map(mapItem);
+  }
 
-    return rows.map(r => ({
+  async getByCategory(categoryName, limit = 20) {
+    const { data, error } = await getSupabase()
+      .from('knowledge_items')
+      .select('id, title, content, keywords, priority, categories(name, icon)')
+      .eq('categories.name', categoryName)
+      .order('priority', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+
+    return (data || []).map(r => ({
       id: r.id,
-      category_id: r.category_id,
       title: r.title,
       content: r.content,
       keywords: r.keywords,
       priority: r.priority,
-      created_at: r.created_at,
-      updated_at: r.updated_at,
-      category: r.category,
-      icon: r.icon
+      category: r.categories?.name ?? null,
+      icon: r.categories?.icon ?? null
     }));
   }
 
-  async getByCategory(categoryName, limit = 20) {
-    const { rows } = await query(`
-      SELECT ki.id, ki.title, ki.content, ki.keywords, ki.priority,
-             c.name as category, c.icon
-      FROM knowledge_items ki
-      JOIN categories c ON ki.category_id = c.id
-      WHERE c.name = $1
-      ORDER BY ki.priority DESC
-      LIMIT $2
-    `, [categoryName, limit]);
-
-    return rows.map(r => ({ ...r }));
-  }
-
   async getAllCategories() {
-    const { rows } = await query('SELECT * FROM categories ORDER BY name');
-    return rows;
+    const { data, error } = await getSupabase()
+      .from('categories')
+      .select('*')
+      .order('name', { ascending: true });
+    if (error) throw error;
+
+    return data || [];
   }
 
   async getContextForQuery(q, maxItems = 6) {
@@ -77,50 +87,68 @@ export class KnowledgeBaseService {
   }
 
   async addItem(category, title, content, keywords, priority = 0) {
-    const { rows: catRows } = await query(
-      'SELECT id FROM categories WHERE name = $1', [category]
-    );
-    if (catRows.length === 0) throw new Error(`Categoría "${category}" no existe`);
+    const { data: cat, error: catErr } = await getSupabase()
+      .from('categories')
+      .select('id')
+      .eq('name', category)
+      .maybeSingle();
+    if (catErr) throw catErr;
+    if (!cat) throw new Error(`Categoría "${category}" no existe`);
 
-    const { rows } = await query(`
-      INSERT INTO knowledge_items (category_id, title, content, keywords, priority)
-      VALUES ($1, $2, $3, $4, $5) RETURNING id
-    `, [catRows[0].id, title, content, keywords || '', priority]);
+    const { data, error } = await getSupabase()
+      .from('knowledge_items')
+      .insert({
+        category_id: cat.id,
+        title,
+        content,
+        keywords: keywords || '',
+        priority
+      })
+      .select('id')
+      .single();
+    if (error) throw error;
 
-    return { lastInsertRowid: rows[0].id };
+    return { lastInsertRowid: data.id };
   }
 
   async updateItem(id, data) {
-    const fields = [];
-    const values = [];
-    let index = 1;
-
-    if (data.title !== undefined) { fields.push(`title = $${index++}`); values.push(data.title); }
-    if (data.content !== undefined) { fields.push(`content = $${index++}`); values.push(data.content); }
-    if (data.keywords !== undefined) { fields.push(`keywords = $${index++}`); values.push(data.keywords); }
-    if (data.priority !== undefined) { fields.push(`priority = $${index++}`); values.push(data.priority); }
+    const updates = {};
+    if (data.title !== undefined) updates.title = data.title;
+    if (data.content !== undefined) updates.content = data.content;
+    if (data.keywords !== undefined) updates.keywords = data.keywords;
+    if (data.priority !== undefined) updates.priority = data.priority;
     if (data.category !== undefined) {
-      const { rows } = await query('SELECT id FROM categories WHERE name = $1', [data.category]);
-      if (rows.length === 0) throw new Error(`Categoría "${data.category}" no existe`);
-      fields.push(`category_id = $${index++}`); values.push(rows[0].id);
+      const { data: cat, error: catErr } = await getSupabase()
+        .from('categories')
+        .select('id')
+        .eq('name', data.category)
+        .maybeSingle();
+      if (catErr) throw catErr;
+      if (!cat) throw new Error(`Categoría "${data.category}" no existe`);
+      updates.category_id = cat.id;
     }
 
-    if (fields.length === 0) return { changes: 0 };
+    if (Object.keys(updates).length === 0) return { changes: 0 };
 
-    fields.push('updated_at = NOW()');
-    values.push(parseInt(id));
+    updates.updated_at = new Date().toISOString();
 
-    const { rowCount } = await query(
-      `UPDATE knowledge_items SET ${fields.join(', ')} WHERE id = $${index}`,
-      values
-    );
+    const { error } = await getSupabase()
+      .from('knowledge_items')
+      .update(updates)
+      .eq('id', parseInt(id));
+    if (error) throw error;
 
-    return { changes: rowCount };
+    return { changes: 1 };
   }
 
   async deleteItem(id) {
-    const { rowCount } = await query('DELETE FROM knowledge_items WHERE id = $1', [parseInt(id)]);
-    return { changes: rowCount };
+    const { error } = await getSupabase()
+      .from('knowledge_items')
+      .delete()
+      .eq('id', parseInt(id));
+    if (error) throw error;
+
+    return { changes: 1 };
   }
 
   async close() {}

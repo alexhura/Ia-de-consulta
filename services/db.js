@@ -1,100 +1,63 @@
-import pg from 'pg';
+import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 import crypto from 'crypto';
 import { config } from '../config/index.js';
 
-const { Pool } = pg;
+let client = null;
 
-let pool = null;
-
-export function getPool() {
-  if (!pool) {
-    if (!config.db.connectionString) {
-      throw new Error('DATABASE_URL no configurado. Agrega la conexión de Supabase en .env');
+export function getSupabase() {
+  if (!client) {
+    if (!config.supabase.url || !config.supabase.key) {
+      throw new Error('SUPABASE_URL y SUPABASE_API_KEY no configurados. Revísalos en .env');
     }
-    pool = new Pool({
-      connectionString: config.db.connectionString,
-      max: 10,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 15000,
-      ssl: { rejectUnauthorized: false }
+    client = createClient(config.supabase.url, config.supabase.key, {
+      realtime: { transport: ws }
     });
   }
-  return pool;
+  return client;
 }
 
-export async function query(text, params = []) {
-  const client = await getPool().connect();
-  try {
-    return await client.query(text, params);
-  } finally {
-    client.release();
-  }
-}
+export default getSupabase;
 
+// Verifica la conexión y siembra datos de ejemplo si la base está vacía.
+// El esquema de tablas vive en scripts/schema.sql (ejecutar una sola vez en Supabase SQL Editor).
 export async function initDatabase() {
-  const client = await getPool().connect();
-  try {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS categories (
-        id SERIAL PRIMARY KEY,
-        name TEXT UNIQUE NOT NULL,
-        description TEXT,
-        icon TEXT DEFAULT '📄',
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      );
+  const supabase = getSupabase();
 
-      CREATE TABLE IF NOT EXISTS knowledge_items (
-        id SERIAL PRIMARY KEY,
-        category_id INTEGER NOT NULL REFERENCES categories(id),
-        title TEXT NOT NULL,
-        content TEXT NOT NULL,
-        keywords TEXT,
-        priority INTEGER DEFAULT 0,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      );
+  const { count, error } = await supabase
+    .from('categories')
+    .select('id', { count: 'exact', head: true });
 
-      CREATE INDEX IF NOT EXISTS idx_kb_keywords ON knowledge_items(keywords);
-      CREATE INDEX IF NOT EXISTS idx_kb_category ON knowledge_items(category_id);
-
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username TEXT UNIQUE NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        full_name TEXT,
-        role TEXT NOT NULL DEFAULT 'user',
-        is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        last_login TIMESTAMPTZ
-      );
-    `);
-
-    await seedIfEmpty(client);
-  } finally {
-    client.release();
+  if (error) {
+    console.error('❌ No se pudo conectar a Supabase:', error.message);
+    console.error('   Asegúrate de que las tablas existan (ejecuta scripts/schema.sql)');
+    throw error;
   }
+
+  if (count > 0) {
+    console.log('✅ Supabase conectado (PostgreSQL en la nube)');
+    return;
+  }
+
+  await seedIfEmpty(supabase);
 }
 
-async function seedIfEmpty(client) {
-  const { rows } = await client.query('SELECT COUNT(*) as c FROM categories');
-  if (parseInt(rows[0].c) > 0) return;
-
+async function seedIfEmpty(supabase) {
   const categories = [
-    ['cambios', 'Procesos para cambios y modificaciones en proyectos web', '🔄'],
-    ['mantenimiento', 'Mantenimiento preventivo y correctivo de sitios web', '🛠️'],
-    ['tiempos', 'Estimaciones y tiempos de desarrollo', '⏱️'],
-    ['productos', 'Productos y servicios ofrecidos', '📦'],
-    ['tecnologias', 'Stacks tecnológicos y herramientas utilizadas', '💻'],
-    ['flujos', 'Flujos de trabajo y metodologías', '📋']
+    { name: 'cambios', description: 'Procesos para cambios y modificaciones en proyectos web', icon: '🔄' },
+    { name: 'mantenimiento', description: 'Mantenimiento preventivo y correctivo de sitios web', icon: '🛠️' },
+    { name: 'tiempos', description: 'Estimaciones y tiempos de desarrollo', icon: '⏱️' },
+    { name: 'productos', description: 'Productos y servicios ofrecidos', icon: '📦' },
+    { name: 'tecnologias', description: 'Stacks tecnológicos y herramientas utilizadas', icon: '💻' },
+    { name: 'flujos', description: 'Flujos de trabajo y metodologías', icon: '📋' }
   ];
 
-  for (const [name, desc, icon] of categories) {
-    await client.query(
-      'INSERT INTO categories (name, description, icon) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING',
-      [name, desc, icon]
-    );
-  }
+  const { error: catErr } = await supabase.from('categories').insert(categories);
+  if (catErr) throw catErr;
+
+  const { data: catRows, error: selErr } = await supabase.from('categories').select('id, name');
+  if (selErr) throw selErr;
+  const catIds = Object.fromEntries(catRows.map(c => [c.name, c.id]));
 
   const items = [
     ['cambios', 'Proceso de solicitud de cambios', `Para solicitar un cambio en tu proyecto web:
@@ -379,18 +342,25 @@ Evitamos: Elementor, Divi, WPBakery, plugins "todo en uno" pesados.`, 'wordpress
 **Transparencia**: Acceso 24/7 a repo (read-only), staging, analytics, Linear board.`, 'comunicación, metodología, slack, notion, linear, reunión, weekly, demo, escalation, transparencia', 9]
   ];
 
-  for (const [category, title, content, keywords, priority] of items) {
-    await client.query(`
-      INSERT INTO knowledge_items (category_id, title, content, keywords, priority)
-      SELECT id, $2, $3, $4, $5 FROM categories WHERE name = $1
-    `, [category, title, content, keywords, priority]);
+  for (const [cat, title, content, keywords, priority] of items) {
+    const { error: insErr } = await supabase.from('knowledge_items').insert({
+      category_id: catIds[cat],
+      title,
+      content,
+      keywords,
+      priority
+    });
+    if (insErr) throw insErr;
   }
 
-  await client.query(`
-    INSERT INTO users (username, email, password_hash, full_name, role)
-    VALUES ('admin', 'admin@ia-consulta.com', $1, 'Administrador', 'admin')
-    ON CONFLICT (username) DO NOTHING
-  `, [seedAdminHash()]);
+  const { error: adminErr } = await supabase.from('users').upsert({
+    username: 'admin',
+    email: 'admin@ia-consulta.com',
+    password_hash: seedAdminHash(),
+    full_name: 'Administrador',
+    role: 'admin'
+  }, { onConflict: 'username' });
+  if (adminErr) throw adminErr;
 
   console.log('🌱 Base de datos Supabase inicializada con datos por defecto');
 }

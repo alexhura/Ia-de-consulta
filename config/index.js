@@ -11,8 +11,9 @@ export const config = {
     baseUrl: 'https://api.groq.com/openai/v1'
   },
   
-  db: {
-    connectionString: process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || null
+  supabase: {
+    url: process.env.SUPABASE_URL,
+    key: process.env.SUPABASE_API_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
   },
   
   jwtSecret: process.env.JWT_SECRET || 'ia-consulta-super-secret-key-change-in-production-2024'

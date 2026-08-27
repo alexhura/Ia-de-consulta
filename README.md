@@ -28,7 +28,8 @@ npm install
 
 # 3. Configurar variables de entorno
 cp .env.example .env
-# Edita .env con GROQ_API_KEY y DATABASE_URL (Supabase)
+# Edita .env con GROQ_API_KEY, SUPABASE_URL y SUPABASE_API_KEY
+# (opcional: ejecuta scripts/schema.sql en Supabase SQL Editor la primera vez)
 
 # 4. Ejecutar en desarrollo
 npm run dev

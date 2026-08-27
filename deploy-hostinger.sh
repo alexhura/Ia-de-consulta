@@ -16,9 +16,9 @@ if [ -z "$GROQ_API_KEY" ] || [ "$GROQ_API_KEY" = "gsk_tu_api_key_aqui" ]; then
     echo "   Configúralo en el panel de Hostinger > Node.js > Environment Variables"
 fi
 
-if [ -z "$DATABASE_URL" ]; then
-    echo "⚠️  ADVERTENCIA: DATABASE_URL (Supabase) no configurado"
-    echo "   La app no arrancará sin la conexión a la base de datos"
+if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_API_KEY" ]; then
+    echo "⚠️  ADVERTENCIA: SUPABASE_URL / SUPABASE_API_KEY no configurados"
+    echo "   La app no arrancará sin la conexión a Supabase"
 fi
 
 echo "✅ Preparación completada"
@@ -32,7 +32,8 @@ echo "      - Node.js Version: 20.x"
 echo "   3. En Environment Variables, agrega:"
 echo "      GROQ_API_KEY=gsk_tu_api_key_real"
 echo "      GROQ_MODEL=openai/gpt-oss-20b"
-echo "      DATABASE_URL=postgresql://postgres:password@db.TU_PROJECT.supabase.co:5432/postgres"
+echo "      SUPABASE_URL=https://TU_PROJECT.supabase.co"
+echo "      SUPABASE_API_KEY=tu_service_role_key"
 echo "      JWT_SECRET=secreto_largo_aleatorio"
 echo "      NODE_ENV=production"
 echo "   4. Haz clic en 'Start App' o 'Restart'"

@@ -1,5 +1,5 @@
 import { config } from '../config/index.js';
-import { query } from './db.js';
+import { getSupabase } from './db.js';
 import crypto from 'crypto';
 
 export class UserService {
@@ -54,24 +54,33 @@ export class UserService {
   }
 
   async findByUsername(username) {
-    const { rows } = await query(
-      'SELECT * FROM users WHERE username = $1', [username]
-    );
-    return rows[0] ? this.toUser(rows[0]) : null;
+    const { data, error } = await getSupabase()
+      .from('users')
+      .select('*')
+      .eq('username', username)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? this.toUser(data) : null;
   }
 
   async findByEmail(email) {
-    const { rows } = await query(
-      'SELECT * FROM users WHERE email = $1', [email]
-    );
-    return rows[0] ? this.toUser(rows[0]) : null;
+    const { data, error } = await getSupabase()
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? this.toUser(data) : null;
   }
 
   async findById(id) {
-    const { rows } = await query(
-      'SELECT * FROM users WHERE id = $1', [parseInt(id)]
-    );
-    return rows[0] ? this.toUser(rows[0]) : null;
+    const { data, error } = await getSupabase()
+      .from('users')
+      .select('*')
+      .eq('id', parseInt(id))
+      .maybeSingle();
+    if (error) throw error;
+    return data ? this.toUser(data) : null;
   }
 
   toUser(row) {
@@ -95,63 +104,59 @@ export class UserService {
     const emailExists = await this.findByEmail(email);
     if (emailExists) throw new Error('El email ya está registrado');
 
-    const { rows } = await query(
-      `INSERT INTO users (username, email, password_hash, full_name, role)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [username, email, this.hashPassword(password), fullName || null, role]
-    );
+    const { data, error } = await getSupabase()
+      .from('users')
+      .insert({
+        username,
+        email,
+        password_hash: this.hashPassword(password),
+        full_name: fullName || null,
+        role
+      })
+      .select()
+      .single();
+    if (error) throw error;
 
-    return this.toUser(rows[0]);
+    return this.toUser(data);
   }
 
   async updateUser(id, updates) {
-    const fields = [];
-    const values = [];
-    let index = 1;
+    const data = {};
+    if (updates.fullName !== undefined) data.full_name = updates.fullName;
+    if (updates.email !== undefined) data.email = updates.email;
+    if (updates.role !== undefined) data.role = updates.role;
+    if (updates.isActive !== undefined) data.is_active = updates.isActive;
+    if (updates.password) data.password_hash = this.hashPassword(updates.password);
 
-    if (updates.fullName !== undefined) {
-      fields.push(`full_name = $${index++}`);
-      values.push(updates.fullName);
-    }
-    if (updates.email !== undefined) {
-      fields.push(`email = $${index++}`);
-      values.push(updates.email);
-    }
-    if (updates.role !== undefined) {
-      fields.push(`role = $${index++}`);
-      values.push(updates.role);
-    }
-    if (updates.isActive !== undefined) {
-      fields.push(`is_active = $${index++}`);
-      values.push(updates.isActive);
-    }
-    if (updates.password) {
-      fields.push(`password_hash = $${index++}`);
-      values.push(this.hashPassword(updates.password));
-    }
+    if (Object.keys(data).length === 0) return null;
 
-    if (fields.length === 0) return null;
+    const { data: updated, error } = await getSupabase()
+      .from('users')
+      .update(data)
+      .eq('id', parseInt(id))
+      .select()
+      .maybeSingle();
+    if (error) throw error;
 
-    values.push(parseInt(id));
-    const { rows } = await query(
-      `UPDATE users SET ${fields.join(', ')} WHERE id = $${index} RETURNING *`,
-      values
-    );
-
-    return rows[0] ? this.toUser(rows[0]) : null;
+    return updated ? this.toUser(updated) : null;
   }
 
   async updateLastLogin(id) {
-    await query(
-      'UPDATE users SET last_login = NOW() WHERE id = $1', [parseInt(id)]
-    );
+    const { error } = await getSupabase()
+      .from('users')
+      .update({ last_login: new Date().toISOString() })
+      .eq('id', parseInt(id));
+    if (error) throw error;
   }
 
   async getAllUsers() {
-    const { rows } = await query(
-      'SELECT id, username, email, full_name, role, is_active, created_at, last_login FROM users ORDER BY id'
-    );
-    return rows.map(r => ({
+    const { data, error } = await getSupabase()
+      .from('users')
+      .select('id, username, email, full_name, role, is_active, created_at, last_login')
+      .order('id', { ascending: true });
+    if (error) throw error;
+
+    return (data || []).map(r => ({
       id: r.id,
       username: r.username,
       email: r.email,
@@ -164,8 +169,21 @@ export class UserService {
   }
 
   async deleteUser(id) {
-    const { rowCount } = await query('DELETE FROM users WHERE id = $1', [parseInt(id)]);
-    return rowCount > 0;
+    const existing = await getSupabase()
+      .from('users')
+      .select('id')
+      .eq('id', parseInt(id))
+      .maybeSingle();
+    if (existing.error) throw existing.error;
+    if (!existing.data) return false;
+
+    const { error } = await getSupabase()
+      .from('users')
+      .delete()
+      .eq('id', parseInt(id));
+    if (error) throw error;
+
+    return true;
   }
 }
 
