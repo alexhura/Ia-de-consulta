@@ -162,6 +162,10 @@ router.put('/admin/users/:id', authMiddleware, requireRole('admin'), async (req,
       req.body.role = normalizedRole;
     }
 
+    if (parseInt(req.params.id) === req.user.id && (isActive !== undefined || role !== undefined)) {
+      return res.status(400).json({ success: false, error: 'No puedes cambiar tu propio rol o estado' });
+    }
+
     const user = await userService.updateUser(req.params.id, { fullName, email, role, isActive, password });
     
     if (!user) {

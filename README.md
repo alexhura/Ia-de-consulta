@@ -35,14 +35,14 @@ cp .env.example .env
 npm run dev
 
 # 5. Abrir http://localhost:3000
-# Login demo: admin / admin123
+# Login admin: ADLadmin / @dmin123
 ```
 
 ## 🔑 Credenciales Demo
 
-| Usuario | Contraseña | Rol |
-|---------|-----------|-----|
-| `admin` | `admin123` | admin |
+| Usuario | Contraseña | Rol | Nombre |
+|---------|-----------|-----|--------|
+| `ADLadmin` | `@dmin123` | admin | Alejandro |
 
 ## 🔑 Obtener Groq API Key
 

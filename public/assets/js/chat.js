@@ -169,6 +169,7 @@ function renderUsers(users) {
     users.forEach(user => {
         const tr = document.createElement('tr');
         tr.className = user.isActive ? '' : 'inactive';
+        const isSelf = currentUser && user.id === currentUser.id;
 
         const tdUser = document.createElement('td');
         tdUser.innerHTML = `<strong>${escapeHtml(user.username)}</strong>`;
@@ -189,7 +190,7 @@ function renderUsers(users) {
             if (role === user.role) opt.selected = true;
             roleSelect.appendChild(opt);
         });
-        if (user.username === 'admin') {
+        if (isSelf) {
             roleSelect.disabled = true;
         }
         roleSelect.addEventListener('change', async () => {
@@ -220,9 +221,9 @@ function renderUsers(users) {
         const toggleBtn = document.createElement('button');
         toggleBtn.className = 'admin-btn';
         toggleBtn.textContent = user.isActive ? 'Desactivar' : 'Activar';
-        toggleBtn.disabled = user.username === 'admin';
+        toggleBtn.disabled = isSelf;
         toggleBtn.addEventListener('click', async () => {
-            if (user.username === 'admin') return;
+            if (isSelf) return;
             const data = await apiRequest(`/api/auth/admin/users/${user.id}`, {
                 method: 'PUT',
                 body: JSON.stringify({ isActive: !user.isActive })
@@ -235,7 +236,7 @@ function renderUsers(users) {
         });
         tdActions.appendChild(toggleBtn);
 
-        if (user.username !== 'admin') {
+        if (!isSelf) {
             const delBtn = document.createElement('button');
             delBtn.className = 'admin-btn admin-btn-danger';
             delBtn.textContent = 'Eliminar';

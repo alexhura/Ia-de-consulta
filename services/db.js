@@ -36,10 +36,50 @@ export async function initDatabase() {
 
   if (count > 0) {
     console.log('✅ Supabase conectado (PostgreSQL en la nube)');
-    return;
+  } else {
+    await seedIfEmpty(supabase);
   }
 
-  await seedIfEmpty(supabase);
+  await ensureAdminUser(supabase);
+}
+
+// Asegura que exista el usuario administrador inicial (ADLadmin).
+// En bases que ya tenían el admin viejo, lo migra sin duplicar.
+async function ensureAdminUser(supabase) {
+  const { data: existing } = await supabase
+    .from('users')
+    .select('id')
+    .eq('username', 'ADLadmin')
+    .maybeSingle();
+
+  if (existing) return;
+
+  const { data: legacy } = await supabase
+    .from('users')
+    .select('id')
+    .eq('username', 'admin')
+    .maybeSingle();
+
+  if (legacy) {
+    const { data, error } = await getSupabase()
+      .from('users')
+      .update({ username: 'ADLadmin', full_name: 'Alejandro', password_hash: adminHash() })
+      .eq('id', legacy.id)
+      .select()
+      .maybeSingle();
+    if (error) throw error;
+    if (data) console.log('🔑 Usuario admin migrado: admin → ADLadmin');
+  } else {
+    const { error } = await supabase.from('users').insert({
+      username: 'ADLadmin',
+      email: 'admin@ia-consulta.com',
+      password_hash: adminHash(),
+      full_name: 'Alejandro',
+      role: 'admin'
+    });
+    if (error) throw error;
+    console.log('🔑 Usuario admin inicial creado: ADLadmin');
+  }
 }
 
 async function seedIfEmpty(supabase) {
@@ -354,10 +394,10 @@ Evitamos: Elementor, Divi, WPBakery, plugins "todo en uno" pesados.`, 'wordpress
   }
 
   const { error: adminErr } = await supabase.from('users').upsert({
-    username: 'admin',
+    username: 'ADLadmin',
     email: 'admin@ia-consulta.com',
-    password_hash: seedAdminHash(),
-    full_name: 'Administrador',
+    password_hash: adminHash(),
+    full_name: 'Alejandro',
     role: 'admin'
   }, { onConflict: 'username' });
   if (adminErr) throw adminErr;
@@ -365,9 +405,9 @@ Evitamos: Elementor, Divi, WPBakery, plugins "todo en uno" pesados.`, 'wordpress
   console.log('🌱 Base de datos Supabase inicializada con datos por defecto');
 }
 
-// Hash por defecto para el usuario admin inicial (admin123)
-function seedAdminHash() {
+// Hash por defecto para el usuario administrador inicial (ADLadmin / @dmin123)
+function adminHash() {
   const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync('admin123', salt, 100000, 64, 'sha512').toString('hex');
+  const hash = crypto.pbkdf2Sync('@dmin123', salt, 100000, 64, 'sha512').toString('hex');
   return `${salt}:${hash}`;
 }
