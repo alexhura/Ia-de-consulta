@@ -224,15 +224,95 @@
             <!-- Project Manager view (admin y Desarrollo) -->
             <section class="view" id="pmView">
                 <div class="pm-head">
+                    <button type="button" class="btn btn-secondary btn-small pm-back hidden" id="pmBackBtn">← Volver</button>
                     <div>
                         <h2 class="pm-title">📋 Project Manager</h2>
-                        <p class="pm-subtitle">Proyectos y tareas del equipo</p>
+                        <p class="pm-subtitle">Proyectos, pipeline y eficiencia del equipo</p>
                     </div>
                     <button type="button" class="btn btn-primary btn-small" id="addProjectBtn">+ Proyecto</button>
                 </div>
+
                 <div class="pm-view-body">
-                    <div id="pmList" class="pm-list"></div>
-                    <p id="pmMsg" class="admin-msg"></p>
+                    <div id="pmProjectsView">
+                        <div id="pmGrid" class="pm-grid"></div>
+                        <p id="pmMsg" class="admin-msg"></p>
+                    </div>
+
+                    <div id="pmDetailView" class="hidden">
+                        <div class="pm-project-summary">
+                            <div class="pm-summary-meta">
+                                <h3 id="pmDetailName" class="pm-detail-name"></h3>
+                                <p id="pmDetailBusiness" class="pm-detail-business"></p>
+                                <span id="pmDetailStatus" class="pm-status"></span>
+                            </div>
+                            <div class="pm-summary-stats">
+                                <div class="pm-stat">
+                                    <span class="pm-stat-label">Progreso</span>
+                                    <span id="pmDetailProgress" class="pm-stat-value"></span>
+                                    <div class="pm-progress-bar"><div id="pmDetailProgressFill" class="pm-progress-fill"></div></div>
+                                </div>
+                                <div class="pm-stat">
+                                    <span class="pm-stat-label">Eficiencia</span>
+                                    <span id="pmDetailEfficiency" class="pm-stat-value pm-eff"></span>
+                                </div>
+                                <div class="pm-stat">
+                                    <span class="pm-stat-label">Tareas</span>
+                                    <span id="pmDetailTasks" class="pm-stat-value"></span>
+                                </div>
+                                <div class="pm-detail-actions">
+                                    <button type="button" class="btn btn-secondary btn-small pm-admin-only hidden" id="pmEditProjectBtn">✏️ Editar</button>
+                                    <button type="button" class="btn btn-danger btn-small pm-admin-only hidden" id="pmDeleteProjectBtn">🗑 Eliminar</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="pmDetailInfo" class="pm-info-grid hidden">
+                            <div class="pm-info-card pm-info-details">
+                                <h4>Datos del negocio</h4>
+                                <div id="pmInfoFields" class="pm-info-fields"></div>
+                            </div>
+                            <div class="pm-info-card pm-info-access">
+                                <h4>Acceso al sitio <span class="pm-wp-badge">WordPress</span></h4>
+                                <div id="pmWpFields" class="pm-info-fields"></div>
+                                <button type="button" class="btn btn-primary btn-small pm-wp-btn" id="pmWpOpenBtn">
+                                    Ir al panel admin
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="pm-pipeline" id="pmPipeline">
+                            <div class="pm-column" data-stage="por_iniciar">
+                                <div class="pm-column-head">
+                                    <strong>Por iniciar</strong>
+                                    <span class="pm-column-count"></span>
+                                </div>
+                                <div class="pm-column-body" data-drop="por_iniciar"></div>
+                            </div>
+                            <div class="pm-column" data-stage="en_progreso">
+                                <div class="pm-column-head">
+                                    <strong>En progreso</strong>
+                                    <span class="pm-column-count"></span>
+                                </div>
+                                <div class="pm-column-body" data-drop="en_progreso"></div>
+                            </div>
+                            <div class="pm-column" data-stage="en_revision">
+                                <div class="pm-column-head">
+                                    <strong>En revisión</strong>
+                                    <span class="pm-column-count"></span>
+                                </div>
+                                <div class="pm-column-body" data-drop="en_revision"></div>
+                            </div>
+                            <div class="pm-column pm-column-final" data-stage="finalizado_sin_errores">
+                                <div class="pm-column-head">
+                                    <strong>Finalizado sin errores</strong>
+                                    <span class="pm-column-count"></span>
+                                </div>
+                                <div class="pm-column-body" data-drop="finalizado_sin_errores"></div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-small" id="pmAddTaskBtn">+ Tarea</button>
+                        <p id="pmDetailMsg" class="admin-msg"></p>
+                    </div>
                 </div>
             </section>
 
@@ -513,28 +593,68 @@
 
             <!-- Project form -->
             <div id="pmFormWindow" class="window-overlay hidden">
-                <div class="window pm-form-window">
+                <div class="window pm-form-window wide">
                     <div class="window-head">
                         <h2 id="pmFormTitle">Nuevo proyecto</h2>
                         <button class="window-close" data-close="pmFormWindow" title="Cerrar">&times;</button>
                     </div>
                     <div class="window-body">
                         <form id="pmForm" class="admin-form">
-                            <div class="form-group">
-                                <label for="pmClient">Cliente</label>
-                                <input type="text" id="pmClient" required autocomplete="off" placeholder="Nombre del cliente o negocio">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="pmClient">Nombre</label>
+                                    <input type="text" id="pmClient" required autocomplete="off" placeholder="Nombre del cliente">
+                                </div>
+                                <div class="form-group">
+                                    <label for="pmBusiness">Negocio</label>
+                                    <input type="text" id="pmBusiness" autocomplete="off" placeholder="Nombre del negocio / empresa">
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label for="pmDescription">Descripción</label>
-                                <textarea id="pmDescription" class="admin-textarea" rows="4" placeholder="Detalle del proyecto..."></textarea>
+                                <textarea id="pmDescription" class="admin-textarea" rows="3" placeholder="Detalle del proyecto..."></textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="pmEmail">Email</label>
+                                    <input type="email" id="pmEmail" autocomplete="off" placeholder="cliente@ejemplo.com">
+                                </div>
+                                <div class="form-group">
+                                    <label for="pmPhone">Teléfono</label>
+                                    <input type="text" id="pmPhone" autocomplete="off" placeholder="Teléfono de contacto">
+                                </div>
                             </div>
                             <div class="form-group">
-                                <label for="pmStatusSelect">Estado</label>
-                                <select id="pmStatusSelect" class="admin-select">
-                                    <option value="pendiente">Pendiente</option>
-                                    <option value="en_progreso">En progreso</option>
-                                    <option value="completado">Completado</option>
-                                </select>
+                                <label for="pmServices">Servicios</label>
+                                <input type="text" id="pmServices" autocomplete="off" placeholder="Diseño, mantenimiento, SEO...">
+                            </div>
+                            <div class="form-group">
+                                <label for="pmAreas">Áreas de servicio</label>
+                                <input type="text" id="pmAreas" autocomplete="off" placeholder="Ciudades / zonas donde opera">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="pmUrl">URL del sitio</label>
+                                    <input type="url" id="pmUrl" autocomplete="off" placeholder="https://www.ejemplo.com">
+                                </div>
+                                <div class="form-group">
+                                    <label for="pmStatusSelect">Estado</label>
+                                    <select id="pmStatusSelect" class="admin-select">
+                                        <option value="pendiente">Pendiente</option>
+                                        <option value="en_progreso">En progreso</option>
+                                        <option value="completado">Completado</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="pmWpUser">Usuario WordPress</label>
+                                    <input type="text" id="pmWpUser" autocomplete="off" placeholder="Usuario de acceso">
+                                </div>
+                                <div class="form-group">
+                                    <label for="pmWpPass">Contraseña WordPress</label>
+                                    <input type="text" id="pmWpPass" autocomplete="off" placeholder="Contraseña de acceso">
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-primary">Guardar proyecto</button>
                             <p id="pmFormMsg" class="admin-msg"></p>
@@ -561,25 +681,72 @@
                                 <label for="taskDescription">Descripción</label>
                                 <textarea id="taskDescription" class="admin-textarea" rows="3" placeholder="Detalle de la tarea..."></textarea>
                             </div>
-                            <div class="form-group">
-                                <label for="taskStatus">Estado</label>
-                                <select id="taskStatus" class="admin-select">
-                                    <option value="pendiente">Pendiente</option>
-                                    <option value="en_progreso">En progreso</option>
-                                    <option value="completado">Completado</option>
-                                </select>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="taskStatus">Etapa</label>
+                                    <select id="taskStatus" class="admin-select">
+                                        <option value="por_iniciar">Por iniciar</option>
+                                        <option value="en_progreso">En progreso</option>
+                                        <option value="en_revision">En revisión</option>
+                                        <option value="finalizado_sin_errores">Finalizado sin errores</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="taskPriority">Prioridad</label>
+                                    <select id="taskPriority" class="admin-select">
+                                        <option value="baja">Baja</option>
+                                        <option value="media" selected>Media</option>
+                                        <option value="alta">Alta</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="taskPriority">Prioridad</label>
-                                <select id="taskPriority" class="admin-select">
-                                    <option value="baja">Baja</option>
-                                    <option value="media" selected>Media</option>
-                                    <option value="alta">Alta</option>
-                                </select>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="taskAssignee">Asignado a</label>
+                                    <select id="taskAssignee" class="admin-select">
+                                        <option value="">Sin asignar</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="taskDueDate">Fecha de vencimiento</label>
+                                    <input type="date" id="taskDueDate" class="admin-select">
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-primary">Guardar tarea</button>
                             <p id="pmTaskMsg" class="admin-msg"></p>
                         </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Task detail window (descripcion, comentarios e imagenes) -->
+            <div id="pmTaskDetailWindow" class="window-overlay hidden">
+                <div class="window pm-detail-window">
+                    <div class="window-head">
+                        <h2 id="taskDetailTitle"></h2>
+                        <div class="pm-detail-window-actions">
+                            <button type="button" class="btn btn-secondary btn-small pm-admin-only hidden" id="taskDetailEditBtn">✏️ Editar</button>
+                            <button type="button" class="btn btn-danger btn-small pm-admin-only hidden" id="taskDetailDeleteBtn">🗑 Eliminar</button>
+                            <button class="window-close" data-close="pmTaskDetailWindow" title="Cerrar">&times;</button>
+                        </div>
+                    </div>
+                    <div class="window-body">
+                        <div id="taskDetailMeta" class="pm-task-detail-meta"></div>
+                        <div id="taskDetailDescription" class="pm-task-detail-desc"></div>
+                        <div id="taskAttachments" class="pm-task-attachments"></div>
+                        <h4 class="pm-task-detail-h">Comentarios</h4>
+                        <div id="taskComments" class="pm-task-comments"></div>
+                        <div class="pm-comment-box">
+                            <textarea id="taskCommentInput" class="admin-textarea" rows="2" placeholder="Escribe un comentario..."></textarea>
+                            <div class="pm-comment-actions">
+                                <label class="btn btn-secondary btn-small pm-upload-label">
+                                    📷 Imagen
+                                    <input type="file" id="taskImageInput" accept="image/*" hidden>
+                                </label>
+                                <button type="button" class="btn btn-primary btn-small" id="taskCommentSendBtn">Enviar</button>
+                            </div>
+                        </div>
+                        <p id="taskDetailMsg" class="admin-msg"></p>
                     </div>
                 </div>
             </div>

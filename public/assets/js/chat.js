@@ -90,14 +90,25 @@ const profileLogoutBtn = document.getElementById('profileLogoutBtn');
 // Project Manager DOM
 const pmBtn = document.getElementById('pmBtn');
 const pmView = document.getElementById('pmView');
-const pmList = document.getElementById('pmList');
+const pmGrid = document.getElementById('pmGrid');
+const pmProjectsView = document.getElementById('pmProjectsView');
+const pmDetailView = document.getElementById('pmDetailView');
+const pmBackBtn = document.getElementById('pmBackBtn');
 const pmMsg = document.getElementById('pmMsg');
 const addProjectBtn = document.getElementById('addProjectBtn');
 const pmFormWindow = document.getElementById('pmFormWindow');
 const pmFormTitle = document.getElementById('pmFormTitle');
 const pmForm = document.getElementById('pmForm');
 const pmClient = document.getElementById('pmClient');
+const pmBusiness = document.getElementById('pmBusiness');
 const pmDescription = document.getElementById('pmDescription');
+const pmEmail = document.getElementById('pmEmail');
+const pmPhone = document.getElementById('pmPhone');
+const pmServices = document.getElementById('pmServices');
+const pmAreas = document.getElementById('pmAreas');
+const pmUrl = document.getElementById('pmUrl');
+const pmWpUser = document.getElementById('pmWpUser');
+const pmWpPass = document.getElementById('pmWpPass');
 const pmStatusSelect = document.getElementById('pmStatusSelect');
 const pmFormMsg = document.getElementById('pmFormMsg');
 const pmTaskWindow = document.getElementById('pmTaskWindow');
@@ -108,7 +119,37 @@ const taskTitle = document.getElementById('taskTitle');
 const taskDescription = document.getElementById('taskDescription');
 const taskStatus = document.getElementById('taskStatus');
 const taskPriority = document.getElementById('taskPriority');
+const taskAssignee = document.getElementById('taskAssignee');
+const taskDueDate = document.getElementById('taskDueDate');
 const pmTaskMsg = document.getElementById('pmTaskMsg');
+const pmDetailName = document.getElementById('pmDetailName');
+const pmDetailBusiness = document.getElementById('pmDetailBusiness');
+const pmDetailStatus = document.getElementById('pmDetailStatus');
+const pmDetailProgress = document.getElementById('pmDetailProgress');
+const pmDetailProgressFill = document.getElementById('pmDetailProgressFill');
+const pmDetailEfficiency = document.getElementById('pmDetailEfficiency');
+const pmDetailTasks = document.getElementById('pmDetailTasks');
+const pmDetailInfo = document.getElementById('pmDetailInfo');
+const pmInfoFields = document.getElementById('pmInfoFields');
+const pmWpFields = document.getElementById('pmWpFields');
+const pmWpOpenBtn = document.getElementById('pmWpOpenBtn');
+const pmPipeline = document.getElementById('pmPipeline');
+const pmEditProjectBtn = document.getElementById('pmEditProjectBtn');
+const pmDeleteProjectBtn = document.getElementById('pmDeleteProjectBtn');
+const pmAddTaskBtn = document.getElementById('pmAddTaskBtn');
+const pmDetailMsg = document.getElementById('pmDetailMsg');
+const pmTaskDetailWindow = document.getElementById('pmTaskDetailWindow');
+const taskDetailTitle = document.getElementById('taskDetailTitle');
+const taskDetailEditBtn = document.getElementById('taskDetailEditBtn');
+const taskDetailDeleteBtn = document.getElementById('taskDetailDeleteBtn');
+const taskDetailMeta = document.getElementById('taskDetailMeta');
+const taskDetailDescription = document.getElementById('taskDetailDescription');
+const taskAttachments = document.getElementById('taskAttachments');
+const taskComments = document.getElementById('taskComments');
+const taskCommentInput = document.getElementById('taskCommentInput');
+const taskCommentSendBtn = document.getElementById('taskCommentSendBtn');
+const taskImageInput = document.getElementById('taskImageInput');
+const taskDetailMsg = document.getElementById('taskDetailMsg');
 
 let conversationHistory = [];
 let activeConvId = null;
@@ -595,6 +636,13 @@ logoBtn.addEventListener('click', showHero);
 // ---------------- Project Manager (solo admin y Desarrollo) ----------------
 const PM_STATUS_LABEL = { pendiente: 'Pendiente', en_progreso: 'En progreso', completado: 'Completado' };
 const PM_PRIORITY_LABEL = { baja: 'Baja', media: 'Media', alta: 'Alta' };
+const PM_STAGE_LABEL = {
+    por_iniciar: 'Por iniciar',
+    en_progreso: 'En progreso',
+    en_revision: 'En revisión',
+    finalizado_sin_errores: 'Finalizado sin errores'
+};
+const PM_STAGES = ['por_iniciar', 'en_progreso', 'en_revision', 'finalizado_sin_errores'];
 
 let pmProjects = [];
 let editingProjectId = null;
@@ -604,66 +652,85 @@ let taskProjectId = null;
 const PM_ICON_PENCIL = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>';
 const PM_ICON_TRASH = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
 
+function isAdmin() {
+    return currentUser && currentUser.role === 'admin';
+}
+
 function canUsePM() {
     return currentUser && (currentUser.role === 'admin' || currentUser.role === 'desarrollo');
 }
 
-function pmProjectCard(p) {
-    const status = PM_STATUS_LABEL[p.status] || p.status;
-    const tasks = p.tasks || [];
-    const tasksHtml = tasks.length
-        ? tasks.map(t => pmTaskRow(t)).join('')
-        : '<p class="pm-tasks-empty">Sin tareas todavía.</p>';
-    return `
-        <div class="pm-project">
-            <div class="pm-project-head">
-                <span class="pm-project-id">#${p.id}</span>
-                <div class="pm-project-title">${escapeHtml(p.client)}</div>
-                <span class="pm-status pm-status-${p.status}">${escapeHtml(status)}</span>
-                <div class="pm-project-actions">
-                    <button class="pm-btn-icon" data-action="pm-edit" data-id="${p.id}" title="Editar proyecto">${PM_ICON_PENCIL}</button>
-                    <button class="pm-btn-icon danger" data-action="pm-delete" data-id="${p.id}" title="Eliminar proyecto">${PM_ICON_TRASH}</button>
-                </div>
-            </div>
-            ${p.description ? `<p class="pm-project-desc">${escapeHtml(p.description)}</p>` : ''}
-            <div class="pm-tasks">${tasksHtml}</div>
-            <button type="button" class="btn btn-secondary btn-small" data-action="pm-add-task" data-id="${p.id}">+ Tarea</button>
-        </div>`;
+function fmtDate(iso) {
+    if (!iso) return '';
+    const d = new Date(String(iso).slice(0, 10) + 'T12:00:00');
+    return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function pmTaskRow(t) {
-    const completed = t.status === 'completado' ? ' completed' : '';
+function uidColor(id) {
+    let h = 0;
+    const s = String(id);
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+    return h;
+}
+
+function pmPeopleAvatar(userId, name, size) {
+    const sizeClass = size === 'sm' ? ' pm-avatar-sm' : '';
+    const av = avatarFor(userId);
+    const n = name || '?';
+    const parts = String(n).split(/\s+/);
+    const ini = ((parts[0][0] || '') + (parts[1] ? parts[1][0] : '')).toUpperCase();
+    if (av) return `<span class="pm-avatar${sizeClass}" title="${escapeHtml(n)}"><img src="${av}" alt=""></span>`;
+    return `<span class="pm-avatar${sizeClass} pm-avatar-ini" style="background:hsl(${uidColor(userId)} 65% 45%)" title="${escapeHtml(n)}">${escapeHtml(ini)}</span>`;
+}
+
+function pmProjectCard(p) {
+    const eff = p.efficiency ? `<span class="pm-eff pm-eff-${p.efficiency_raw >= 75 ? 'good' : p.efficiency_raw >= 50 ? 'mid' : 'bad'}">Eficiencia ${escapeHtml(p.efficiency)}</span>` : '<span class="pm-eff pm-eff-na">Sin datos</span>';
     return `
-        <div class="pm-task${completed}">
-            <span class="pm-task-title">${escapeHtml(t.title)}</span>
-            <span class="pm-priority pm-priority-${t.priority}">${PM_PRIORITY_LABEL[t.priority] || t.priority}</span>
-            <select class="pm-task-status" data-id="${t.id}" title="Cambiar estado">
-                <option value="pendiente" ${t.status === 'pendiente' ? 'selected' : ''}>Pendiente</option>
-                <option value="en_progreso" ${t.status === 'en_progreso' ? 'selected' : ''}>En progreso</option>
-                <option value="completado" ${t.status === 'completado' ? 'selected' : ''}>Completado</option>
-            </select>
-            <button class="pm-btn-icon" data-action="pm-task-edit" data-id="${t.id}" title="Editar tarea">${PM_ICON_PENCIL}</button>
-            <button class="pm-btn-icon danger" data-action="pm-task-delete" data-id="${t.id}" title="Eliminar tarea">${PM_ICON_TRASH}</button>
+        <div class="pm-card" data-action="pm-open" data-id="${p.id}" role="button" tabindex="0">
+            <div class="pm-card-head">
+                <div>
+                    <div class="pm-card-title">${escapeHtml(p.client)}</div>
+                    ${p.business ? `<div class="pm-card-business">${escapeHtml(p.business)}</div>` : ''}
+                </div>
+                <div class="pm-project-actions">
+                    <button class="pm-btn-icon pm-admin-only hidden" data-action="pm-edit" data-id="${p.id}" title="Editar proyecto">${PM_ICON_PENCIL}</button>
+                    <button class="pm-btn-icon danger pm-admin-only hidden" data-action="pm-delete" data-id="${p.id}" title="Eliminar proyecto">${PM_ICON_TRASH}</button>
+                </div>
+            </div>
+            <div class="pm-card-stats">
+                <span class="pm-status pm-status-${p.status}">${escapeHtml(PM_STATUS_LABEL[p.status] || p.status)}</span>
+                <span class="pm-card-progress">
+                    <span class="pm-progress-bar"><span class="pm-progress-fill" style="width:${p.progress}%"></span></span>
+                    <span class="pm-progress-num">${p.progress}%</span>
+                </span>
+                ${eff}
+            </div>
+            <div class="pm-card-extra">${p.task_count || 0} tareas</div>
         </div>`;
 }
 
 function renderPMProjects() {
     if (pmProjects.length === 0) {
-        pmList.innerHTML = '<p class="pm-tasks-empty">No hay proyectos todavía. Crea el primero con "+ Proyecto".</p>';
+        pmGrid.innerHTML = '<p class="pm-tasks-empty">No hay proyectos todavía. Crea el primero con "+ Proyecto".</p>';
         return;
     }
-    pmList.innerHTML = pmProjects.map(pmProjectCard).join('');
+    pmGrid.innerHTML = pmProjects.map(pmProjectCard).join('');
+    document.querySelectorAll('.pm-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin()));
 }
 
 async function loadPMProjects() {
     pmMsg.textContent = '';
-    pmList.innerHTML = '<p class="pm-tasks-empty">Cargando proyectos...</p>';
+    pmGrid.innerHTML = '<p class="pm-tasks-empty">Cargando proyectos...</p>';
     try {
         const data = await apiRequest('/api/pm/projects');
         pmProjects = data.projects || [];
         renderPMProjects();
+        if (pmDetailView.classList.contains('active')) {
+            const cur = pmProjects.find(p => p.id === openProjectId);
+            if (cur) renderProjectDetail(cur); else closeProjectDetail();
+        }
     } catch (e) {
-        pmList.innerHTML = '';
+        pmGrid.innerHTML = '';
         pmMsg.textContent = e.message;
     }
 }
@@ -672,15 +739,25 @@ function openPM() {
     if (!canUsePM()) return;
     chatView.classList.remove('active');
     pmView.classList.add('active');
+    closeProjectDetail();
     loadPMProjects();
 }
 
 function openProjectForm(projectId) {
+    if (!isAdmin()) { pmMsg.textContent = 'Solo el admin puede crear o editar proyectos.'; return; }
     editingProjectId = projectId;
     const p = projectId ? pmProjects.find(x => x.id === projectId) : null;
     pmFormTitle.textContent = p ? 'Editar proyecto' : 'Nuevo proyecto';
     pmClient.value = p ? p.client : '';
+    pmBusiness.value = p ? (p.business || '') : '';
     pmDescription.value = p ? (p.description || '') : '';
+    pmEmail.value = p ? (p.email || '') : '';
+    pmPhone.value = p ? (p.phone || '') : '';
+    pmServices.value = p ? (p.services || '') : '';
+    pmAreas.value = p ? (p.areas || '') : '';
+    pmUrl.value = p ? (p.url || '') : '';
+    pmWpUser.value = p ? (p.wp_user || '') : '';
+    pmWpPass.value = p ? (p.wp_pass || '') : '';
     pmStatusSelect.value = p ? (p.status || 'pendiente') : 'pendiente';
     pmFormMsg.textContent = '';
     openOverlay(pmFormWindow);
@@ -699,20 +776,51 @@ function openTaskForm(projectId, taskId) {
     } else {
         project = pmProjects.find(p => p.id === projectId) || null;
     }
+    if (!project) { pmMsg.textContent = 'Selecciona un proyecto primero.'; return; }
     pmTaskFormTitle.textContent = task ? 'Editar tarea' : 'Nueva tarea';
-    pmTaskProjectLabel.textContent = project ? `Proyecto: ${project.client}` : '';
+    pmTaskProjectLabel.textContent = `Proyecto: ${project.client}`;
     taskTitle.value = task ? task.title : '';
     taskDescription.value = task ? (task.description || '') : '';
-    taskStatus.value = task ? (task.status || 'pendiente') : 'pendiente';
+    taskStatus.value = task ? (task.status || 'por_iniciar') : 'por_iniciar';
     taskPriority.value = task ? (task.priority || 'media') : 'media';
+    taskAssignee.value = task && task.assigned_to ? String(task.assigned_to) : '';
+    taskDueDate.value = task && task.due_date ? String(task.due_date).slice(0, 10) : '';
+    fillUsersSelect();
     pmTaskMsg.textContent = '';
     openOverlay(pmTaskWindow);
     taskTitle.focus();
 }
 
+async function fillUsersSelect() {
+    if (taskAssignee.options.length > 1) return;
+    try {
+        const data = await apiRequest('/api/auth/admin/users');
+        const users = data.users || [];
+        const frag = document.createDocumentFragment();
+        for (const u of users) {
+            const opt = new Option(u.full_name || u.username, u.id);
+            frag.appendChild(opt);
+        }
+        taskAssignee.appendChild(frag);
+    } catch (e) { /* sin lista de usuarios */ }
+}
+
 pmBtn.addEventListener('click', openPM);
 
 addProjectBtn.addEventListener('click', () => openProjectForm(null));
+pmBackBtn.addEventListener('click', closeProjectDetail);
+pmEditProjectBtn.addEventListener('click', () => openProjectForm(openProjectId));
+pmAddTaskBtn.addEventListener('click', () => openTaskForm(openProjectId, null));
+pmDeleteProjectBtn.addEventListener('click', async () => {
+    if (!confirm('¿Eliminar este proyecto y todas sus tareas?')) return;
+    try {
+        await apiRequest(`/api/pm/projects/${openProjectId}`, { method: 'DELETE' });
+        closeProjectDetail();
+        await loadPMProjects();
+    } catch (err) {
+        pmDetailMsg.textContent = err.message;
+    }
+});
 
 document.querySelectorAll('[data-close="pmFormWindow"]').forEach(btn =>
     btn.addEventListener('click', () => closeOverlay(pmFormWindow))
@@ -722,13 +830,29 @@ document.querySelectorAll('[data-close="pmTaskWindow"]').forEach(btn =>
     btn.addEventListener('click', () => closeOverlay(pmTaskWindow))
 );
 
-pmForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const payload = {
+document.querySelectorAll('[data-close="pmTaskDetailWindow"]').forEach(btn =>
+    btn.addEventListener('click', () => closeOverlay(pmTaskDetailWindow))
+);
+
+function collectProjectPayload() {
+    return {
         client: pmClient.value.trim(),
+        business: pmBusiness.value.trim(),
         description: pmDescription.value.trim(),
+        email: pmEmail.value.trim(),
+        phone: pmPhone.value.trim(),
+        services: pmServices.value.trim(),
+        areas: pmAreas.value.trim(),
+        url: pmUrl.value.trim(),
+        wp_user: pmWpUser.value.trim(),
+        wp_pass: pmWpPass.value.trim(),
         status: pmStatusSelect.value
     };
+}
+
+pmForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = collectProjectPayload();
     try {
         if (editingProjectId) {
             await apiRequest(`/api/pm/projects/${editingProjectId}`, { method: 'PUT', body: JSON.stringify(payload) });
@@ -749,7 +873,9 @@ pmTaskForm.addEventListener('submit', async (e) => {
         title: taskTitle.value.trim(),
         description: taskDescription.value.trim(),
         status: taskStatus.value,
-        priority: taskPriority.value
+        priority: taskPriority.value,
+        assigned_to: taskAssignee.value ? parseInt(taskAssignee.value) : null,
+        due_date: taskDueDate.value || null
     };
     try {
         if (editingTaskId) {
@@ -759,46 +885,333 @@ pmTaskForm.addEventListener('submit', async (e) => {
             await apiRequest('/api/pm/tasks', { method: 'POST', body: JSON.stringify(payload) });
         }
         closeOverlay(pmTaskWindow);
-        pmTaskForm.reset();
+        taskDueDate.value = '';
         await loadPMProjects();
     } catch (err) {
         pmTaskMsg.textContent = err.message;
     }
 });
 
-pmList.addEventListener('click', async (e) => {
-    const btn = e.target.closest('[data-action]');
-    if (!btn || !canUsePM()) return;
-    const action = btn.dataset.action;
-    const id = parseInt(btn.dataset.id);
+// ---------- Detalle de proyecto ----------
+let openProjectId = null;
+
+async function openProjectDetail(projectId) {
+    openProjectId = projectId;
+    const p = pmProjects.find(x => x.id === projectId);
+    if (!p) return;
+    pmProjectsView.classList.add('hidden');
+    pmDetailView.classList.remove('hidden');
+    pmDetailView.classList.add('active');
+    pmBackBtn.classList.remove('hidden');
+    renderProjectDetail(p);
+}
+
+function closeProjectDetail() {
+    openProjectId = null;
+    pmDetailView.classList.remove('active');
+    pmDetailView.classList.add('hidden');
+    pmProjectsView.classList.remove('hidden');
+    pmBackBtn.classList.add('hidden');
+    closeOverlay(pmTaskDetailWindow);
+}
+
+function renderProjectDetail(p) {
+    const eff = p.efficiency ? `${p.efficiency}` : '—';
+    pmDetailName.textContent = p.client;
+    pmDetailBusiness.textContent = p.business || '';
+    pmDetailStatus.textContent = PM_STATUS_LABEL[p.status] || p.status;
+    pmDetailStatus.className = `pm-status pm-status-${p.status}`;
+    pmDetailProgress.textContent = `${p.progress}%`;
+    pmDetailProgressFill.style.width = `${p.progress}%`;
+    pmDetailEfficiency.textContent = eff;
+    pmDetailEfficiency.className = 'pm-stat-value pm-eff' + (p.efficiency_raw != null ? ` pm-eff-text-${p.efficiency_raw >= 75 ? 'good' : p.efficiency_raw >= 50 ? 'mid' : 'bad'}` : '');
+    pmDetailTasks.textContent = `${p.task_count || 0}`;
+    document.querySelectorAll('.pm-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin()));
+
+    const info = [];
+    if (p.email) info.push(['Email', `<a href="mailto:${escapeHtml(p.email)}">${escapeHtml(p.email)}</a>`]);
+    if (p.phone) info.push(['Teléfono', `<a href="tel:${escapeHtml(p.phone)}">${escapeHtml(p.phone)}</a>`]);
+    if (p.services) info.push(['Servicios', escapeHtml(p.services)]);
+    if (p.areas) info.push(['Áreas de servicio', escapeHtml(p.areas)]);
+    if (p.url) info.push(['URL', `<a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">${escapeHtml(p.url)}</a>`]);
+    if (p.description) info.push(['Descripción', escapeHtml(p.description)]);
+    pmDetailInfo.classList.toggle('hidden', info.length === 0);
+    pmInfoFields.innerHTML = info.map(([k, v]) => `<div class="pm-info-item"><span class="pm-info-k">${k}</span><span class="pm-info-v">${v}</span></div>`).join('');
+
+    const wp = [];
+    if (p.wp_user) wp.push(['Usuario', escapeHtml(p.wp_user)]);
+    if (p.wp_pass) wp.push(['Contraseña', `<span class="pm-wp-pass">${escapeHtml(p.wp_pass)}</span>`]);
+    pmWpFields.innerHTML = wp.length ? wp.map(([k, v]) => `<div class="pm-info-item"><span class="pm-info-k">${k}</span><span class="pm-info-v">${v}</span></div>`).join('') : '<span class="pm-info-v pm-muted">Sin credenciales guardadas.</span>';
+    pmWpOpenBtn.disabled = !p.url;
+    pmWpOpenBtn.onclick = () => {
+        if (!p.url) return;
+        window.open(p.url.replace(/\/+$/, '') + '/wp-admin', '_blank', 'noopener');
+    };
+    renderPipeline(p);
+}
+
+function pmTaskCard(t) {
+    const due = t.due_date
+        ? `<span class="pm-due ${t.status === 'finalizado_sin_errores' ? '' : new Date(t.due_date + 'T23:59:59') < new Date() ? 'overdue' : ''}">📅 ${escapeHtml(fmtDate(t.due_date))}</span>`
+        : '';
+    const corr = t.corrections > 0 ? `<span class="pm-corr" title="Rechazada por errores ${t.corrections} ${t.corrections === 1 ? 'vez' : 'veces'}">Por corregir</span>` : '';
+    return `
+        <div class="pm-kanban-card${t.status === 'finalizado_sin_errores' ? ' pm-done' : ''} draggable="true" data-task-id="${t.id}">
+            <div class="pm-task-title">${escapeHtml(t.title)}</div>
+            <div class="pm-task-meta">
+                ${due}
+                <span class="pm-priority pm-priority-${t.priority}">${PM_PRIORITY_LABEL[t.priority] || t.priority}</span>
+                ${corr}
+            </div>
+            <div class="pm-task-people">
+                <span class="pm-people-label">D: ${pmPeopleAvatar(t.assigned_to, t.assigned_name, 'sm')}</span>
+                <span class="pm-people-label">O: ${pmPeopleAvatar(t.owner_id, t.owner_name, 'sm')}</span>
+                <button type="button" class="pm-advance" data-action="pm-advance" data-id="${t.id}" title="Avanzar a la siguiente etapa">→</button>
+            </div>
+        </div>`;
+}
+
+function renderPipeline(p) {
+    const columns = pmPipeline.querySelectorAll('.pm-column');
+    columns.forEach(col => {
+        const stage = col.dataset.stage;
+        const stageTasks = (p.tasks || []).filter(t => t.status === stage);
+        col.querySelector('.pm-column-body').innerHTML = stageTasks.map(pmTaskCard).join('');
+        col.querySelector('.pm-column-count').textContent = stageTasks.length;
+        const drop = col.querySelector('.pm-column-body');
+        drop.dataset.count = stageTasks.length;
+    });
+}
+
+pmPipeline.addEventListener('click', (e) => {
+    if (!e.target.classList.contains('pm-advance')) return;
+    const id = parseInt(e.target.dataset.id);
+    const task = pmProjects.flatMap(p => p.tasks || []).find(t => t.id === id);
+    if (!task) return;
+    const idx = PM_STAGES.indexOf(task.status);
+    const next = task.status === PM_STAGES[PM_STAGES.length - 1] ? PM_STAGES[0] : PM_STAGES[idx + 1];
+    moveTaskTo(id, next);
+});
+
+function moveTaskTo(id, stage) {
+    if (stage === 'finalizado_sin_errores' && !isAdmin()) {
+        pmMsg.textContent = 'Solo el admin puede mover tareas a "Finalizado sin errores".';
+        pmDetailMsg.textContent = 'Solo el admin puede mover tareas a "Finalizado sin errores".';
+        return;
+    }
+    apiRequest(`/api/pm/tasks/${id}`, { method: 'PUT', body: JSON.stringify({ status: stage }) })
+        .then(() => loadPMProjects())
+        .catch(err => { pmDetailMsg.textContent = err.message; });
+}
+
+// Drag & drop entre columnas
+let dragTaskId = null;
+
+pmPipeline.addEventListener('dragstart', (e) => {
+    const card = e.target.closest('.pm-kanban-card');
+    if (!card) return;
+    dragTaskId = parseInt(card.dataset.taskId);
+    e.dataTransfer.effectAllowed = 'move';
+    card.classList.add('dragging');
+});
+
+pmPipeline.addEventListener('dragend', (e) => {
+    document.querySelectorAll('.pm-kanban-card').forEach(c => c.classList.remove('dragging'));
+    document.querySelectorAll('.pm-column-body.drop-active').forEach(c => c.classList.remove('drop-active'));
+    dragTaskId = null;
+});
+
+pmPipeline.addEventListener('dragover', (e) => {
+    const drop = e.target.closest('.pm-column-body');
+    if (!drop) return;
+    e.preventDefault();
+    drop.classList.add('drop-active');
+});
+
+pmPipeline.addEventListener('dragleave', (e) => {
+    const drop = e.target.closest('.pm-column-body');
+    if (drop) drop.classList.remove('drop-active');
+});
+
+pmPipeline.addEventListener('drop', (e) => {
+    const drop = e.target.closest('.pm-column-body');
+    if (!drop) return;
+    e.preventDefault();
+    drop.classList.remove('drop-active');
+    if (!dragTaskId) return;
+    moveTaskTo(dragTaskId, drop.dataset.drop);
+});
+
+// ---------- Detalle de tarea ----------
+async function openTaskDetail(taskId) {
+    editingDetailTaskId = taskId;
+    closeOverlay(pmTaskDetailWindow);
+    taskDetailMsg.textContent = '';
     try {
-        if (action === 'pm-edit') openProjectForm(id);
-        else if (action === 'pm-delete') {
-            if (!confirm('¿Eliminar este proyecto y todas sus tareas?')) return;
-            await apiRequest(`/api/pm/projects/${id}`, { method: 'DELETE' });
-            await loadPMProjects();
-        } else if (action === 'pm-add-task') openTaskForm(id, null);
-        else if (action === 'pm-task-edit') openTaskForm(null, id);
-        else if (action === 'pm-task-delete') {
-            if (!confirm('¿Eliminar esta tarea?')) return;
-            await apiRequest(`/api/pm/tasks/${id}`, { method: 'DELETE' });
-            await loadPMProjects();
-        }
+        const data = await apiRequest(`/api/pm/tasks/${taskId}/detail`);
+        const task = data.task;
+        const comments = data.comments || [];
+        const attachments = data.attachments || [];
+        taskDetailTitle.textContent = task.title;
+
+        const due = task.due_date ? ` <span class="pm-due">📅 ${escapeHtml(fmtDate(task.due_date))}</span>` : '';
+        taskDetailMeta.innerHTML = `
+            <span class="pm-stage-badge pm-stage-badge-${task.status}">${PM_STAGE_LABEL[task.status] || task.status}</span>
+            <span class="pm-priority pm-priority-${task.priority}">${PM_PRIORITY_LABEL[task.priority] || task.priority}</span>
+            ${task.corrections > 0 ? `<span class="pm-corr">Por corregir (${task.corrections})</span>` : ''}
+            ${due}
+            <span class="pm-people-block">
+                <span>Responsable: ${pmPeopleAvatar(task.owner_id, task.owner_name)} <b>${escapeHtml(task.owner_name || '—')}</b></span>
+                <span>Asignado: ${pmPeopleAvatar(task.assigned_to, task.assigned_name)} <b>${escapeHtml(task.assigned_name || '—')}</b></span>
+            </span>`;
+        taskDetailDescription.innerHTML = task.description ? `<p>${escapeHtml(task.description)}</p>` : '<p class="pm-muted">Sin descripción.</p>';
+
+        taskAttachments.innerHTML = attachments.length
+            ? attachments.map(a => `<div class="pm-attach"><img src="${escapeHtml(a.data_url)}" alt="adjunto"><button type="button" class="pm-btn-icon danger pm-admin-only hidden" data-action="pm-att-del" data-id="${a.id}" title="Eliminar imagen">×</button></div>`).join('')
+            : '';
+        document.querySelectorAll('.pm-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin()));
+
+        taskComments.innerHTML = comments.length
+            ? comments.map(c => `
+                <div class="pm-comment">
+                    <div class="pm-comment-head">
+                        <b>${escapeHtml(c.author_name || 'Usuario')}</b>
+                        <span>${new Date(c.created_at).toLocaleString('es-MX')}</span>
+                        <button type="button" class="pm-btn-icon danger pm-admin-only hidden" data-action="pm-com-del" data-id="${c.id}" title="Eliminar comentario">×</button>
+                    </div>
+                    <p>${escapeHtml(c.content)}</p>
+                </div>`).join('')
+            : '<p class="pm-muted">Sin comentarios.</p>';
+
+        taskCommentInput.value = '';
+        openOverlay(pmTaskDetailWindow);
+    } catch (e) {
+        taskDetailMsg.textContent = e.message;
+    }
+}
+
+taskDetailEditBtn.addEventListener('click', () => {
+    const taskId = editingDetailTaskId;
+    closeOverlay(pmTaskDetailWindow);
+    openTaskForm(null, taskId);
+});
+
+taskDetailDeleteBtn.addEventListener('click', async () => {
+    if (!confirm('¿Eliminar esta tarea?')) return;
+    try {
+        await apiRequest(`/api/pm/tasks/${editingDetailTaskId}`, { method: 'DELETE' });
+        closeOverlay(pmTaskDetailWindow);
+        await loadPMProjects();
     } catch (err) {
-        pmMsg.textContent = err.message;
+        taskDetailMsg.textContent = err.message;
     }
 });
 
-pmList.addEventListener('change', async (e) => {
-    if (!e.target.classList.contains('pm-task-status')) return;
+let editingDetailTaskId = null;
+
+taskAttachments.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action="pm-att-del"]');
+    if (!btn) return;
+    if (!confirm('¿Eliminar esta imagen?')) return;
     try {
-        await apiRequest(`/api/pm/tasks/${e.target.dataset.id}`, { method: 'PUT', body: JSON.stringify({ status: e.target.value }) });
-        await loadPMProjects();
+        await apiRequest(`/api/pm/attachments/${btn.dataset.id}`, { method: 'DELETE' });
+        await openTaskDetail(editingDetailTaskId);
     } catch (err) {
-        pmMsg.textContent = err.message;
-        await loadPMProjects();
+        taskDetailMsg.textContent = err.message;
     }
 });
+
+taskComments.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action="pm-com-del"]');
+    if (!btn) return;
+    if (!confirm('¿Eliminar este comentario?')) return;
+    try {
+        await apiRequest(`/api/pm/comments/${btn.dataset.id}`, { method: 'DELETE' });
+        await openTaskDetail(editingDetailTaskId);
+    } catch (err) {
+        taskDetailMsg.textContent = err.message;
+    }
+});
+
+taskCommentSendBtn.addEventListener('click', async () => {
+    const content = taskCommentInput.value.trim();
+    if (!content) return;
+    try {
+        await apiRequest(`/api/pm/tasks/${editingDetailTaskId}/comments`, { method: 'POST', body: JSON.stringify({ content }) });
+        await openTaskDetail(editingDetailTaskId);
+    } catch (err) {
+        taskDetailMsg.textContent = err.message;
+    }
+});
+
+taskCommentInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        taskCommentSendBtn.click();
+    }
+});
+
+// Subir imagen: se redimensiona a JPEG antes de guardar
+function fileToDataUrl(file, maxSize, callback) {
+    const reader = new FileReader();
+    reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+            const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            callback(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+taskImageInput.addEventListener('change', async () => {
+    const file = taskImageInput.files && taskImageInput.files[0];
+    if (!file) return;
+    try {
+        fileToDataUrl(file, 1100, async (dataUrl) => {
+            await apiRequest(`/api/pm/tasks/${editingDetailTaskId}/attachments`, { method: 'POST', body: JSON.stringify({ data_url: dataUrl }) });
+            await openTaskDetail(editingDetailTaskId);
+        });
+    } catch (err) {
+        taskDetailMsg.textContent = err.message;
+    }
+    taskImageInput.value = '';
+});
+
+// Delegacion principal de clics del PM
+function onPMClick(e) {
+    const btn = e.target.closest('[data-action]');
+    if (btn) {
+        const action = btn.dataset.action;
+        const id = parseInt(btn.dataset.id);
+        if (action === 'pm-open') { openProjectDetail(id); return; }
+        if (!canUsePM()) return;
+        if (action === 'pm-edit') openProjectForm(id);
+        else if (action === 'pm-delete') {
+            if (!confirm('¿Eliminar este proyecto y todas sus tareas?')) return;
+            apiRequest(`/api/pm/projects/${id}`, { method: 'DELETE' })
+                .then(() => loadPMProjects())
+                .catch(err => { pmMsg.textContent = err.message; });
+        } else if (action === 'pm-task-edit') openTaskForm(null, id);
+        else if (action === 'pm-task-delete') {
+            if (!confirm('¿Eliminar esta tarea?')) return;
+            apiRequest(`/api/pm/tasks/${id}`, { method: 'DELETE' })
+                .then(() => loadPMProjects())
+                .catch(err => { pmMsg.textContent = err.message; });
+        }
+        return;
+    }
+
+    const kanban = e.target.closest('.pm-kanban-card');
+    if (kanban) { openTaskDetail(parseInt(kanban.dataset.taskId)); }
+}
+
+pmView.addEventListener('click', onPMClick);
 
 // ---------------- Chat ----------------
 function showChat() {
@@ -809,6 +1222,7 @@ function showChat() {
     closeOverlay(historyPanel);
     closeOverlay(pmFormWindow);
     closeOverlay(pmTaskWindow);
+    closeOverlay(pmTaskDetailWindow);
     heroSection.classList.add('hidden');
     chatSection.classList.add('active');
     chatInput.focus();
@@ -817,6 +1231,7 @@ function showChat() {
 function showHero() {
     pmView.classList.remove('active');
     chatView.classList.add('active');
+    closeOverlay(pmTaskDetailWindow);
     persistCurrentConversation();
     heroSection.classList.remove('hidden');
     chatSection.classList.remove('active');

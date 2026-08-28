@@ -138,8 +138,8 @@ router.post('/admin/users', authMiddleware, requireRole('admin'), async (req, re
   }
 });
 
-// Admin: GET /api/admin/users
-router.get('/admin/users', authMiddleware, requireRole('admin'), async (req, res) => {
+// Admin/Desarrollo: GET /api/admin/users (lectura para asignar tareas)
+router.get('/admin/users', authMiddleware, requireRole('admin', 'desarrollo'), async (req, res) => {
   try {
     const users = await userService.getAllUsers();
     res.json({ success: true, users });

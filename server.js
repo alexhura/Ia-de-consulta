@@ -342,7 +342,8 @@ app.put('/api/pm/projects/:id', pmOnly, async (req, res) => {
   }
 });
 
-app.delete('/api/pm/projects/:id', pmOnly, async (req, res) => {
+// Eliminar tareas/proyectos: solo admin.
+app.delete('/api/pm/projects/:id', authMiddleware, requireRole('admin'), async (req, res) => {
   try {
     await pmService.deleteProject(req.params.id);
     res.json({ success: true });
@@ -354,7 +355,7 @@ app.delete('/api/pm/projects/:id', pmOnly, async (req, res) => {
 
 app.post('/api/pm/tasks', pmOnly, async (req, res) => {
   try {
-    const task = await pmService.addTask(req.body);
+    const task = await pmService.addTask(req.body, req.user.id);
     res.json({ success: true, task });
   } catch (error) {
     console.error('Error creating PM task:', error);
@@ -362,8 +363,12 @@ app.post('/api/pm/tasks', pmOnly, async (req, res) => {
   }
 });
 
+// Solo admin puede mover una tarea al estado finalizado_sin_errores.
 app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
   try {
+    if (req.body.status === 'finalizado_sin_errores' && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Solo el admin puede mover a "Finalizado sin errores"' });
+    }
     const task = await pmService.updateTask(req.params.id, req.body);
     res.json({ success: true, task });
   } catch (error) {
@@ -372,12 +377,64 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
   }
 });
 
-app.delete('/api/pm/tasks/:id', pmOnly, async (req, res) => {
+app.delete('/api/pm/tasks/:id', authMiddleware, requireRole('admin'), async (req, res) => {
   try {
     await pmService.deleteTask(req.params.id);
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting PM task:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Detalle de tarea (descripcion completa, comentarios y adjuntos)
+app.get('/api/pm/tasks/:id/detail', pmOnly, async (req, res) => {
+  try {
+    const detail = await pmService.getTaskDetail(req.params.id);
+    res.json({ success: true, ...detail });
+  } catch (error) {
+    console.error('Error getting PM task detail:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/pm/tasks/:id/comments', pmOnly, async (req, res) => {
+  try {
+    const authorName = req.user.full_name || req.user.username;
+    const comment = await pmService.addComment(req.params.id, req.user.id, authorName, req.body.content);
+    res.json({ success: true, comment });
+  } catch (error) {
+    console.error('Error adding PM comment:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/pm/comments/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    await pmService.deleteComment(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting PM comment:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/pm/tasks/:id/attachments', pmOnly, async (req, res) => {
+  try {
+    const attachment = await pmService.addAttachment(req.params.id, req.body.data_url);
+    res.json({ success: true, attachment });
+  } catch (error) {
+    console.error('Error adding PM attachment:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/pm/attachments/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    await pmService.deleteAttachment(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting PM attachment:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });
