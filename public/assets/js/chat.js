@@ -1048,21 +1048,34 @@ function moveTaskTo(id, stage) {
 }
 
 function triggerRevisionCelebration(taskId) {
-    const card = pmPipeline.querySelector(`.pm-kanban-card[data-task-id="${taskId}"]`);
-    if (!card) return;
-    const rect = card.getBoundingClientRect();
-    const pipelineRect = pmPipeline.getBoundingClientRect();
-    const x = rect.left + rect.width / 2 - pipelineRect.left;
-    const y = rect.top + rect.height / 2 - pipelineRect.top;
+    // Full-screen celebration overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'pm-revision-overlay';
+    document.body.appendChild(overlay);
 
-    const el = document.createElement('div');
-    el.className = 'pm-revision-celebration';
-    el.textContent = '¡Estás a un paso de concluir tu tarea!';
-    el.style.left = x + 'px';
-    el.style.top = y + 'px';
-    pmPipeline.appendChild(el);
-    requestAnimationFrame(() => el.classList.add('animate'));
-    setTimeout(() => el.remove(), 2800);
+    // Central message
+    const msg = document.createElement('div');
+    msg.className = 'pm-revision-message';
+    msg.textContent = '¡Estás a un paso de concluir tu tarea!';
+    overlay.appendChild(msg);
+
+    // Confetti particles
+    const colors = ['#8b5cf6', '#a78bfa', '#fbbf24', '#f87171', '#10b981', '#00d4ff', '#ffffff'];
+    for (let i = 0; i < 60; i++) {
+        const p = document.createElement('div');
+        p.className = 'pm-confetti';
+        p.style.left = (50 + (Math.random() - 0.5) * 20) + '%';
+        p.style.background = colors[Math.floor(Math.random() * colors.length)];
+        p.style.width = (6 + Math.random() * 8) + 'px';
+        p.style.height = p.style.width;
+        p.style.transform = `rotate(${Math.random() * 360}deg)`;
+        p.style.animationDelay = (Math.random() * 0.3) + 's';
+        p.style.animationDuration = (2.2 + Math.random() * 0.8) + 's';
+        overlay.appendChild(p);
+    }
+
+    requestAnimationFrame(() => overlay.classList.add('animate'));
+    setTimeout(() => overlay.remove(), 3500);
 }
 
 // Drag & drop entre columnas
