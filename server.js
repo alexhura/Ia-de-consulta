@@ -4,7 +4,7 @@ import { config } from './config/index.js';
 import { initDatabase } from './services/db.js';
 import { GroqService } from './services/GroqService.js';
 import { KnowledgeBaseService } from './services/KnowledgeBaseService.js';
-import { detectPlatform, extractUrl } from './services/siteDetectorService.js';
+import { detectPlatform, extractUrl, trimNextSteps } from './services/siteDetectorService.js';
 import authRoutes, { authMiddleware } from './routes/auth.js';
 import notificationRoutes from './routes/notifications.js';
 
@@ -112,7 +112,11 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
     }
 
     // Generar respuesta con Groq
-    const response = await groqService.chat(message.trim(), context, history, safeImage);
+    let response = await groqService.chat(message.trim(), context, history, safeImage);
+
+    // En un análisis de plataforma, eliminar pasos siguientes/ofertas que el
+    // modelo suelte tras el veredicto (solo es un escaneo).
+    if (platformInfo) response = trimNextSteps(response);
 
     res.json({
       success: true,

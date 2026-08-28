@@ -102,6 +102,9 @@ function escapeHtml(text) {
     let html = div.innerHTML.replace(/\n/g, '<br>');
     const urlRegex = /(https?:\/\/[^\s<]+)/g;
     html = html.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+    // Markdown basico: negritas e italicas (tras escapar HTML, es seguro).
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+               .replace(/\*([^*]+)\*/g, '<em>$1</em>');
     return html;
 }
 

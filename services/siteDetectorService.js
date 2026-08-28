@@ -140,18 +140,18 @@ export function verdictFor(platform) {
   if (platform === 'WordPress') {
     return {
       apta: true,
-      mensaje: 'Sí es apta: está hecha en WordPress y se puede migrar a nuestros servidores.'
+      mensaje: '✅ Sí es apta 🟢: está hecha en WordPress y se puede migrar a nuestros servidores.'
     };
   }
   if (platform === 'HTML puro o estático') {
     return {
       apta: true,
-      mensaje: 'Sí es apta: no usa un CMS bloqueante, es HTML puro/estático y se puede tomar y trabajar normal.'
+      mensaje: '✅ Sí es apta 🟢: no usa un CMS bloqueante, es HTML puro/estático y se puede tomar y trabajar normal.'
     };
   }
   return {
     apta: false,
-    mensaje: `No es apta: está construida con ${platform}, que no es WordPress ni HTML puro, por lo que NO se puede migrar ni trabajar desde nuestros servidores.`
+    mensaje: `❌ No es apta 🔴: está construida con ${platform}, que no es WordPress ni HTML puro, por lo que NO se puede migrar ni trabajar desde nuestros servidores.`
   };
 }
 
@@ -248,9 +248,21 @@ const PLATFORM_LABEL = {
 function buildSummary(url, platform, verdict) {
   const apta = verdict.apta === true ? 'APTA' : verdict.apta === false ? 'NO APTA' : 'VERIFICACIÓN PENDIENTE';
   return [
-    'DETECCIÓN DE PLATAFORMA:',
-    `- URL analizada: ${url}`,
-    `- Plataforma detectada: ${platform}`,
-    `- Veredicto (${apta}): ${verdict.mensaje}`
+    '🔍 DETECCIÓN DE PLATAFORMA:',
+    `- 🌐 URL analizada: ${url}`,
+    `- 🛠️ Plataforma detectada: ${platform}`,
+    `- 📊 Veredicto (${apta}): ${verdict.mensaje}`,
+    '',
+    'INSTRUCCIÓN DE FORMATO: esto es SOLO un escaneo. Responde de forma natural y breve (1-3 oraciones), con emojis, dando el veredicto (apta/no apta) y el motivo. NO copies el bloque textualmente ni repitas cada línea que ves aquí, y NO añadas pasos siguientes, ofertas de ayuda, recomendaciones ni preguntas de seguimiento.'
   ].join('\n');
+}
+
+// Recorta de la respuesta de la IA cualquier "paso siguiente / oferta de ayuda"
+// que el modelo añada tras el veredicto (plan B si ignora la instrucción).
+const OFFER_RE = /\b(Si necesitas|¿Quieres|No dudes en|Avísame|Dime si|Estamos aquí|Puedo ayudarte|Si quieres|Podemos proceder|¿Qué implica|Me comentas|Déjame saber|Escríbeme|Puedes pedir|Disponemos de|Te puedo)\b/i;
+export function trimNextSteps(text) {
+  if (!text) return text;
+  const idx = text.search(OFFER_RE);
+  if (idx === -1) return text.trim();
+  return text.slice(0, idx).trim().replace(/[:\u2014\x2014-]\s*$/, '').trim();
 }
