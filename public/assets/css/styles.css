@@ -1470,26 +1470,53 @@ body::before {
     color: #f87171;
 }
 
-/* Colores de fondo en headers de columnas según estado */
+/* Colores VIVOS en headers de columnas según estado */
 .pm-column[data-stage="por_iniciar"] .pm-column-head {
-    background: linear-gradient(90deg, rgba(161, 161, 170, 0.12), transparent);
-    border-bottom-color: rgba(161, 161, 170, 0.25);
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+    color: #1f2937;
+    border-bottom-color: #f59e0b;
 }
 .pm-column[data-stage="en_progreso"] .pm-column-head {
-    background: linear-gradient(90deg, rgba(0, 212, 255, 0.12), transparent);
-    border-bottom-color: rgba(0, 212, 255, 0.25);
+    background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+    color: white;
+    border-bottom-color: #3b82f6;
 }
 .pm-column[data-stage="en_revision"] .pm-column-head {
-    background: linear-gradient(90deg, rgba(139, 92, 246, 0.14), transparent);
-    border-bottom-color: rgba(139, 92, 246, 0.3);
+    background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+    color: white;
+    border-bottom-color: #8b5cf6;
 }
 .pm-column[data-stage="finalizado_sin_errores"] .pm-column-head {
-    background: linear-gradient(90deg, rgba(52, 211, 153, 0.12), transparent);
-    border-bottom-color: rgba(52, 211, 153, 0.25);
+    background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+    color: white;
+    border-bottom-color: #10b981;
 }
 .pm-column[data-stage="por_corregir"] .pm-column-head {
-    background: linear-gradient(90deg, rgba(239, 68, 68, 0.12), transparent);
-    border-bottom-color: rgba(239, 68, 68, 0.25);
+    background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+    color: white;
+    border-bottom-color: #ef4444;
+}
+
+.pm-column-head strong,
+.pm-column-count {
+    color: inherit;
+}
+
+/* Pipeline header (título + botón) */
+.pm-pipeline-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 0 4px;
+}
+
+.pm-pipeline-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #e4e4e7;
+    letter-spacing: 0.02em;
 }
 
 /* Avatares apilados en tarjetas */
