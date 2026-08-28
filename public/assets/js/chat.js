@@ -84,7 +84,7 @@ const profileName = document.getElementById('profileName');
 const profileUsername = document.getElementById('profileUsername');
 const profileRole = document.getElementById('profileRole');
 const profileMsg = document.getElementById('profileMsg');
-const changeAvatarBtn = document.getElementById('changeAvatarBtn');
+const profileAvatarEdit = document.getElementById('profileAvatarEdit');
 const avatarFileInput = document.getElementById('avatarFileInput');
 const profileLogoutBtn = document.getElementById('profileLogoutBtn');
 
@@ -469,7 +469,7 @@ profilePanel.addEventListener('click', (e) => {
     if (e.target === profilePanel) closeOverlay(profilePanel);
 });
 
-changeAvatarBtn.addEventListener('click', () => avatarFileInput.click());
+profileAvatarEdit.addEventListener('click', () => avatarFileInput.click());
 
 avatarFileInput.addEventListener('change', async () => {
     const file = avatarFileInput.files[0];
@@ -501,6 +501,65 @@ profileLogoutBtn.addEventListener('click', async () => {
         await apiRequest('/api/auth/logout', { method: 'POST' });
     } catch (e) {}
     clearAuth();
+});
+
+// ---------------- Tooltips personalizados (estilo, no los del navegador) ----------------
+const tooltipEl = document.createElement('div');
+tooltipEl.id = 'customTooltip';
+tooltipEl.setAttribute('role', 'tooltip');
+document.body.appendChild(tooltipEl);
+
+let tipTarget = null;
+let tipTimer = null;
+
+function positionTooltip(el) {
+    const rect = el.getBoundingClientRect();
+    tooltipEl.style.visibility = 'hidden';
+    tooltipEl.classList.add('visible');
+    const tr = tooltipEl.getBoundingClientRect();
+    let left = rect.left + rect.width / 2 - tr.width / 2;
+    let top = rect.top - tr.height - 9;
+    let below = false;
+    if (top < 10) {
+        top = rect.bottom + 9;
+        below = true;
+    }
+    left = Math.max(8, Math.min(left, window.innerWidth - tr.width - 8));
+    tooltipEl.classList.toggle('below', below);
+    tooltipEl.style.left = left + 'px';
+    tooltipEl.style.top = top + 'px';
+    tooltipEl.style.visibility = 'visible';
+}
+
+function hideTooltip() {
+    clearTimeout(tipTimer);
+    tipTarget = null;
+    tooltipEl.classList.remove('visible');
+}
+
+document.addEventListener('mouseover', (e) => {
+    if (!(e.target instanceof Element)) return;
+    const el = e.target.closest('[title]');
+    if (!el || el.getAttribute('title') === '') return;
+    if (tipTarget === el) return;
+    hideTooltip();
+    tipTarget = el;
+    const content = el.getAttribute('title');
+    el.setAttribute('data-tip-orig', content);
+    el.setAttribute('title', '');
+    tipTimer = setTimeout(() => {
+        tooltipEl.textContent = content;
+        positionTooltip(el);
+    }, 450);
+});
+
+document.addEventListener('mouseout', (e) => {
+    if (!(e.target instanceof Element)) return;
+    if (tipTarget && (e.target === tipTarget || tipTarget.contains(e.target))) {
+        const restore = tipTarget.getAttribute('data-tip-orig');
+        if (restore !== null) tipTarget.setAttribute('title', restore);
+        hideTooltip();
+    }
 });
 
 logoBtn.addEventListener('click', showHero);

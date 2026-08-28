@@ -822,6 +822,39 @@ body::before {
     max-width: 380px;
 }
 
+.profile-window .window-head {
+    justify-content: flex-end;
+}
+
+.head-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.window-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    color: #a1a1aa;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.window-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e4e4e7;
+}
+
+.window-btn.power:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
 .profile-window .window-body {
     display: block;
     text-align: center;
@@ -831,7 +864,18 @@ body::before {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+}
+
+.profile-title {
+    color: #a1a1aa;
+    font-family: 'EB Garamond', Georgia, serif;
+    font-size: 17px;
+    margin: 0 0 10px;
+}
+
+.profile-avatar-wrap {
+    position: relative;
+    margin: 4px 0 12px;
 }
 
 .profile-avatar {
@@ -848,7 +892,6 @@ body::before {
     border: 3px solid rgba(255, 255, 255, 0.25);
     box-shadow: 0 0 28px rgba(0, 212, 255, 0.35);
     overflow: hidden;
-    margin-bottom: 6px;
 }
 
 .profile-avatar img {
@@ -858,7 +901,30 @@ body::before {
     object-fit: cover;
 }
 
-.profile-name {
+.profile-avatar-edit {
+    position: absolute;
+    top: -2px;
+    right: -6px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00d4ff 0%, #8b5cf6 100%);
+    border: 3px solid #101827;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0, 212, 255, 0.5);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.profile-avatar-edit:hover {
+    transform: scale(1.12) rotate(8deg);
+    box-shadow: 0 6px 22px rgba(0, 212, 255, 0.7);
+}
+
+.profile-display-name {
     color: #ffffff;
     font-size: 20px;
     font-weight: 700;
@@ -868,7 +934,7 @@ body::before {
 .profile-username {
     color: #a1a1aa;
     font-size: 14px;
-    margin: 0;
+    margin: 2px 0 6px;
 }
 
 .profile-role {
@@ -879,7 +945,7 @@ body::before {
     border-radius: 999px;
     font-size: 13px;
     font-weight: 600;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .btn-secondary {
@@ -906,6 +972,50 @@ body::before {
 .profile-card .btn {
     width: 100%;
     margin-top: 6px;
+}
+
+/* ---- Tooltip personalizado ---- */
+#customTooltip {
+    position: fixed;
+    z-index: 10000;
+    background: #1c1c2e;
+    color: #e4e4e7;
+    border: 1px solid rgba(139, 92, 246, 0.45);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.55);
+    padding: 7px 12px;
+    border-radius: 9px;
+    font-size: 12.5px;
+    font-weight: 500;
+    font-family: inherit;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    max-width: 280px;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(3px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+#customTooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#customTooltip::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(139, 92, 246, 0.45);
+}
+
+#customTooltip.below::after {
+    top: auto;
+    bottom: 100%;
+    border-top-color: transparent;
+    border-bottom-color: rgba(139, 92, 246, 0.45);
 }
 
 /* ---- Historial ---- */
