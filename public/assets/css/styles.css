@@ -32,7 +32,9 @@ body::before {
 }
 
 ::-webkit-scrollbar {
-    width: 6px;
+    width: 0;
+    height: 0;
+    display: none;
 }
 
 ::-webkit-scrollbar-track {
@@ -40,12 +42,17 @@ body::before {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(0, 212, 255, 0.3);
+    background: transparent;
     border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 212, 255, 0.5);
+    background: transparent;
+}
+
+* {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 /* ============ Layout principal ============ */
