@@ -129,7 +129,7 @@ export class KnowledgeBaseService {
     // El contexto es un extra: si la búsqueda falla por cualquier motivo,
     // el chat debe responder igual (sin contexto), nunca romper la consulta.
     try {
-      const results = await this.search(q, 15);
+      const results = await this.search(q, 50);
       if (results.length === 0) return '';
 
       // Ranking por relevancia real: cuántas palabras del usuario aparecen en
