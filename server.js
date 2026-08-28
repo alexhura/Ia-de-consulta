@@ -322,7 +322,8 @@ app.get('/api/pm/projects', pmOnly, async (req, res) => {
   }
 });
 
-app.post('/api/pm/projects', pmOnly, async (req, res) => {
+// Crear / editar proyectos: solo admin.
+app.post('/api/pm/projects', authMiddleware, requireRole('admin'), async (req, res) => {
   try {
     const project = await pmService.addProject(req.body, req.user.id);
     res.json({ success: true, project });
@@ -332,7 +333,7 @@ app.post('/api/pm/projects', pmOnly, async (req, res) => {
   }
 });
 
-app.put('/api/pm/projects/:id', pmOnly, async (req, res) => {
+app.put('/api/pm/projects/:id', authMiddleware, requireRole('admin'), async (req, res) => {
   try {
     const project = await pmService.updateProject(req.params.id, req.body);
     res.json({ success: true, project });
