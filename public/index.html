@@ -55,6 +55,14 @@
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
                 </button>
+                <button class="sidebar-btn hidden" id="pmBtn" title="Project Manager">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="9" rx="1.5"></rect>
+                        <rect x="14" y="3" width="7" height="5" rx="1.5"></rect>
+                        <rect x="14" y="12" width="7" height="9" rx="1.5"></rect>
+                        <rect x="3" y="16" width="7" height="5" rx="1.5"></rect>
+                    </svg>
+                </button>
             </div>
             <div class="sidebar-bottom">
                 <button class="sidebar-btn hidden" id="settingsBtn" title="Configuración · Usuarios">
@@ -485,6 +493,96 @@
                         </div>
                     </div>
                     <input type="file" id="avatarFileInput" accept="image/*" hidden>
+                </div>
+            </div>
+
+            <!-- Project Manager window -->
+            <div id="pmPanel" class="window-overlay hidden">
+                <div class="window pm-window">
+                    <div class="window-head">
+                        <h2>📋 Project Manager</h2>
+                        <div class="head-actions">
+                            <button type="button" class="btn btn-primary btn-small" id="addProjectBtn">+ Proyecto</button>
+                            <button class="window-close" id="pmCloseBtn" title="Cerrar">&times;</button>
+                        </div>
+                    </div>
+                    <div class="window-body">
+                        <div id="pmList" class="pm-list"></div>
+                        <p id="pmMsg" class="admin-msg"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project form -->
+            <div id="pmFormWindow" class="window-overlay hidden">
+                <div class="window pm-form-window">
+                    <div class="window-head">
+                        <h2 id="pmFormTitle">Nuevo proyecto</h2>
+                        <button class="window-close" data-close="pmFormWindow" title="Cerrar">&times;</button>
+                    </div>
+                    <div class="window-body">
+                        <form id="pmForm" class="admin-form">
+                            <div class="form-group">
+                                <label for="pmClient">Cliente</label>
+                                <input type="text" id="pmClient" required autocomplete="off" placeholder="Nombre del cliente o negocio">
+                            </div>
+                            <div class="form-group">
+                                <label for="pmDescription">Descripción</label>
+                                <textarea id="pmDescription" class="admin-textarea" rows="4" placeholder="Detalle del proyecto..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="pmStatusSelect">Estado</label>
+                                <select id="pmStatusSelect" class="admin-select">
+                                    <option value="pendiente">Pendiente</option>
+                                    <option value="en_progreso">En progreso</option>
+                                    <option value="completado">Completado</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Guardar proyecto</button>
+                            <p id="pmFormMsg" class="admin-msg"></p>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Task form -->
+            <div id="pmTaskWindow" class="window-overlay hidden">
+                <div class="window pm-form-window">
+                    <div class="window-head">
+                        <h2 id="pmTaskFormTitle">Nueva tarea</h2>
+                        <button class="window-close" data-close="pmTaskWindow" title="Cerrar">&times;</button>
+                    </div>
+                    <div class="window-body">
+                        <form id="pmTaskForm" class="admin-form">
+                            <p class="pm-task-project" id="pmTaskProjectLabel"></p>
+                            <div class="form-group">
+                                <label for="taskTitle">Título</label>
+                                <input type="text" id="taskTitle" required autocomplete="off" placeholder="Nombre de la tarea">
+                            </div>
+                            <div class="form-group">
+                                <label for="taskDescription">Descripción</label>
+                                <textarea id="taskDescription" class="admin-textarea" rows="3" placeholder="Detalle de la tarea..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="taskStatus">Estado</label>
+                                <select id="taskStatus" class="admin-select">
+                                    <option value="pendiente">Pendiente</option>
+                                    <option value="en_progreso">En progreso</option>
+                                    <option value="completado">Completado</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="taskPriority">Prioridad</label>
+                                <select id="taskPriority" class="admin-select">
+                                    <option value="baja">Baja</option>
+                                    <option value="media" selected>Media</option>
+                                    <option value="alta">Alta</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Guardar tarea</button>
+                            <p id="pmTaskMsg" class="admin-msg"></p>
+                        </form>
+                    </div>
                 </div>
             </div>
 

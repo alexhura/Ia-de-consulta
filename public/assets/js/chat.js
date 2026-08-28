@@ -87,6 +87,30 @@ const profileAvatarEdit = document.getElementById('profileAvatarEdit');
 const avatarFileInput = document.getElementById('avatarFileInput');
 const profileLogoutBtn = document.getElementById('profileLogoutBtn');
 
+// Project Manager DOM
+const pmBtn = document.getElementById('pmBtn');
+const pmPanel = document.getElementById('pmPanel');
+const pmCloseBtn = document.getElementById('pmCloseBtn');
+const pmList = document.getElementById('pmList');
+const pmMsg = document.getElementById('pmMsg');
+const addProjectBtn = document.getElementById('addProjectBtn');
+const pmFormWindow = document.getElementById('pmFormWindow');
+const pmFormTitle = document.getElementById('pmFormTitle');
+const pmForm = document.getElementById('pmForm');
+const pmClient = document.getElementById('pmClient');
+const pmDescription = document.getElementById('pmDescription');
+const pmStatusSelect = document.getElementById('pmStatusSelect');
+const pmFormMsg = document.getElementById('pmFormMsg');
+const pmTaskWindow = document.getElementById('pmTaskWindow');
+const pmTaskFormTitle = document.getElementById('pmTaskFormTitle');
+const pmTaskProjectLabel = document.getElementById('pmTaskProjectLabel');
+const pmTaskForm = document.getElementById('pmTaskForm');
+const taskTitle = document.getElementById('taskTitle');
+const taskDescription = document.getElementById('taskDescription');
+const taskStatus = document.getElementById('taskStatus');
+const taskPriority = document.getElementById('taskPriority');
+const pmTaskMsg = document.getElementById('pmTaskMsg');
+
 let conversationHistory = [];
 let activeConvId = null;
 let editingUserId = null;
@@ -360,6 +384,7 @@ function updateUIForAuth() {
         topbarUser.textContent = currentUser.username;
         greetingText.textContent = `¡Hola, ${currentUser.fullName || currentUser.username}! ¿En qué te ayudo hoy?`;
         settingsBtn.classList.remove('hidden');
+        pmBtn.classList.toggle('hidden', !canUsePM());
         renderSidebarAvatar();
         sidebarAvatar.title = 'Mi perfil';
         startNotifications();
@@ -367,6 +392,7 @@ function updateUIForAuth() {
         authModal.classList.remove('hidden');
         app.classList.add('hidden');
         settingsBtn.classList.add('hidden');
+        pmBtn.classList.add('hidden');
         stopNotifications();
     }
 }
@@ -567,11 +593,226 @@ document.addEventListener('mouseout', (e) => {
 
 logoBtn.addEventListener('click', showHero);
 
+// ---------------- Project Manager (solo admin y Desarrollo) ----------------
+const PM_STATUS_LABEL = { pendiente: 'Pendiente', en_progreso: 'En progreso', completado: 'Completado' };
+const PM_PRIORITY_LABEL = { baja: 'Baja', media: 'Media', alta: 'Alta' };
+
+let pmProjects = [];
+let editingProjectId = null;
+let editingTaskId = null;
+let taskProjectId = null;
+
+const PM_ICON_PENCIL = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>';
+const PM_ICON_TRASH = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+
+function canUsePM() {
+    return currentUser && (currentUser.role === 'admin' || currentUser.role === 'desarrollo');
+}
+
+function pmProjectCard(p) {
+    const status = PM_STATUS_LABEL[p.status] || p.status;
+    const tasks = p.tasks || [];
+    const tasksHtml = tasks.length
+        ? tasks.map(t => pmTaskRow(t)).join('')
+        : '<p class="pm-tasks-empty">Sin tareas todavía.</p>';
+    return `
+        <div class="pm-project">
+            <div class="pm-project-head">
+                <span class="pm-project-id">#${p.id}</span>
+                <div class="pm-project-title">${escapeHtml(p.client)}</div>
+                <span class="pm-status pm-status-${p.status}">${escapeHtml(status)}</span>
+                <div class="pm-project-actions">
+                    <button class="pm-btn-icon" data-action="pm-edit" data-id="${p.id}" title="Editar proyecto">${PM_ICON_PENCIL}</button>
+                    <button class="pm-btn-icon danger" data-action="pm-delete" data-id="${p.id}" title="Eliminar proyecto">${PM_ICON_TRASH}</button>
+                </div>
+            </div>
+            ${p.description ? `<p class="pm-project-desc">${escapeHtml(p.description)}</p>` : ''}
+            <div class="pm-tasks">${tasksHtml}</div>
+            <button type="button" class="btn btn-secondary btn-small" data-action="pm-add-task" data-id="${p.id}">+ Tarea</button>
+        </div>`;
+}
+
+function pmTaskRow(t) {
+    const completed = t.status === 'completado' ? ' completed' : '';
+    return `
+        <div class="pm-task${completed}">
+            <span class="pm-task-title">${escapeHtml(t.title)}</span>
+            <span class="pm-priority pm-priority-${t.priority}">${PM_PRIORITY_LABEL[t.priority] || t.priority}</span>
+            <select class="pm-task-status" data-id="${t.id}" title="Cambiar estado">
+                <option value="pendiente" ${t.status === 'pendiente' ? 'selected' : ''}>Pendiente</option>
+                <option value="en_progreso" ${t.status === 'en_progreso' ? 'selected' : ''}>En progreso</option>
+                <option value="completado" ${t.status === 'completado' ? 'selected' : ''}>Completado</option>
+            </select>
+            <button class="pm-btn-icon" data-action="pm-task-edit" data-id="${t.id}" title="Editar tarea">${PM_ICON_PENCIL}</button>
+            <button class="pm-btn-icon danger" data-action="pm-task-delete" data-id="${t.id}" title="Eliminar tarea">${PM_ICON_TRASH}</button>
+        </div>`;
+}
+
+function renderPMProjects() {
+    if (pmProjects.length === 0) {
+        pmList.innerHTML = '<p class="pm-tasks-empty">No hay proyectos todavía. Crea el primero con "+ Proyecto".</p>';
+        return;
+    }
+    pmList.innerHTML = pmProjects.map(pmProjectCard).join('');
+}
+
+async function loadPMProjects() {
+    pmMsg.textContent = '';
+    pmList.innerHTML = '<p class="pm-tasks-empty">Cargando proyectos...</p>';
+    try {
+        const data = await apiRequest('/api/pm/projects');
+        pmProjects = data.projects || [];
+        renderPMProjects();
+    } catch (e) {
+        pmList.innerHTML = '';
+        pmMsg.textContent = e.message;
+    }
+}
+
+function openPM() {
+    if (!canUsePM()) return;
+    closeOverlay(historyPanel);
+    closeOverlay(adminPanel);
+    closeOverlay(editWindow);
+    openOverlay(pmPanel);
+    loadPMProjects();
+}
+
+function openProjectForm(projectId) {
+    editingProjectId = projectId;
+    const p = projectId ? pmProjects.find(x => x.id === projectId) : null;
+    pmFormTitle.textContent = p ? 'Editar proyecto' : 'Nuevo proyecto';
+    pmClient.value = p ? p.client : '';
+    pmDescription.value = p ? (p.description || '') : '';
+    pmStatusSelect.value = p ? (p.status || 'pendiente') : 'pendiente';
+    pmFormMsg.textContent = '';
+    openOverlay(pmFormWindow);
+    pmClient.focus();
+}
+
+function openTaskForm(projectId, taskId) {
+    editingTaskId = taskId;
+    taskProjectId = projectId;
+    let task = null;
+    let project = null;
+    if (taskId) {
+        task = pmProjects.flatMap(p => p.tasks || []).find(t => t.id === taskId);
+        project = pmProjects.find(p => (p.tasks || []).some(t => t.id === taskId)) || null;
+        taskProjectId = project ? project.id : null;
+    } else {
+        project = pmProjects.find(p => p.id === projectId) || null;
+    }
+    pmTaskFormTitle.textContent = task ? 'Editar tarea' : 'Nueva tarea';
+    pmTaskProjectLabel.textContent = project ? `Proyecto: ${project.client}` : '';
+    taskTitle.value = task ? task.title : '';
+    taskDescription.value = task ? (task.description || '') : '';
+    taskStatus.value = task ? (task.status || 'pendiente') : 'pendiente';
+    taskPriority.value = task ? (task.priority || 'media') : 'media';
+    pmTaskMsg.textContent = '';
+    openOverlay(pmTaskWindow);
+    taskTitle.focus();
+}
+
+pmBtn.addEventListener('click', openPM);
+
+pmCloseBtn.addEventListener('click', () => closeOverlay(pmPanel));
+
+addProjectBtn.addEventListener('click', () => openProjectForm(null));
+
+document.querySelectorAll('[data-close="pmFormWindow"]').forEach(btn =>
+    btn.addEventListener('click', () => closeOverlay(pmFormWindow))
+);
+
+document.querySelectorAll('[data-close="pmTaskWindow"]').forEach(btn =>
+    btn.addEventListener('click', () => closeOverlay(pmTaskWindow))
+);
+
+pmForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+        client: pmClient.value.trim(),
+        description: pmDescription.value.trim(),
+        status: pmStatusSelect.value
+    };
+    try {
+        if (editingProjectId) {
+            await apiRequest(`/api/pm/projects/${editingProjectId}`, { method: 'PUT', body: JSON.stringify(payload) });
+        } else {
+            await apiRequest('/api/pm/projects', { method: 'POST', body: JSON.stringify(payload) });
+        }
+        closeOverlay(pmFormWindow);
+        pmForm.reset();
+        await loadPMProjects();
+    } catch (err) {
+        pmFormMsg.textContent = err.message;
+    }
+});
+
+pmTaskForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+        title: taskTitle.value.trim(),
+        description: taskDescription.value.trim(),
+        status: taskStatus.value,
+        priority: taskPriority.value
+    };
+    try {
+        if (editingTaskId) {
+            await apiRequest(`/api/pm/tasks/${editingTaskId}`, { method: 'PUT', body: JSON.stringify(payload) });
+        } else {
+            payload.project_id = taskProjectId;
+            await apiRequest('/api/pm/tasks', { method: 'POST', body: JSON.stringify(payload) });
+        }
+        closeOverlay(pmTaskWindow);
+        pmTaskForm.reset();
+        await loadPMProjects();
+    } catch (err) {
+        pmTaskMsg.textContent = err.message;
+    }
+});
+
+pmList.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn || !canUsePM()) return;
+    const action = btn.dataset.action;
+    const id = parseInt(btn.dataset.id);
+    try {
+        if (action === 'pm-edit') openProjectForm(id);
+        else if (action === 'pm-delete') {
+            if (!confirm('¿Eliminar este proyecto y todas sus tareas?')) return;
+            await apiRequest(`/api/pm/projects/${id}`, { method: 'DELETE' });
+            await loadPMProjects();
+        } else if (action === 'pm-add-task') openTaskForm(id, null);
+        else if (action === 'pm-task-edit') openTaskForm(null, id);
+        else if (action === 'pm-task-delete') {
+            if (!confirm('¿Eliminar esta tarea?')) return;
+            await apiRequest(`/api/pm/tasks/${id}`, { method: 'DELETE' });
+            await loadPMProjects();
+        }
+    } catch (err) {
+        pmMsg.textContent = err.message;
+    }
+});
+
+pmList.addEventListener('change', async (e) => {
+    if (!e.target.classList.contains('pm-task-status')) return;
+    try {
+        await apiRequest(`/api/pm/tasks/${e.target.dataset.id}`, { method: 'PUT', body: JSON.stringify({ status: e.target.value }) });
+        await loadPMProjects();
+    } catch (err) {
+        pmMsg.textContent = err.message;
+        await loadPMProjects();
+    }
+});
+
 // ---------------- Chat ----------------
 function showChat() {
     closeOverlay(adminPanel);
     closeOverlay(editWindow);
     closeOverlay(historyPanel);
+    closeOverlay(pmPanel);
+    closeOverlay(pmFormWindow);
+    closeOverlay(pmTaskWindow);
     heroSection.classList.add('hidden');
     chatSection.classList.add('active');
     chatInput.focus();

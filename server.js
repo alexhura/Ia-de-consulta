@@ -5,13 +5,15 @@ import { initDatabase } from './services/db.js';
 import { GroqService } from './services/GroqService.js';
 import { KnowledgeBaseService } from './services/KnowledgeBaseService.js';
 import { detectPlatform, extractUrl, trimNextSteps } from './services/siteDetectorService.js';
-import authRoutes, { authMiddleware } from './routes/auth.js';
+import authRoutes, { authMiddleware, requireRole } from './routes/auth.js';
 import notificationRoutes from './routes/notifications.js';
+import { PmService, PM_STATUSES, PM_PRIORITIES } from './services/PmService.js';
 
 const app = express();
 export { app };
 const groqService = new GroqService();
 const kbService = new KnowledgeBaseService();
+const pmService = new PmService();
 
 // Inicializa la base de datos y el usuario admin inicial.
 // - Local (local.js): se llama al arrancar.
@@ -304,6 +306,79 @@ app.delete('/api/admin/knowledge/:id', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Error deleting knowledge item:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ---- Project Manager (solo admin y Desarrollo) ----
+const pmOnly = [authMiddleware, requireRole('admin', 'desarrollo')];
+
+app.get('/api/pm/projects', pmOnly, async (req, res) => {
+  try {
+    const projects = await pmService.listProjects();
+    res.json({ success: true, projects });
+  } catch (error) {
+    console.error('Error listing PM projects:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/pm/projects', pmOnly, async (req, res) => {
+  try {
+    const project = await pmService.addProject(req.body, req.user.id);
+    res.json({ success: true, project });
+  } catch (error) {
+    console.error('Error creating PM project:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/pm/projects/:id', pmOnly, async (req, res) => {
+  try {
+    const project = await pmService.updateProject(req.params.id, req.body);
+    res.json({ success: true, project });
+  } catch (error) {
+    console.error('Error updating PM project:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/pm/projects/:id', pmOnly, async (req, res) => {
+  try {
+    await pmService.deleteProject(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting PM project:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/pm/tasks', pmOnly, async (req, res) => {
+  try {
+    const task = await pmService.addTask(req.body);
+    res.json({ success: true, task });
+  } catch (error) {
+    console.error('Error creating PM task:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
+  try {
+    const task = await pmService.updateTask(req.params.id, req.body);
+    res.json({ success: true, task });
+  } catch (error) {
+    console.error('Error updating PM task:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/pm/tasks/:id', pmOnly, async (req, res) => {
+  try {
+    await pmService.deleteTask(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting PM task:', error);
+    res.status(400).json({ success: false, error: error.message });
   }
 });
 
