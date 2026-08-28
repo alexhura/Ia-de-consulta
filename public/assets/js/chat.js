@@ -417,7 +417,7 @@ function addMessage(content, role, image) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}`;
     if (role === 'assistant') {
-        messageDiv.innerHTML = `<img class="msg-avatar" src="/assets/images/avatar-iA.gif" alt="IA"><div class="message-content">${escapeHtml(content)}</div>`;
+        messageDiv.innerHTML = `<div class="msg-avatar avatar-wrap"><img src="/assets/images/avatar-iA.gif" alt="IA"></div><div class="message-content">${escapeHtml(content)}</div>`;
     } else if (role === 'user') {
         const imgHtml = image
             ? `<img class="msg-image" src="${image}" alt="Imagen adjunta">`
@@ -447,7 +447,7 @@ function showTyping() {
     typingDiv.className = 'message assistant';
     typingDiv.id = 'typingIndicator';
     typingDiv.innerHTML = `
-        <img class="msg-avatar" src="/assets/images/avatar-iA.gif" alt="IA">
+        <div class="msg-avatar avatar-wrap"><img src="/assets/images/avatar-iA.gif" alt="IA"></div>
         <div class="typing-indicator">
             <span class="dot"></span>
             <span class="dot"></span>
