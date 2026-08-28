@@ -233,6 +233,9 @@
                         <button class="settings-tab admin-only hidden" data-tab="announcements">
                             <span class="settings-tab-icon">📢</span> Anuncios
                         </button>
+                        <button class="settings-tab admin-only hidden" data-tab="knowledge">
+                            <span class="settings-tab-icon">🧠</span> Aprendizaje
+                        </button>
                     </div>
                     <div class="window-body settings-body">
 
@@ -354,6 +357,74 @@
                                 <h3>🗞 Anuncios publicados</h3>
                                 <div id="annList" class="ann-list"></div>
                                 <p id="annListMsg" class="admin-msg"></p>
+                            </div>
+                        </div>
+
+                        <!-- PESTAÑA: Aprendizaje / Base de conocimiento (solo admin) -->
+                        <div class="settings-pane" id="paneKnowledge">
+                            <div class="body-grid">
+                                <div class="admin-card">
+                                    <h3>🗂 Categorías</h3>
+                                    <form id="kbCatForm" class="admin-form">
+                                        <div class="form-group">
+                                            <label for="kbCatName">Nueva categoría</label>
+                                            <input type="text" id="kbCatName" required maxlength="60" autocomplete="off" placeholder="Ej: publicidad de pago en google">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="kbCatIcon">Icono (emoji)</label>
+                                            <input type="text" id="kbCatIcon" maxlength="4" value="📄" autocomplete="off">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">Crear categoría</button>
+                                    </form>
+                                    <p id="kbCatMsg" class="admin-msg"></p>
+                                    <div id="kbCatList" class="kb-cats"></div>
+                                    <p class="setting-desc">Ej. procesos, tiempos, ajustes web, publicidad... La categoría agrupa el conocimiento que la IA usará en el chat.</p>
+                                </div>
+
+                                <div class="admin-card">
+                                    <h3 id="kbFormTitle">➕ Añadir conocimiento</h3>
+                                    <form id="kbForm" class="admin-form">
+                                        <input type="hidden" id="kbEditId" value="">
+                                        <div class="form-group">
+                                            <label for="kbCategory">Categoría</label>
+                                            <select id="kbCategory" class="admin-select" required></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="kbTitle">Título</label>
+                                            <input type="text" id="kbTitle" required maxlength="200" autocomplete="off" placeholder="Ej: Proceso de solicitud de cambios">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="kbContent">Qué debe conocer / responder la IA</label>
+                                            <textarea id="kbContent" class="admin-textarea" required maxlength="5000" rows="6" placeholder="Describe el proceso, plazos, tarifas, ajustes web o lo que la IA deba responder..."></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="kbKeywords">Palabras clave (separadas por coma)</label>
+                                            <input type="text" id="kbKeywords" autocomplete="off" placeholder="cambios, solicitud, proceso, tiempos">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="kbPriority">Prioridad</label>
+                                            <select id="kbPriority" class="admin-select">
+                                                <option value="0">Normal</option>
+                                                <option value="1">Media</option>
+                                                <option value="2">Alta</option>
+                                            </select>
+                                        </div>
+                                        <div class="kb-form-actions">
+                                            <button type="submit" id="kbSubmitBtn" class="btn btn-primary">Guardar conocimiento</button>
+                                            <button type="button" id="kbCancelEdit" class="btn btn-ghost hidden">Cancelar</button>
+                                        </div>
+                                    </form>
+                                    <p id="kbMsg" class="admin-msg"></p>
+                                </div>
+                            </div>
+
+                            <div class="admin-card">
+                                <h3>📚 Base de conocimiento</h3>
+                                <div class="form-group">
+                                    <input type="text" id="kbFilter" class="kb-search" placeholder="🔍 Buscar por título, palabras clave o categoría..." autocomplete="off">
+                                </div>
+                                <div id="kbList" class="kb-list"></div>
+                                <p id="kbListMsg" class="admin-msg"></p>
                             </div>
                         </div>
                     </div>

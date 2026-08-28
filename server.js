@@ -87,7 +87,7 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
     }
 
     // Buscar conocimiento relevante
-    const context = await kbService.getContextForQuery(message, 6);
+    const context = await kbService.getContextForQuery(message, 8);
 
     // Generar respuesta con Groq
     const response = await groqService.chat(message.trim(), context, history, safeImage);
@@ -201,6 +201,43 @@ app.post('/api/knowledge/search', async (req, res) => {
   } catch (error) {
     console.error('Error searching knowledge:', error);
     res.status(500).json({ success: false, error: 'Error en búsqueda' });
+  }
+});
+
+// Listar toda la base de conocimiento (admin - para gestión)
+app.get('/api/admin/knowledge', authMiddleware, async (req, res) => {
+  try {
+    const items = await kbService.getAllItems();
+    res.json({ success: true, items });
+  } catch (error) {
+    console.error('Error listing knowledge:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Crear categoría (admin)
+app.post('/api/admin/knowledge/categories', authMiddleware, async (req, res) => {
+  try {
+    const { name, description, icon } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, error: 'Nombre de categoría requerido' });
+    }
+    const category = await kbService.addCategory(name.trim(), description || '', icon || '📄');
+    res.json({ success: true, category });
+  } catch (error) {
+    console.error('Error creating category:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Eliminar categoría (admin)
+app.delete('/api/admin/knowledge/categories/:id', authMiddleware, async (req, res) => {
+  try {
+    await kbService.deleteCategory(parseInt(req.params.id));
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    res.status(400).json({ success: false, error: error.message });
   }
 });
 

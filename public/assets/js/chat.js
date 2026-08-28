@@ -857,7 +857,7 @@ function renderNotifSettings() {
 
 // ---------------- Ventana de configuración (tabs) ----------------
 const settingsTabs = document.querySelectorAll('.settings-tab');
-const PANE_TABS = { notifications: 'paneNotifications', users: 'paneUsers', announcements: 'paneAnnouncements' };
+const PANE_TABS = { notifications: 'paneNotifications', users: 'paneUsers', announcements: 'paneAnnouncements', knowledge: 'paneKnowledge' };
 
 function setSettingsTab(tab) {
     const isAdmin = currentUser && currentUser.role === 'admin';
@@ -873,6 +873,7 @@ function setSettingsTab(tab) {
     renderNotifSettings();
     if (tab === 'users') loadUsers();
     if (tab === 'announcements') loadAnnouncements();
+    if (tab === 'knowledge') loadKnowledge();
 }
 
 function openSettings(tab) {
@@ -1193,6 +1194,281 @@ async function loadAnnouncements() {
         annListMsg.classList.add('error');
     }
 }
+
+// ---------------- Aprendizaje (base de conocimiento) ----------------
+let kbCategories = [];
+let kbItems = [];
+
+const kbCatForm = document.getElementById('kbCatForm');
+const kbCatName = document.getElementById('kbCatName');
+const kbCatIcon = document.getElementById('kbCatIcon');
+const kbCatMsg = document.getElementById('kbCatMsg');
+const kbCatList = document.getElementById('kbCatList');
+const kbFormTitle = document.getElementById('kbFormTitle');
+const kbForm = document.getElementById('kbForm');
+const kbEditId = document.getElementById('kbEditId');
+const kbCategory = document.getElementById('kbCategory');
+const kbTitle = document.getElementById('kbTitle');
+const kbContent = document.getElementById('kbContent');
+const kbKeywords = document.getElementById('kbKeywords');
+const kbPriority = document.getElementById('kbPriority');
+const kbSubmitBtn = document.getElementById('kbSubmitBtn');
+const kbCancelEdit = document.getElementById('kbCancelEdit');
+const kbMsg = document.getElementById('kbMsg');
+const kbFilter = document.getElementById('kbFilter');
+const kbList = document.getElementById('kbList');
+const kbListMsg = document.getElementById('kbListMsg');
+
+function setKbMsg(el, text, isError) {
+    el.textContent = text;
+    el.classList.toggle('error', !!isError);
+    el.classList.toggle('success', !isError && !!text);
+}
+
+function kbCategoryById(id) {
+    return kbCategories.find(c => String(c.id) === String(id)) || {};
+}
+
+async function loadKnowledge() {
+    if (!currentUser || currentUser.role !== 'admin') return;
+    try {
+        const catsData = await apiRequest('/api/knowledge/categories');
+        kbCategories = catsData.categories || [];
+        renderKbCategories();
+        renderKbCategorySelect();
+    } catch (e) {
+        setKbMsg(kbCatMsg, e.message, true);
+    }
+    await loadKnowledgeItems();
+}
+
+function renderKbCategories() {
+    kbCatList.innerHTML = '';
+    if (kbCategories.length === 0) {
+        kbCatList.innerHTML = '<p class="setting-desc">Aún no hay categorías.</p>';
+        return;
+    }
+    kbCategories.forEach(cat => {
+        const chip = document.createElement('span');
+        chip.className = 'kb-cat-chip';
+        chip.innerHTML = `${escapeHtml(cat.icon || '📄')} ${escapeHtml(cat.name)} <button class="cat-del" title="Eliminar">&times;</button>`;
+        chip.querySelector('.cat-del').addEventListener('click', () => deleteKbCategory(cat));
+        kbCatList.appendChild(chip);
+    });
+}
+
+function renderKbCategorySelect() {
+    kbCategory.innerHTML = '';
+    if (kbCategories.length === 0) {
+        kbCategory.innerHTML = '<option value="">-- Crea una categoría primero --</option>';
+        kbCategory.disabled = true;
+        return;
+    }
+    kbCategory.disabled = false;
+    kbCategories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat.id;
+        opt.textContent = `${cat.icon || '📄'} ${cat.name}`;
+        kbCategory.appendChild(opt);
+    });
+}
+
+kbCatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = kbCatName.value.trim();
+    setKbMsg(kbCatMsg, '');
+    if (!name) {
+        setKbMsg(kbCatMsg, 'Escribe el nombre de la categoría', true);
+        return;
+    }
+    try {
+        const data = await apiRequest('/api/admin/knowledge/categories', {
+            method: 'POST',
+            body: JSON.stringify({ name, icon: kbCatIcon.value.trim() || '📄' })
+        });
+        if (data.success) {
+            setKbMsg(kbCatMsg, `✅ Categoría "${data.category.name}" creada.`);
+            kbCatForm.reset();
+            kbCatIcon.value = '📄';
+            await loadKnowledge();
+        } else {
+            setKbMsg(kbCatMsg, data.error, true);
+        }
+    } catch (err) {
+        setKbMsg(kbCatMsg, err.message, true);
+    }
+});
+
+async function deleteKbCategory(cat) {
+    if (!confirm(`¿Eliminar la categoría "${cat.name}"?`)) return;
+    try {
+        const data = await apiRequest(`/api/admin/knowledge/categories/${cat.id}`, { method: 'DELETE' });
+        if (data.success) {
+            setKbMsg(kbCatMsg, 'Categoría eliminada.');
+            if (String(kbCategory.value) === String(cat.id)) kbForm.reset();
+            await loadKnowledge();
+        } else {
+            setKbMsg(kbCatMsg, data.error, true);
+        }
+    } catch (err) {
+        setKbMsg(kbCatMsg, err.message, true);
+    }
+}
+
+kbForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    setKbMsg(kbMsg, '');
+
+    const category_id = kbCategory.value;
+    const title = kbTitle.value.trim();
+    const content = kbContent.value.trim();
+    const keywords = kbKeywords.value.trim();
+    const priority = parseInt(kbPriority.value) || 0;
+    const id = kbEditId.value;
+
+    if (!category_id) {
+        setKbMsg(kbMsg, 'Selecciona una categoría', true);
+        return;
+    }
+    if (!title || !content) {
+        setKbMsg(kbMsg, 'Completa el título y el contenido', true);
+        return;
+    }
+
+    const payload = { category: kbCategoryById(category_id).name, title, content, keywords, priority };
+
+    try {
+        let data;
+        if (id) {
+            data = await apiRequest(`/api/admin/knowledge/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+        } else {
+            data = await apiRequest('/api/admin/knowledge', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+        }
+        if (data.success) {
+            setKbMsg(kbMsg, id ? '✅ Conocimiento actualizado.' : '✅ Conocimiento guardado. La IA ya puede usarlo en el chat.');
+            resetKbForm();
+            await loadKnowledgeItems();
+        } else {
+            setKbMsg(kbMsg, data.error || 'Error al guardar', true);
+        }
+    } catch (err) {
+        setKbMsg(kbMsg, err.message, true);
+    }
+});
+
+function resetKbForm() {
+    kbForm.reset();
+    kbEditId.value = '';
+    kbSubmitBtn.textContent = 'Guardar conocimiento';
+    kbFormTitle.textContent = '➕ Añadir conocimiento';
+    kbCancelEdit.classList.add('hidden');
+    const firstCat = kbCategories[0];
+    if (firstCat) kbCategory.value = firstCat.id;
+}
+
+kbCancelEdit.addEventListener('click', () => {
+    resetKbForm();
+    setKbMsg(kbMsg, '');
+});
+
+async function loadKnowledgeItems() {
+    if (!currentUser || currentUser.role !== 'admin') return;
+    try {
+        const data = await apiRequest('/api/admin/knowledge');
+        if (!data.success) {
+            setKbMsg(kbListMsg, data.error || 'Error obteniendo la base de conocimiento', true);
+            return;
+        }
+        kbItems = data.items || [];
+        renderKbList();
+    } catch (err) {
+        setKbMsg(kbListMsg, err.message, true);
+    }
+}
+
+function renderKbList() {
+    kbList.innerHTML = '';
+    setKbMsg(kbListMsg, '');
+
+    const q = (kbFilter.value || '').trim().toLowerCase();
+    const filtered = q
+        ? kbItems.filter(it =>
+            it.title.toLowerCase().includes(q) ||
+            (it.keywords || '').toLowerCase().includes(q) ||
+            (it.category || '').toLowerCase().includes(q) ||
+            it.content.toLowerCase().includes(q))
+        : kbItems;
+
+    if (filtered.length === 0) {
+        kbListMsg.textContent = kbItems.length === 0
+            ? 'Todavía no hay conocimiento. Crea una categoría y añade el primer contenido.'
+            : 'Sin resultados para tu búsqueda.';
+        kbListMsg.classList.remove('error');
+        return;
+    }
+
+    filtered.forEach(it => {
+        const item = document.createElement('div');
+        item.className = 'kb-item';
+        item.innerHTML = `
+            <div class="kb-item-head">
+                <div>
+                    <div class="kb-item-title">${escapeHtml(it.title)}</div>
+                    <div class="kb-item-badges">
+                        <span class="kb-badge">${escapeHtml(it.icon || '📄')} ${escapeHtml(it.category || 'Sin categoría')}</span>
+                        ${parseInt(it.priority) > 0 ? `<span class="kb-badge priority-2">Prioridad ${it.priority}</span>` : ''}
+                        <span class="kb-badge">✏ ${escapeHtml(formatDate(it.updated_at))}</span>
+                    </div>
+                </div>
+                <div class="kb-item-actions">
+                    <button class="kb-btn kb-btn-edit" data-id="${it.id}">Editar</button>
+                    <button class="kb-btn kb-btn-del" data-id="${it.id}">Eliminar</button>
+                </div>
+            </div>
+            <div class="kb-item-content">${escapeHtml(it.content)}</div>
+        `;
+        item.querySelector('.kb-btn-edit').addEventListener('click', () => editKnowledgeItem(it));
+        item.querySelector('.kb-btn-del').addEventListener('click', () => deleteKnowledgeItem(it));
+        kbList.appendChild(item);
+    });
+}
+
+function editKnowledgeItem(it) {
+    kbEditId.value = it.id;
+    kbCategory.value = it.category_id;
+    kbTitle.value = it.title;
+    kbContent.value = it.content;
+    kbKeywords.value = it.keywords || '';
+    kbPriority.value = String(it.priority || 0);
+    kbSubmitBtn.textContent = 'Actualizar conocimiento';
+    kbFormTitle.textContent = '✏️ Editar conocimiento';
+    kbCancelEdit.classList.remove('hidden');
+    setKbMsg(kbMsg, '');
+    kbForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function deleteKnowledgeItem(it) {
+    if (!confirm(`¿Eliminar "${it.title}"?`)) return;
+    try {
+        const data = await apiRequest(`/api/admin/knowledge/${it.id}`, { method: 'DELETE' });
+        if (data.success) {
+            if (String(kbEditId.value) === String(it.id)) resetKbForm();
+            await loadKnowledgeItems();
+        } else {
+            setKbMsg(kbListMsg, data.error || 'Error al eliminar', true);
+        }
+    } catch (err) {
+        setKbMsg(kbListMsg, err.message, true);
+    }
+}
+
+kbFilter.addEventListener('input', renderKbList);
 
 // Check auth on load
 async function checkAuth() {

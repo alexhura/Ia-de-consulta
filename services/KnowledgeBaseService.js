@@ -48,6 +48,53 @@ export class KnowledgeBaseService {
     return (data || []).map(mapItem);
   }
 
+  async getAllItems(limit = 500) {
+    const { data, error } = await getSupabase()
+      .from('knowledge_items')
+      .select(KB_SELECT)
+      .order('priority', { ascending: false })
+      .order('updated_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+
+    return (data || []).map(mapItem);
+  }
+
+  async addCategory(name, description = '', icon = '📄') {
+    const { data, error } = await getSupabase()
+      .from('categories')
+      .insert({ name, description, icon })
+      .select('id, name, icon, description')
+      .maybeSingle();
+    if (error) {
+      if (error.code === '23505') {
+        throw new Error('Ya existe una categoría con ese nombre');
+      }
+      throw error;
+    }
+    return data;
+  }
+
+  async deleteCategory(id) {
+    const { data: items, error: itemErr } = await getSupabase()
+      .from('knowledge_items')
+      .select('id')
+      .eq('category_id', id)
+      .limit(1);
+    if (itemErr) throw itemErr;
+    if (items && items.length > 0) {
+      throw new Error('La categoría tiene conocimientos; elimínalos primero');
+    }
+
+    const { error } = await getSupabase()
+      .from('categories')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+
+    return { changes: 1 };
+  }
+
   async getByCategory(categoryName, limit = 20) {
     const { data, error } = await getSupabase()
       .from('knowledge_items')
@@ -82,11 +129,40 @@ export class KnowledgeBaseService {
     // El contexto es un extra: si la búsqueda falla por cualquier motivo,
     // el chat debe responder igual (sin contexto), nunca romper la consulta.
     try {
-      const results = await this.search(q, maxItems);
+      const results = await this.search(q, 15);
       if (results.length === 0) return '';
 
+      // Ranking por relevancia real: cuántas palabras del usuario aparecen en
+      // cada ítem (title > keywords > content), antes que por prioridad.
+      const tokens = q.toLowerCase()
+        .replace(/[^\p{L}\p{N} ]/gu, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 2);
+
+      const scored = results.map(item => {
+        const title = (item.title || '').toLowerCase();
+        const keywords = (item.keywords || '').toLowerCase();
+        const content = (item.content || '').toLowerCase();
+        let score = 0;
+        for (const t of tokens) {
+          if (title.includes(t)) score += 3;
+          else if (keywords.includes(t)) score += 2.5;
+          else if (content.includes(t)) score += 2;
+        }
+        return { item, score };
+      });
+
+      scored.sort((a, b) =>
+        b.score - a.score ||
+        (b.item.priority || 0) - (a.item.priority || 0) ||
+        new Date(b.item.updated_at) - new Date(a.item.updated_at)
+      );
+
+      const top = scored.filter(s => s.score > 0).slice(0, maxItems).map(s => s.item);
+      if (top.length === 0) return '';
+
       let context = 'INFORMACIÓN RELEVANTE DE LA BASE DE CONOCIMIENTO:\n\n';
-      for (const item of results) {
+      for (const item of top) {
         context += `## ${item.icon || '📄'} ${item.title} (${item.category})\n${item.content}\n\n`;
       }
       return context;
