@@ -12,8 +12,7 @@ no_bundle = true
 compatibility_flags = [
     "nodejs_compat",
     "enable_nodejs_http_modules",
-    "enable_nodejs_http_server_modules",
-    "experimental"
+    "enable_nodejs_http_server_modules"
 ]
 
 # Assets estáticos (frontend) servidos por Cloudflare directamente.
