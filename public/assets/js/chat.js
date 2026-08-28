@@ -158,6 +158,12 @@ function saveAvatar(userId, dataUrl) {
     localStorage.setItem(AVATARS_KEY, JSON.stringify(map));
 }
 
+function setChatBrandTitle() {
+    topbarTitle.innerHTML =
+        '<span class="tt-brand">iA Assistant</span>' +
+        '<span class="tt-version">Ant 2.0</span>';
+}
+
 function renderSidebarAvatar() {
     sidebarAvatar.innerHTML = '';
     sidebarAvatar.textContent = '';
@@ -351,7 +357,7 @@ function updateUIForAuth() {
     if (currentUser) {
         authModal.classList.add('hidden');
         app.classList.remove('hidden');
-        topbarTitle.textContent = 'Chat';
+        setChatBrandTitle();
         topbarUser.textContent = currentUser.username;
         greetingText.textContent = `¡Hola, ${currentUser.fullName || currentUser.username}! ¿En qué te ayudo hoy?`;
         settingsBtn.classList.remove('hidden');
@@ -1068,7 +1074,7 @@ settingsTabs.forEach(btn => btn.addEventListener('click', () => setSettingsTab(b
 
 // ---------------- Ventana de usuarios (admin) ----------------
 adminCloseBtn.addEventListener('click', () => {
-    topbarTitle.textContent = 'Chat';
+    setChatBrandTitle();
     closeOverlay(adminPanel);
 });
 
