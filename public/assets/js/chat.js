@@ -638,9 +638,10 @@ const PM_STAGE_LABEL = {
     por_iniciar: 'Por iniciar',
     en_progreso: 'En progreso',
     en_revision: 'En revisión',
-    finalizado_sin_errores: 'Finalizado sin errores'
+    finalizado_sin_errores: 'Finalizado sin errores',
+    por_corregir: 'Por corregir'
 };
-const PM_STAGES = ['por_iniciar', 'en_progreso', 'en_revision', 'finalizado_sin_errores'];
+const PM_STAGES = ['por_iniciar', 'en_progreso', 'en_revision', 'finalizado_sin_errores', 'por_corregir'];
 
 let pmProjects = [];
 let editingProjectId = null;

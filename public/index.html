@@ -308,8 +308,17 @@
                                 </div>
                                 <div class="pm-column-body" data-drop="finalizado_sin_errores"></div>
                             </div>
+                            <div class="pm-column pm-column-corrected" data-stage="por_corregir">
+                                <div class="pm-column-head">
+                                    <strong>Por corregir</strong>
+                                    <span class="pm-column-count"></span>
+                                </div>
+                                <div class="pm-column-body" data-drop="por_corregir"></div>
+                            </div>
                         </div>
-                        <button type="button" class="btn btn-secondary btn-small" id="pmAddTaskBtn">+ Tarea</button>
+                        <div class="pm-detail-actions-top">
+                            <button type="button" class="btn btn-secondary btn-small" id="pmAddTaskBtn">+ Tarea</button>
+                        </div>
                         <p id="pmDetailMsg" class="admin-msg"></p>
                     </div>
                 </div>
@@ -688,6 +697,7 @@
                                         <option value="en_progreso">En progreso</option>
                                         <option value="en_revision">En revisión</option>
                                         <option value="finalizado_sin_errores">Finalizado sin errores</option>
+                                        <option value="por_corregir">Por corregir</option>
                                     </select>
                                 </div>
                                 <div class="form-group">

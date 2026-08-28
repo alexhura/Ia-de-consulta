@@ -1,7 +1,7 @@
 import { getSupabase } from './db.js';
 
 // Pipeline de tareas (etapas del PM)
-export const PM_STAGES = ['por_iniciar', 'en_progreso', 'en_revision', 'finalizado_sin_errores'];
+export const PM_STAGES = ['por_iniciar', 'en_progreso', 'en_revision', 'finalizado_sin_errores', 'por_corregir'];
 export const PM_STATUSES = ['pendiente', 'en_progreso', 'completado'];
 export const PM_PRIORITIES = ['baja', 'media', 'alta'];
 
