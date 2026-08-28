@@ -19,7 +19,6 @@ data/
 # Build
 dist/
 build/
-public/_worker.js
 
 # IDE
 .vscode/
