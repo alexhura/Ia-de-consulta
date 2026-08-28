@@ -22,7 +22,6 @@ const historyBtn = document.getElementById('historyBtn');
 const newChatBtn = document.getElementById('newChatBtn');
 const logoBtn = document.getElementById('logoBtn');
 const topbarTitle = document.getElementById('topbarTitle');
-const topbarUser = document.getElementById('topbarUser');
 
 // Notificaciones DOM
 const bellWrap = document.getElementById('bellWrap');
@@ -421,7 +420,6 @@ function updateUIForAuth() {
         authModal.classList.add('hidden');
         app.classList.remove('hidden');
         setChatBrandTitle();
-        topbarUser.textContent = currentUser.username;
         greetingText.textContent = `¡Hola, ${currentUser.fullName || currentUser.username}! ¿En qué te ayudo hoy?`;
         settingsBtn.classList.remove('hidden');
         pmBtn.classList.toggle('hidden', !canUsePM());
@@ -710,12 +708,12 @@ function pmProjectCard(p) {
 }
 
 function renderPMProjects() {
+    document.querySelectorAll('.pm-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin()));
     if (pmProjects.length === 0) {
         pmGrid.innerHTML = '<p class="pm-tasks-empty">No hay proyectos todavía. Crea el primero con "+ Proyecto".</p>';
         return;
     }
     pmGrid.innerHTML = pmProjects.map(pmProjectCard).join('');
-    document.querySelectorAll('.pm-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin()));
 }
 
 async function loadPMProjects() {
@@ -735,12 +733,47 @@ async function loadPMProjects() {
     }
 }
 
+let pmPollTimer = null;
+
+function startPMPolling() {
+    if (pmPollTimer) return;
+    pmPollTimer = setInterval(async () => {
+        if (!pmView.classList.contains('active')) {
+            stopPMPolling();
+            return;
+        }
+        try {
+            const data = await apiRequest('/api/pm/projects');
+            const fresh = data.projects || [];
+            const changed = JSON.stringify(fresh) !== JSON.stringify(pmProjects);
+            if (changed) {
+                pmProjects = fresh;
+                renderPMProjects();
+                if (pmDetailView.classList.contains('active')) {
+                    const cur = pmProjects.find(p => p.id === openProjectId);
+                    if (cur) renderProjectDetail(cur); else closeProjectDetail();
+                }
+            }
+        } catch (e) {
+            // Silencioso; se reintentará en el siguiente ciclo
+        }
+    }, 5000);
+}
+
+function stopPMPolling() {
+    if (pmPollTimer) {
+        clearInterval(pmPollTimer);
+        pmPollTimer = null;
+    }
+}
+
 function openPM() {
     if (!canUsePM()) return;
     chatView.classList.remove('active');
     pmView.classList.add('active');
     closeProjectDetail();
     loadPMProjects();
+    startPMPolling();
 }
 
 function openProjectForm(projectId) {
@@ -1215,6 +1248,7 @@ pmView.addEventListener('click', onPMClick);
 
 // ---------------- Chat ----------------
 function showChat() {
+    stopPMPolling();
     pmView.classList.remove('active');
     chatView.classList.add('active');
     closeOverlay(adminPanel);
@@ -1229,6 +1263,7 @@ function showChat() {
 }
 
 function showHero() {
+    stopPMPolling();
     pmView.classList.remove('active');
     chatView.classList.add('active');
     closeOverlay(pmTaskDetailWindow);
