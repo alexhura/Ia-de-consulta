@@ -996,16 +996,14 @@ function pmTaskCard(t) {
         </div>`;
     return `
         <div class="pm-kanban-card${t.status === 'finalizado_sin_errores' ? ' pm-done' : ''} draggable="true" data-task-id="${t.id}" data-stage="${t.status}">
-            <div class="pm-task-top">
-                <div class="pm-task-avatars">${avatarsHtml}</div>
-                <div class="pm-task-title">${escapeHtml(t.title)}</div>
-            </div>
+            <div class="pm-task-title">${escapeHtml(t.title)}</div>
             <div class="pm-task-meta">
                 ${due}
                 <span class="pm-priority pm-priority-${t.priority}">${PM_PRIORITY_LABEL[t.priority] || t.priority}</span>
                 ${corr}
             </div>
-            <div class="pm-task-actions">
+            <div class="pm-task-bottom">
+                <div class="pm-task-avatars">${avatarsHtml}</div>
                 <button type="button" class="pm-advance" data-action="pm-advance" data-id="${t.id}" title="Avanzar a la siguiente etapa">→</button>
             </div>
         </div>`;
