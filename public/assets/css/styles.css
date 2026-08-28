@@ -822,10 +822,6 @@ body::before {
     max-width: 380px;
 }
 
-.profile-window .window-head {
-    justify-content: flex-end;
-}
-
 .head-actions {
     display: flex;
     gap: 10px;
@@ -864,13 +860,6 @@ body::before {
     display: flex;
     flex-direction: column;
     align-items: center;
-}
-
-.profile-title {
-    color: #a1a1aa;
-    font-family: 'EB Garamond', Georgia, serif;
-    font-size: 17px;
-    margin: 0 0 10px;
 }
 
 .profile-avatar-wrap {
