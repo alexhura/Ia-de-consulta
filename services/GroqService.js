@@ -18,9 +18,19 @@ export class GroqService {
       });
     }
     this.model = config.groq.model;
+    this.visionModel = config.groq.visionModel;
+    this.whisperModel = config.groq.whisperModel;
   }
 
-  async chat(userMessage, context = '', conversationHistory = []) {
+  buildUserContent(userMessage, image) {
+    if (!image) return userMessage;
+    return [
+      { type: 'text', text: userMessage },
+      { type: 'image_url', image_url: { url: image } }
+    ];
+  }
+
+  async chat(userMessage, context = '', conversationHistory = [], image = null) {
     if (!this.client) {
       return 'El servicio de IA no esta configurado. Por favor configura GROQ_API_KEY en .env';
     }
@@ -37,12 +47,12 @@ export class GroqService {
         })),
         {
           role: 'user',
-          content: userMessage
+          content: this.buildUserContent(userMessage, image)
         }
       ];
 
       const completion = await this.client.chat.completions.create({
-        model: this.model,
+        model: image ? this.visionModel : this.model,
         messages,
         temperature: 0.7,
         max_tokens: 2048,
@@ -68,7 +78,7 @@ export class GroqService {
     }
   }
 
-  async chatStream(userMessage, context = '', conversationHistory = [], onChunk) {
+  async chatStream(userMessage, context = '', conversationHistory = [], onChunk, image = null) {
     if (!this.client) {
       onChunk('El servicio de IA no esta configurado.');
       return;
@@ -86,12 +96,12 @@ export class GroqService {
         })),
         {
           role: 'user',
-          content: userMessage
+          content: this.buildUserContent(userMessage, image)
         }
       ];
 
       const stream = await this.client.chat.completions.create({
-        model: this.model,
+        model: image ? this.visionModel : this.model,
         messages,
         temperature: 0.7,
         max_tokens: 2048,
@@ -109,5 +119,35 @@ export class GroqService {
       console.error('Error en Groq Stream:', error.message);
       onChunk('Error al generar respuesta.');
     }
+  }
+
+  // Transcribe audio (por dictado) usando Whisper de Groq.
+  // audioBase64: cadena base64 sin prefijo "data:".
+  async transcribe(audioBase64, mime = 'audio/webm') {
+    if (!this.client) throw new Error('Groq no configurado');
+
+    const binary = atob(audioBase64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+    const ext = (mime.match(/audio\/(\w+)/) || [])[1] || 'webm';
+    const form = new FormData();
+    form.append('model', this.whisperModel);
+    form.append('file', new Blob([bytes], { type: mime }), `audio.${ext}`);
+
+    const response = await fetch(`${config.groq.baseUrl}/audio/transcriptions`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${config.groq.apiKey}` },
+      body: form
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error?.message || `Error al transcribir (${response.status})`);
+    }
+    if (!data.text || !data.text.trim()) {
+      throw new Error('No se detectó voz en el audio. Intenta de nuevo.');
+    }
+    return data.text.trim();
   }
 }

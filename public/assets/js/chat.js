@@ -45,6 +45,11 @@ const messageInput = document.getElementById('messageInput');
 const sendButton = document.getElementById('sendButton');
 const chatInput = document.getElementById('chatInput');
 const chatSendBtn = document.getElementById('chatSendBtn');
+const chatMicBtn = document.getElementById('chatMicBtn');
+const chatImgBtn = document.getElementById('chatImgBtn');
+const chatFileInput = document.getElementById('chatFileInput');
+const chatAttachments = document.getElementById('chatAttachments');
+const chatStatus = document.getElementById('chatStatus');
 const actionBtns = document.querySelectorAll('.action-btn');
 
 // Admin windows DOM
@@ -70,6 +75,14 @@ const historyMsg = document.getElementById('historyMsg');
 let conversationHistory = [];
 let activeConvId = null;
 let editingUserId = null;
+
+// Adjuntos y dictado
+let pendingImage = null;
+let mediaRecorder = null;
+let mediaStream = null;
+let micChunks = [];
+let micRecording = false;
+let micTimer = null;
 
 const HISTORY_KEY_PREFIX = 'ia_chat_history_';
 
@@ -99,6 +112,137 @@ function initials(user) {
     const name = (user.fullName || user.username || '?').trim();
     const parts = name.split(/\s+/);
     return ((parts[0][0] || '') + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+// ---------------- Adjuntar imágenes ----------------
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+function resizeImage(file, maxDim = 1400, quality = 0.82) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            const w = Math.round(img.width * scale);
+            const h = Math.round(img.height * scale);
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            URL.revokeObjectURL(url);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+        img.src = url;
+    });
+}
+
+function renderAttachment() {
+    chatAttachments.innerHTML = '';
+    if (!pendingImage) {
+        chatAttachments.classList.add('hidden');
+        return;
+    }
+    const el = document.createElement('div');
+    el.className = 'chat-attachment';
+    el.innerHTML = `<img src="${pendingImage}" alt="Adjunto"><button class="att-remove" title="Quitar imagen">&times;</button>`;
+    el.querySelector('.att-remove').addEventListener('click', () => {
+        pendingImage = null;
+        renderAttachment();
+    });
+    chatAttachments.appendChild(el);
+    chatAttachments.classList.remove('hidden');
+}
+
+function setChatStatus(msg, isRec = false) {
+    if (chatStatus) {
+        chatStatus.textContent = msg || '';
+        chatStatus.classList.toggle('rec', !!isRec);
+    }
+}
+
+// ---------------- Dictado por voz ----------------
+async function toggleMic() {
+    if (micRecording) { stopMic(); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setChatStatus('Tu navegador no soporta dictado por voz');
+        return;
+    }
+    try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+        setChatStatus('No hay micrófono o falta permiso');
+        return;
+    }
+    micChunks = [];
+    mediaRecorder = new MediaRecorder(mediaStream);
+    mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) micChunks.push(e.data); };
+    mediaRecorder.onstop = handleMicStop;
+    mediaRecorder.start();
+    micRecording = true;
+    chatMicBtn.classList.add('rec');
+    chatMicBtn.title = 'Detener dictado';
+    chatInput.placeholder = 'Escuchando...';
+    setChatStatus('Grabando...', true);
+    micTimer = setTimeout(() => { if (micRecording) stopMic(); }, 60000);
+}
+
+function stopMic() {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+    clearTimeout(micTimer);
+    try { mediaRecorder.stop(); } catch (e) {}
+}
+
+function handleMicStop() {
+    const tracks = mediaStream ? mediaStream.getTracks() : [];
+    tracks.forEach(t => t.stop());
+    mediaStream = null;
+    micRecording = false;
+    chatMicBtn.classList.remove('rec');
+    chatMicBtn.title = 'Dictar por voz';
+    chatInput.placeholder = 'Escribe tu mensaje...';
+
+    const mime = (mediaRecorder && mediaRecorder.mimeType) || 'audio/webm';
+    const blob = new Blob(micChunks, { type: mime });
+    mediaRecorder = null;
+    if (micChunks.length === 0 || blob.size < 100) {
+        setChatStatus('Audio demasiado corto, intenta de nuevo');
+        return;
+    }
+    transcribeAudio(blob);
+}
+
+async function transcribeAudio(blob) {
+    let b64;
+    try { b64 = await blobToBase64(blob); }
+    catch (e) { setChatStatus('Error leyendo el audio'); return; }
+
+    setChatStatus('Transcribiendo...');
+    chatMicBtn.disabled = true;
+    try {
+        const data = await apiRequest('/api/chat/transcribe', {
+            method: 'POST',
+            body: JSON.stringify({ audio: b64, mime: blob.type })
+        });
+        if (data.success && data.text) {
+            chatInput.value = data.text;
+            chatInput.focus();
+            setChatStatus('');
+        } else {
+            setChatStatus(data.error || 'No se pudo transcribir el audio');
+        }
+    } catch (e) {
+        setChatStatus('Error al transcribir: ' + e.message);
+    } finally {
+        chatMicBtn.disabled = false;
+    }
 }
 
 function formatDate(iso) {
@@ -239,18 +383,29 @@ function showHero() {
     chatContainer.innerHTML = '';
     conversationHistory = [];
     activeConvId = null;
+    pendingImage = null;
+    renderAttachment();
     messageInput.value = '';
     messageInput.focus();
 }
 
-function addMessage(content, role) {
+function addMessage(content, role, image) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}`;
-    messageDiv.innerHTML = `<div class="message-content">${escapeHtml(content)}</div>`;
+    if (role === 'assistant') {
+        messageDiv.innerHTML = `<img class="msg-avatar" src="/assets/images/avatar-iA.gif" alt="IA"><div class="message-content">${escapeHtml(content)}</div>`;
+    } else if (role === 'user') {
+        const imgHtml = image
+            ? `<img class="msg-image" src="${image}" alt="Imagen adjunta">`
+            : '';
+        messageDiv.innerHTML = `<div class="message-content">${imgHtml}${escapeHtml(content)}</div><div class="msg-avatar user-avatar">${initials(currentUser)}</div>`;
+    } else {
+        messageDiv.innerHTML = `<div class="message-content">${escapeHtml(content)}</div>`;
+    }
     chatContainer.appendChild(messageDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
 
-    conversationHistory.push({ role, content });
+    conversationHistory.push({ role, content, image });
     if (conversationHistory.length > 12) {
         conversationHistory = conversationHistory.slice(-12);
     }
@@ -259,7 +414,7 @@ function addMessage(content, role) {
 function renderMessages(messages) {
     chatContainer.innerHTML = '';
     conversationHistory = [];
-    messages.forEach(m => addMessage(m.content, m.role));
+    messages.forEach(m => addMessage(m.content, m.role, m.image));
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
@@ -268,6 +423,7 @@ function showTyping() {
     typingDiv.className = 'message assistant';
     typingDiv.id = 'typingIndicator';
     typingDiv.innerHTML = `
+        <img class="msg-avatar" src="/assets/images/avatar-iA.gif" alt="IA">
         <div class="typing-indicator">
             <span class="dot"></span>
             <span class="dot"></span>
@@ -284,10 +440,12 @@ function hideTyping() {
 }
 
 async function sendMessage(message) {
-    if (!message.trim()) return;
+    const image = pendingImage;
+    if (!message.trim() && !image) return;
+    if (!message.trim() && image) message = 'Describe esta imagen';
 
     showChat();
-    addMessage(message, 'user');
+    addMessage(message, 'user', image);
 
     sendButton.disabled = true;
     chatSendBtn.disabled = true;
@@ -297,18 +455,23 @@ async function sendMessage(message) {
     showTyping();
 
     try {
+        const payload = {
+            message,
+            history: conversationHistory.slice(0, -1).map(m => ({ role: m.role, content: m.content }))
+        };
+        if (image) payload.image = image;
+
         const data = await apiRequest('/api/chat', {
             method: 'POST',
-            body: JSON.stringify({
-                message,
-                history: conversationHistory.slice(0, -1)
-            })
+            body: JSON.stringify(payload)
         });
 
         hideTyping();
 
         if (data.success) {
             addMessage(data.response, 'assistant');
+            pendingImage = null;
+            renderAttachment();
         } else {
             addMessage('Lo siento, ocurrió un error. Por favor intenta de nuevo.', 'assistant');
         }
@@ -357,7 +520,7 @@ function persistCurrentConversation() {
         id: activeConvId || Date.now(),
         title: first.content.length > 56 ? first.content.slice(0, 56) + '…' : first.content,
         date: new Date().toISOString(),
-        messages: conversationHistory.slice()
+        messages: conversationHistory.slice().map(m => m.image ? { role: m.role, content: m.content } : m)
     };
 
     const idx = list.findIndex(c => String(c.id) === String(entry.id));
@@ -1032,6 +1195,26 @@ async function checkAuth() {
 // ---------------- Event listeners ----------------
 sendButton.addEventListener('click', () => sendMessage(messageInput.value));
 chatSendBtn.addEventListener('click', () => sendMessage(chatInput.value));
+
+chatImgBtn.addEventListener('click', () => chatFileInput.click());
+chatMicBtn.addEventListener('click', toggleMic);
+
+chatFileInput.addEventListener('change', async () => {
+    const file = chatFileInput.files && chatFileInput.files[0];
+    chatFileInput.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        setChatStatus('Solo se permiten archivos de imagen');
+        return;
+    }
+    try {
+        pendingImage = await resizeImage(file);
+        renderAttachment();
+        setChatStatus('');
+    } catch (e) {
+        setChatStatus('No se pudo procesar la imagen');
+    }
+});
 
 messageInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {

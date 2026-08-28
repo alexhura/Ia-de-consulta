@@ -418,6 +418,12 @@ body::before {
 }
 
 .message.user {
+    /* flex + justify-content:flex-end mantiene la burbuja pegada a la derecha;
+       con un bloque normal el contenido quedaba alineado a la izquierda del bloque */
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+    gap: 10px;
     margin-left: auto;
 }
 
@@ -436,6 +442,36 @@ body::before {
     color: #fff;
     border-bottom-right-radius: 6px;
     box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3);
+}
+
+.message.assistant {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.msg-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 2px solid rgba(139, 92, 246, 0.5);
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.25);
+    background: #1c1c1e;
+    margin-top: 2px;
+}
+
+.user-avatar {
+    background: linear-gradient(135deg, #00d4ff 0%, #8b5cf6 100%);
+    border-color: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.35);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .message.assistant .message-content {
@@ -499,8 +535,8 @@ body::before {
 
 .chat-input-container {
     display: flex;
-    align-items: center;
-    gap: 14px;
+    flex-direction: column;
+    gap: 10px;
     background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(20px);
     border-radius: 18px;
@@ -516,6 +552,114 @@ body::before {
 .chat-input-container:focus-within {
     border-color: rgba(0, 212, 255, 0.5);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 30px rgba(0, 212, 255, 0.15);
+}
+
+.chat-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 24px;
+}
+
+.chat-tool-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    color: #a1a1aa;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    flex-shrink: 0;
+}
+
+.chat-tool-btn:hover {
+    background: rgba(0, 212, 255, 0.15);
+    color: #00d4ff;
+}
+
+.chat-tool-btn.rec {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    animation: micPulse 1.5s infinite;
+}
+
+@keyframes micPulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+    70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.chat-tool-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    animation: none;
+}
+
+.chat-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-bottom: 4px;
+}
+
+.chat-attachment {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 212, 255, 0.35);
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.12);
+}
+
+.chat-attachment img {
+    display: block;
+    max-height: 72px;
+    max-width: 110px;
+    object-fit: cover;
+}
+
+.chat-attachment .att-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.chat-attachment .att-remove:hover {
+    background: #ef4444;
+}
+
+.msg-image {
+    display: block;
+    max-width: 100%;
+    max-height: 260px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    object-fit: contain;
+}
+
+.chat-status {
+    font-size: 13px;
+    color: #a1a1aa;
+    text-align: center;
+    min-height: 0;
+}
+
+.chat-status.rec {
+    color: #ef4444;
+    font-weight: 600;
 }
 
 .chat-input-container input {

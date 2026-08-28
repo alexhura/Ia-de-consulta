@@ -16,6 +16,8 @@ export const config = {
   groq: {
     apiKey: process.env.GROQ_API_KEY,
     model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
+    visionModel: process.env.GROQ_VISION_MODEL || 'qwen/qwen3.8-27b',
+    whisperModel: process.env.GROQ_WHISPER_MODEL || 'whisper-large-v3-turbo',
     baseUrl: 'https://api.groq.com/openai/v1'
   },
   

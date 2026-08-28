@@ -25,7 +25,7 @@ app.use(cors({
   origin: config.nodeEnv === 'production' ? config.appUrl : '*',
   credentials: true
 }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '12mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Request logging
@@ -58,7 +58,7 @@ app.use('/api/notifications', notificationRoutes);
 // Chat endpoint (protected)
 app.post('/api/chat', authMiddleware, async (req, res) => {
   try {
-    const { message, history = [] } = req.body;
+    const { message, history = [], image } = req.body;
 
     if (!message || !message.trim()) {
       return res.status(400).json({ 
@@ -74,11 +74,23 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
       });
     }
 
+    // Imagen opcional: data URL de imagen. Se valida tipo y tamaño.
+    let safeImage = null;
+    if (image) {
+      if (typeof image !== 'string' || !/^data:image\/(png|jpeg|webp|gif);base64,/.test(image)) {
+        return res.status(400).json({ success: false, error: 'Imagen inválida' });
+      }
+      if (image.length > 5 * 1024 * 1024) {
+        return res.status(400).json({ success: false, error: 'Imagen demasiado grande (máx 5MB)' });
+      }
+      safeImage = image;
+    }
+
     // Buscar conocimiento relevante
     const context = await kbService.getContextForQuery(message, 6);
 
     // Generar respuesta con Groq
-    const response = await groqService.chat(message.trim(), context, history);
+    const response = await groqService.chat(message.trim(), context, history, safeImage);
 
     res.json({
       success: true,
@@ -134,6 +146,26 @@ app.post('/api/chat/stream', authMiddleware, async (req, res) => {
       res.write(`data: ${JSON.stringify({ error: 'Error generando respuesta' })}\n\n`);
       res.end();
     }
+  }
+});
+
+// Transcripción de audio por dictado (protected)
+app.post('/api/chat/transcribe', authMiddleware, async (req, res) => {
+  try {
+    const { audio, mime } = req.body;
+
+    if (!audio || typeof audio !== 'string') {
+      return res.status(400).json({ success: false, error: 'Audio requerido' });
+    }
+    if (audio.length > 6 * 1024 * 1024) {
+      return res.status(400).json({ success: false, error: 'Audio demasiado largo' });
+    }
+
+    const text = await groqService.transcribe(audio, typeof mime === 'string' && mime ? mime : 'audio/webm');
+    res.json({ success: true, text });
+  } catch (error) {
+    console.error('Error en /api/chat/transcribe:', error.message);
+    res.status(500).json({ success: false, error: error.message || 'Error transcribiendo audio' });
   }
 });
 
