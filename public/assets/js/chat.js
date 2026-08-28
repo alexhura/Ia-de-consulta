@@ -50,6 +50,11 @@ const chatImgBtn = document.getElementById('chatImgBtn');
 const chatFileInput = document.getElementById('chatFileInput');
 const chatAttachments = document.getElementById('chatAttachments');
 const chatStatus = document.getElementById('chatStatus');
+const heroMicBtn = document.getElementById('heroMicBtn');
+const heroImgBtn = document.getElementById('heroImgBtn');
+const heroFileInput = document.getElementById('heroFileInput');
+const heroAttachments = document.getElementById('heroAttachments');
+const heroStatus = document.getElementById('heroStatus');
 const actionBtns = document.querySelectorAll('.action-btn');
 
 // Admin windows DOM
@@ -145,30 +150,47 @@ function resizeImage(file, maxDim = 1400, quality = 0.82) {
 }
 
 function renderAttachment() {
-    chatAttachments.innerHTML = '';
-    if (!pendingImage) {
-        chatAttachments.classList.add('hidden');
-        return;
-    }
-    const el = document.createElement('div');
-    el.className = 'chat-attachment';
-    el.innerHTML = `<img src="${pendingImage}" alt="Adjunto"><button class="att-remove" title="Quitar imagen">&times;</button>`;
-    el.querySelector('.att-remove').addEventListener('click', () => {
-        pendingImage = null;
-        renderAttachment();
+    [chatAttachments, heroAttachments].forEach(container => {
+        container.innerHTML = '';
+        if (!pendingImage) {
+            container.classList.add('hidden');
+            return;
+        }
+        const el = document.createElement('div');
+        el.className = 'chat-attachment';
+        el.innerHTML = `<img src="${pendingImage}" alt="Adjunto"><button class="att-remove" title="Quitar imagen">&times;</button>`;
+        el.querySelector('.att-remove').addEventListener('click', () => {
+            pendingImage = null;
+            renderAttachment();
+        });
+        container.appendChild(el);
+        container.classList.remove('hidden');
     });
-    chatAttachments.appendChild(el);
-    chatAttachments.classList.remove('hidden');
 }
 
 function setChatStatus(msg, isRec = false) {
-    if (chatStatus) {
-        chatStatus.textContent = msg || '';
-        chatStatus.classList.toggle('rec', !!isRec);
-    }
+    [chatStatus, heroStatus].forEach(el => {
+        if (el) {
+            el.textContent = msg || '';
+            el.classList.toggle('rec', !!isRec);
+        }
+    });
 }
 
 // ---------------- Dictado por voz ----------------
+function activeInput() {
+    return heroSection.classList.contains('hidden') ? chatInput : messageInput;
+}
+
+function setMicButtons(rec) {
+    [chatMicBtn, heroMicBtn].forEach(btn => {
+        if (btn) {
+            btn.classList.toggle('rec', rec);
+            btn.title = rec ? 'Detener dictado' : 'Dictar por voz';
+        }
+    });
+}
+
 async function toggleMic() {
     if (micRecording) { stopMic(); return; }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -187,9 +209,8 @@ async function toggleMic() {
     mediaRecorder.onstop = handleMicStop;
     mediaRecorder.start();
     micRecording = true;
-    chatMicBtn.classList.add('rec');
-    chatMicBtn.title = 'Detener dictado';
-    chatInput.placeholder = 'Escuchando...';
+    setMicButtons(true);
+    activeInput().placeholder = 'Escuchando...';
     setChatStatus('Grabando...', true);
     micTimer = setTimeout(() => { if (micRecording) stopMic(); }, 60000);
 }
@@ -205,9 +226,9 @@ function handleMicStop() {
     tracks.forEach(t => t.stop());
     mediaStream = null;
     micRecording = false;
-    chatMicBtn.classList.remove('rec');
-    chatMicBtn.title = 'Dictar por voz';
+    setMicButtons(false);
     chatInput.placeholder = 'Escribe tu mensaje...';
+    messageInput.placeholder = 'Pregúntame sobre cambios, mantenimiento, tiempos, productos...';
 
     const mime = (mediaRecorder && mediaRecorder.mimeType) || 'audio/webm';
     const blob = new Blob(micChunks, { type: mime });
@@ -225,15 +246,15 @@ async function transcribeAudio(blob) {
     catch (e) { setChatStatus('Error leyendo el audio'); return; }
 
     setChatStatus('Transcribiendo...');
-    chatMicBtn.disabled = true;
+    [chatMicBtn, heroMicBtn].forEach(btn => { if (btn) btn.disabled = true; });
     try {
         const data = await apiRequest('/api/chat/transcribe', {
             method: 'POST',
             body: JSON.stringify({ audio: b64, mime: blob.type })
         });
         if (data.success && data.text) {
-            chatInput.value = data.text;
-            chatInput.focus();
+            activeInput().value = data.text;
+            activeInput().focus();
             setChatStatus('');
         } else {
             setChatStatus(data.error || 'No se pudo transcribir el audio');
@@ -241,7 +262,7 @@ async function transcribeAudio(blob) {
     } catch (e) {
         setChatStatus('Error al transcribir: ' + e.message);
     } finally {
-        chatMicBtn.disabled = false;
+        [chatMicBtn, heroMicBtn].forEach(btn => { if (btn) btn.disabled = false; });
     }
 }
 
@@ -1196,12 +1217,16 @@ async function checkAuth() {
 sendButton.addEventListener('click', () => sendMessage(messageInput.value));
 chatSendBtn.addEventListener('click', () => sendMessage(chatInput.value));
 
-chatImgBtn.addEventListener('click', () => chatFileInput.click());
-chatMicBtn.addEventListener('click', toggleMic);
+function bindImagePicker(btn, fileInput) {
+    btn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files && fileInput.files[0];
+        fileInput.value = '';
+        handleFilePick(file);
+    });
+}
 
-chatFileInput.addEventListener('change', async () => {
-    const file = chatFileInput.files && chatFileInput.files[0];
-    chatFileInput.value = '';
+async function handleFilePick(file) {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
         setChatStatus('Solo se permiten archivos de imagen');
@@ -1214,7 +1239,12 @@ chatFileInput.addEventListener('change', async () => {
     } catch (e) {
         setChatStatus('No se pudo procesar la imagen');
     }
-});
+}
+
+bindImagePicker(chatImgBtn, chatFileInput);
+bindImagePicker(heroImgBtn, heroFileInput);
+chatMicBtn.addEventListener('click', toggleMic);
+heroMicBtn.addEventListener('click', toggleMic);
 
 messageInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
