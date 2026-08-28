@@ -989,8 +989,13 @@ function pmTaskCard(t) {
         ? `<span class="pm-due ${t.status === 'finalizado_sin_errores' ? '' : new Date(t.due_date + 'T23:59:59') < new Date() ? 'overdue' : ''}">📅 ${escapeHtml(fmtDate(t.due_date))}</span>`
         : '';
     const corr = t.corrections > 0 ? `<span class="pm-corr" title="Rechazada por errores ${t.corrections} ${t.corrections === 1 ? 'vez' : 'veces'}">Por corregir</span>` : '';
+    const avatarsHtml = `
+        <div class="pm-avatars-stack">
+            ${pmPeopleAvatar(t.assigned_to, t.assigned_name, 'sm')}
+            ${pmPeopleAvatar(t.owner_id, t.owner_name, 'sm')}
+        </div>`;
     return `
-        <div class="pm-kanban-card${t.status === 'finalizado_sin_errores' ? ' pm-done' : ''} draggable="true" data-task-id="${t.id}">
+        <div class="pm-kanban-card${t.status === 'finalizado_sin_errores' ? ' pm-done' : ''} draggable="true" data-task-id="${t.id}" data-stage="${t.status}">
             <div class="pm-task-title">${escapeHtml(t.title)}</div>
             <div class="pm-task-meta">
                 ${due}
@@ -998,8 +1003,7 @@ function pmTaskCard(t) {
                 ${corr}
             </div>
             <div class="pm-task-people">
-                <span class="pm-people-label">D: ${pmPeopleAvatar(t.assigned_to, t.assigned_name, 'sm')}</span>
-                <span class="pm-people-label">O: ${pmPeopleAvatar(t.owner_id, t.owner_name, 'sm')}</span>
+                ${avatarsHtml}
                 <button type="button" class="pm-advance" data-action="pm-advance" data-id="${t.id}" title="Avanzar a la siguiente etapa">→</button>
             </div>
         </div>`;
@@ -1034,8 +1038,31 @@ function moveTaskTo(id, stage) {
         return;
     }
     apiRequest(`/api/pm/tasks/${id}`, { method: 'PUT', body: JSON.stringify({ status: stage }) })
-        .then(() => loadPMProjects())
+        .then(() => {
+            if (stage === 'en_revision') {
+                triggerRevisionCelebration(id);
+            }
+            loadPMProjects();
+        })
         .catch(err => { pmDetailMsg.textContent = err.message; });
+}
+
+function triggerRevisionCelebration(taskId) {
+    const card = pmPipeline.querySelector(`.pm-kanban-card[data-task-id="${taskId}"]`);
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const pipelineRect = pmPipeline.getBoundingClientRect();
+    const x = rect.left + rect.width / 2 - pipelineRect.left;
+    const y = rect.top + rect.height / 2 - pipelineRect.top;
+
+    const el = document.createElement('div');
+    el.className = 'pm-revision-celebration';
+    el.textContent = '¡Estás a un paso de concluir tu tarea!';
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    pmPipeline.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('animate'));
+    setTimeout(() => el.remove(), 2800);
 }
 
 // Drag & drop entre columnas
