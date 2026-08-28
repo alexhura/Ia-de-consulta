@@ -1,9 +1,11 @@
-// Carga .env solo al correr en Node local (dev).
-// En Cloudflare preview/producción las variables vienen del entorno
-// (dotenv mete un require() dinámico que workerd no soporta).
-if (process.env.NODE_ENV !== 'production') {
+// Intenta cargar .env solo cuando corre bajo Node.js con ese archivo.
+// En Cloudflare la importación falla (sin dotenv) y se ignora silenciosamente:
+// ahí las variables vienen del entorno del Worker.
+try {
   const { config: loadEnv } = await import('dotenv');
   loadEnv();
+} catch (e) {
+  // sin dotenv o sin .env: se usan las variables de entorno del entorno
 }
 
 export const config = {

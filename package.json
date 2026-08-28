@@ -6,8 +6,10 @@
   "type": "module",
   "scripts": {
     "start": "node local.js",
-    "build:cf": "node scripts/build-cf.mjs",
     "dev": "node --watch local.js",
+    "build:cf": "node scripts/build-cf.mjs",
+    "dev:cf": "npm run build:cf && wrangler dev",
+    "deploy": "npm run build:cf && wrangler deploy",
     "test": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {

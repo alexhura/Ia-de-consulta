@@ -1,6 +1,7 @@
-// Entry point de Cloudflare Workers/Pages.
+// Entry point de Cloudflare Workers + Static Assets.
 // server.js ya ejecuta app.listen(config.port) al importarse;
 // aquí conectamos Express al runtime de Workers con cloudflare:node.
+import { httpServerHandler } from 'cloudflare:node';
 import { config } from '../config/index.js';
 import { app, bootstrap } from '../server.js';
 
@@ -23,19 +24,14 @@ function ensureReady() {
   return initPromise;
 }
 
-// Import 'cloudflare:node' de forma perezosa: si los compat flags no están
-// configurados en el proyecto Pages, capturamos el error y respondemos JSON
-// en vez de un 500 vacío.
-let handlerPromise = null;
-function getExpressHandler() {
-  if (!handlerPromise) {
-    handlerPromise = (async () => {
-      const { httpServerHandler } = await import('cloudflare:node');
-      const handler = httpServerHandler({ port: config.port });
-      return typeof handler === 'function' ? handler : handler.fetch;
-    })();
-  }
-  return handlerPromise;
+const expressHandler = httpServerHandler({ port: config.port });
+
+// En algunos runtimes httpServerHandler devuelve una función fetch handler;
+// en otros un objeto con la propiedad fetch. Soportamos ambos.
+function callExpress(request, env, ctx) {
+  return typeof expressHandler === 'function'
+    ? expressHandler(request, env, ctx)
+    : expressHandler.fetch(request, env, ctx);
 }
 
 export default {
@@ -47,12 +43,10 @@ export default {
     }
 
     try {
-      const handle = await getExpressHandler();
-      if (url.pathname === '/api/health') {
-        return handle(request, env, ctx);
+      if (url.pathname !== '/api/health') {
+        await ensureReady();
       }
-      await ensureReady();
-      return handle(request, env, ctx);
+      return callExpress(request, env, ctx);
     } catch (error) {
       console.error('[worker] Error:', error && error.stack ? error.stack : String(error));
       return json(500, { success: false, error: (error && error.message) || String(error) });

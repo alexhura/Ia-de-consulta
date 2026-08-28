@@ -14,7 +14,7 @@ await build({
   format: 'esm',
   platform: 'node',
   target: 'es2022',
-  outfile: 'public/_worker.js',
+  outfile: 'dist/worker.js',
   banner: { js: BANNER },
   external: [
     'cloudflare:*',
@@ -32,4 +32,4 @@ await build({
   logLevel: 'info'
 });
 
-console.log('✅ Worker generado en public/_worker.js');
+console.log('✅ Worker generado en dist/worker.js');
