@@ -4,6 +4,7 @@ import { config } from './config/index.js';
 import { initDatabase } from './services/db.js';
 import { GroqService } from './services/GroqService.js';
 import { KnowledgeBaseService } from './services/KnowledgeBaseService.js';
+import { detectPlatform, extractUrl } from './services/siteDetectorService.js';
 import authRoutes, { authMiddleware } from './routes/auth.js';
 import notificationRoutes from './routes/notifications.js';
 
@@ -87,7 +88,28 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
     }
 
     // Buscar conocimiento relevante
-    const context = await kbService.getContextForQuery(message, 8);
+    let context = await kbService.getContextForQuery(message, 8);
+
+    // Detección de plataforma: si el usuario manda una URL (en texto o dentro
+    // de una imagen), el servidor inspecciona el sitio y decide si es apto
+    // para migrar/trabajar (WordPress o HTML puro = sí; otro CMS/constructor = no).
+    let platformUrl = extractUrl(message);
+    if (!platformUrl && safeImage) {
+      try {
+        const extracted = await groqService.extractUrlFromImage(safeImage);
+        platformUrl = extractUrl(extracted);
+      } catch (err) {
+        console.error('Error extrayendo URL de la imagen:', err.message);
+      }
+    }
+
+    let platformInfo = null;
+    if (platformUrl) {
+      platformInfo = await detectPlatform(platformUrl);
+      if (platformInfo && platformInfo.summary) {
+        context += (context ? '\n\n' : '') + platformInfo.summary;
+      }
+    }
 
     // Generar respuesta con Groq
     const response = await groqService.chat(message.trim(), context, history, safeImage);
@@ -96,7 +118,12 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
       success: true,
       response,
       timestamp: new Date().toISOString(),
-      contextUsed: context.length > 0
+      contextUsed: context.length > 0,
+      platform: platformInfo ? {
+        url: platformInfo.url,
+        platform: platformInfo.platform,
+        apta: platformInfo.apta
+      } : null
     });
 
   } catch (error) {

@@ -121,6 +121,29 @@ export class GroqService {
     }
   }
 
+  // Pide al modelo de visión que extraiga la URL de una página web visible
+  // en la imagen (p.ej. captura donde aparece la dirección del sitio).
+  async extractUrlFromImage(image) {
+    if (!this.client) throw new Error('Groq no configurado');
+    const res = await this.client.chat.completions.create({
+      model: this.visionModel,
+      messages: [
+        {
+          role: 'system',
+          content: 'Eres un extractor de URLs. Lee la imagen y devuelve SOLO la URL de una página web que aparezca visible en ella (una URL de un sitio, no un buscador genérico). Si no ves ninguna URL clara, responde exactamente la palabra: ninguno'
+        },
+        {
+          role: 'user',
+          content: this.buildUserContent('¿Qué URL de una página web aparece en esta imagen? Responde solo la URL.', image)
+        }
+      ],
+      temperature: 0,
+      max_tokens: 220,
+      stream: false
+    });
+    return (res.choices[0]?.message?.content || '').trim();
+  }
+
   // Transcribe audio (por dictado) usando Whisper de Groq.
   // audioBase64: cadena base64 sin prefijo "data:".
   async transcribe(audioBase64, mime = 'audio/webm') {
