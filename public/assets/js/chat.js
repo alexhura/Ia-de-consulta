@@ -89,8 +89,7 @@ const profileLogoutBtn = document.getElementById('profileLogoutBtn');
 
 // Project Manager DOM
 const pmBtn = document.getElementById('pmBtn');
-const pmPanel = document.getElementById('pmPanel');
-const pmCloseBtn = document.getElementById('pmCloseBtn');
+const pmView = document.getElementById('pmView');
 const pmList = document.getElementById('pmList');
 const pmMsg = document.getElementById('pmMsg');
 const addProjectBtn = document.getElementById('addProjectBtn');
@@ -671,10 +670,8 @@ async function loadPMProjects() {
 
 function openPM() {
     if (!canUsePM()) return;
-    closeOverlay(historyPanel);
-    closeOverlay(adminPanel);
-    closeOverlay(editWindow);
-    openOverlay(pmPanel);
+    chatView.classList.remove('active');
+    pmView.classList.add('active');
     loadPMProjects();
 }
 
@@ -714,8 +711,6 @@ function openTaskForm(projectId, taskId) {
 }
 
 pmBtn.addEventListener('click', openPM);
-
-pmCloseBtn.addEventListener('click', () => closeOverlay(pmPanel));
 
 addProjectBtn.addEventListener('click', () => openProjectForm(null));
 
@@ -807,10 +802,11 @@ pmList.addEventListener('change', async (e) => {
 
 // ---------------- Chat ----------------
 function showChat() {
+    pmView.classList.remove('active');
+    chatView.classList.add('active');
     closeOverlay(adminPanel);
     closeOverlay(editWindow);
     closeOverlay(historyPanel);
-    closeOverlay(pmPanel);
     closeOverlay(pmFormWindow);
     closeOverlay(pmTaskWindow);
     heroSection.classList.add('hidden');
@@ -819,6 +815,8 @@ function showChat() {
 }
 
 function showHero() {
+    pmView.classList.remove('active');
+    chatView.classList.add('active');
     persistCurrentConversation();
     heroSection.classList.remove('hidden');
     chatSection.classList.remove('active');

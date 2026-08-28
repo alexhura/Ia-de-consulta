@@ -221,6 +221,21 @@
                 </div>
             </section>
 
+            <!-- Project Manager view (admin y Desarrollo) -->
+            <section class="view" id="pmView">
+                <div class="pm-head">
+                    <div>
+                        <h2 class="pm-title">📋 Project Manager</h2>
+                        <p class="pm-subtitle">Proyectos y tareas del equipo</p>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-small" id="addProjectBtn">+ Proyecto</button>
+                </div>
+                <div class="pm-view-body">
+                    <div id="pmList" class="pm-list"></div>
+                    <p id="pmMsg" class="admin-msg"></p>
+                </div>
+            </section>
+
             <!-- Settings window (tabs: Notificaciones / Usuarios / Anuncios) -->
             <div id="adminPanel" class="window-overlay hidden">
                 <div class="window admin-window">
@@ -493,23 +508,6 @@
                         </div>
                     </div>
                     <input type="file" id="avatarFileInput" accept="image/*" hidden>
-                </div>
-            </div>
-
-            <!-- Project Manager window -->
-            <div id="pmPanel" class="window-overlay hidden">
-                <div class="window pm-window">
-                    <div class="window-head">
-                        <h2>📋 Project Manager</h2>
-                        <div class="head-actions">
-                            <button type="button" class="btn btn-primary btn-small" id="addProjectBtn">+ Proyecto</button>
-                            <button class="window-close" id="pmCloseBtn" title="Cerrar">&times;</button>
-                        </div>
-                    </div>
-                    <div class="window-body">
-                        <div id="pmList" class="pm-list"></div>
-                        <p id="pmMsg" class="admin-msg"></p>
-                    </div>
                 </div>
             </div>
 

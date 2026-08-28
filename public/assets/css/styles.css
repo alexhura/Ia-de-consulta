@@ -1104,14 +1104,41 @@ body::before {
 }
 
 /* ---- Project Manager ---- */
-.pm-window,
 .pm-form-window {
-    max-width: 760px;
+    max-width: 520px;
 }
 
-.pm-window .window-body,
 .pm-form-window .window-body {
     display: block;
+}
+
+.pm-head {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 22px 28px;
+}
+
+.pm-title {
+    margin: 0;
+    color: #ffffff;
+    font-family: 'EB Garamond', Georgia, serif;
+    font-size: 26px;
+    font-weight: 500;
+}
+
+.pm-subtitle {
+    margin: 4px 0 0;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.pm-view-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 28px 28px;
 }
 
 .btn-small {
