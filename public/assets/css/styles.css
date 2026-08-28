@@ -1136,29 +1136,6 @@ body::before {
     animation: modalSlideIn 0.3s ease-out;
 }
 
-.modal-close {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    width: 36px;
-    height: 36px;
-    border: none;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 50%;
-    color: #a1a1aa;
-    font-size: 24px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-
-.modal-close:hover {
-    background: rgba(239, 68, 68, 0.1);
-    color: #f87171;
-}
-
 .auth-form {
     display: flex;
     flex-direction: column;
@@ -1187,6 +1164,12 @@ body::before {
 .auth-header p {
     color: #a1a1aa;
     font-size: 14px;
+}
+
+.auth-form form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
 .form-group {

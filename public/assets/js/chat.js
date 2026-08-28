@@ -15,7 +15,6 @@ const ROLE_LABELS = {
 const authModal = document.getElementById('authModal');
 const app = document.getElementById('app');
 const loginFormElement = document.getElementById('loginFormElement');
-const closeModal = document.getElementById('closeModal');
 
 const sidebarAvatar = document.getElementById('sidebarAvatar');
 const settingsBtn = document.getElementById('settingsBtn');
@@ -437,8 +436,6 @@ loginFormElement.addEventListener('submit', async (e) => {
         alert(error.message);
     }
 });
-
-closeModal.addEventListener('click', () => {});
 
 sidebarAvatar.addEventListener('click', openProfile);
 
