@@ -77,6 +77,17 @@ const historyCloseBtn = document.getElementById('historyCloseBtn');
 const historyList = document.getElementById('historyList');
 const historyMsg = document.getElementById('historyMsg');
 
+// Profile DOM
+const profilePanel = document.getElementById('profilePanel');
+const profileAvatar = document.getElementById('profileAvatar');
+const profileName = document.getElementById('profileName');
+const profileUsername = document.getElementById('profileUsername');
+const profileRole = document.getElementById('profileRole');
+const profileMsg = document.getElementById('profileMsg');
+const changeAvatarBtn = document.getElementById('changeAvatarBtn');
+const avatarFileInput = document.getElementById('avatarFileInput');
+const profileLogoutBtn = document.getElementById('profileLogoutBtn');
+
 let conversationHistory = [];
 let activeConvId = null;
 let editingUserId = null;
@@ -120,6 +131,47 @@ function initials(user) {
     const name = (user.fullName || user.username || '?').trim();
     const parts = name.split(/\s+/);
     return ((parts[0][0] || '') + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+// ---------------- Avatar del usuario (local, por dispositivo) ----------------
+const AVATARS_KEY = 'userAvatars';
+
+function getAvatars() {
+    try {
+        return JSON.parse(localStorage.getItem(AVATARS_KEY) || '{}');
+    } catch (e) {
+        return {};
+    }
+}
+
+function avatarFor(userId) {
+    return getAvatars()[userId] || null;
+}
+
+function saveAvatar(userId, dataUrl) {
+    const map = getAvatars();
+    if (dataUrl) {
+        map[userId] = dataUrl;
+    } else {
+        delete map[userId];
+    }
+    localStorage.setItem(AVATARS_KEY, JSON.stringify(map));
+}
+
+function renderSidebarAvatar() {
+    sidebarAvatar.innerHTML = '';
+    sidebarAvatar.textContent = '';
+    if (!currentUser) return;
+    const av = avatarFor(currentUser.id);
+    if (av) {
+        const img = document.createElement('img');
+        img.src = av;
+        img.alt = 'Avatar';
+        img.draggable = false;
+        sidebarAvatar.appendChild(img);
+    } else {
+        sidebarAvatar.textContent = initials(currentUser);
+    }
 }
 
 // ---------------- Adjuntar imágenes ----------------
@@ -290,6 +342,7 @@ function clearAuth() {
     localStorage.removeItem('currentUser');
     closeOverlay(adminPanel);
     closeOverlay(editWindow);
+    closeOverlay(profilePanel);
     closeOverlay(historyPanel);
     updateUIForAuth();
 }
@@ -302,8 +355,8 @@ function updateUIForAuth() {
         topbarUser.textContent = currentUser.username;
         greetingText.textContent = `¡Hola, ${currentUser.fullName || currentUser.username}! ¿En qué te ayudo hoy?`;
         settingsBtn.classList.remove('hidden');
-        sidebarAvatar.textContent = initials(currentUser);
-        sidebarAvatar.title = `${currentUser.fullName || currentUser.username} — Cerrar sesión`;
+        renderSidebarAvatar();
+        sidebarAvatar.title = 'Mi perfil';
         startNotifications();
     } else {
         authModal.classList.remove('hidden');
@@ -381,7 +434,69 @@ loginFormElement.addEventListener('submit', async (e) => {
 
 closeModal.addEventListener('click', () => {});
 
-sidebarAvatar.addEventListener('click', async () => {
+sidebarAvatar.addEventListener('click', openProfile);
+
+// ---------------- Mi perfil ----------------
+function openProfile() {
+    if (!currentUser) return;
+    renderProfileAvatar();
+    profileName.textContent = currentUser.fullName || '—';
+    profileUsername.textContent = '@' + currentUser.username;
+    profileRole.textContent = ROLE_LABELS[currentUser.role] || currentUser.role;
+    profileMsg.textContent = '';
+    profileMsg.classList.remove('error', 'success');
+    openOverlay(profilePanel);
+}
+
+function renderProfileAvatar() {
+    profileAvatar.innerHTML = '';
+    const av = avatarFor(currentUser.id);
+    if (av) {
+        const img = document.createElement('img');
+        img.src = av;
+        img.alt = 'Avatar';
+        profileAvatar.appendChild(img);
+    } else {
+        profileAvatar.textContent = initials(currentUser);
+    }
+}
+
+document.querySelectorAll('[data-close="profilePanel"]').forEach(btn => {
+    btn.addEventListener('click', () => closeOverlay(profilePanel));
+});
+
+profilePanel.addEventListener('click', (e) => {
+    if (e.target === profilePanel) closeOverlay(profilePanel);
+});
+
+changeAvatarBtn.addEventListener('click', () => avatarFileInput.click());
+
+avatarFileInput.addEventListener('change', async () => {
+    const file = avatarFileInput.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        profileMsg.textContent = 'Selecciona un archivo de imagen.';
+        profileMsg.classList.add('error');
+        return;
+    }
+    try {
+        const dataUrl = await resizeImage(file, 200, 0.85);
+        saveAvatar(currentUser.id, dataUrl);
+        currentUser.avatar = dataUrl;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        renderProfileAvatar();
+        renderSidebarAvatar();
+        profileMsg.textContent = '✅ Avatar actualizado';
+        profileMsg.classList.add('success');
+    } catch (err) {
+        profileMsg.textContent = 'No se pudo procesar la imagen.';
+        profileMsg.classList.add('error');
+    } finally {
+        avatarFileInput.value = '';
+    }
+});
+
+profileLogoutBtn.addEventListener('click', async () => {
     try {
         await apiRequest('/api/auth/logout', { method: 'POST' });
     } catch (e) {}
@@ -422,7 +537,11 @@ function addMessage(content, role, image) {
         const imgHtml = image
             ? `<img class="msg-image" src="${image}" alt="Imagen adjunta">`
             : '';
-        messageDiv.innerHTML = `<div class="message-content">${imgHtml}${escapeHtml(content)}</div><div class="msg-avatar user-avatar">${initials(currentUser)}</div>`;
+        const userAv = currentUser ? avatarFor(currentUser.id) : null;
+        const userAvatarHtml = userAv
+            ? `<div class="msg-avatar user-avatar photo"><img src="${userAv}" alt="Avatar"></div>`
+            : `<div class="msg-avatar user-avatar">${currentUser ? initials(currentUser) : ''}</div>`;
+        messageDiv.innerHTML = `<div class="message-content">${imgHtml}${escapeHtml(content)}</div>${userAvatarHtml}`;
     } else {
         messageDiv.innerHTML = `<div class="message-content">${escapeHtml(content)}</div>`;
     }
