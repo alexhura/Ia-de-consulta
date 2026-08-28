@@ -7,8 +7,14 @@ export class GroqService {
       console.warn('GROQ_API_KEY no configurado. El chat no funcionara.');
       this.client = null;
     } else {
+      // En Cloudflare (workerd) el SDK puede resolver un "fetch" de Node.js
+      // (node-fetch) que falla internamente. Forzamos el fetch nativo del
+      // runtime (Workers/Node) y desactivamos el agente HTTP custom.
       this.client = new Groq({
         apiKey: config.groq.apiKey,
+        fetch: (...args) => fetch(...args),
+        httpAgent: false,
+        maxRetries: 2
       });
     }
     this.model = config.groq.model;
@@ -44,9 +50,14 @@ export class GroqService {
         stream: false
       });
 
-      return completion.choices[0]?.message?.content || 'No pude generar una respuesta.';
+      const message = completion.choices[0]?.message || {};
+      // Los modelos razonadores (gpt-oss) entregan la respuesta final en
+      // "content"; si viene vacía usamos "reasoning" como respaldo.
+      return message.content || message.reasoning || 'No pude generar una respuesta.';
     } catch (error) {
       console.error('Error en Groq API:', error.message);
+      console.error('   cause:', error.cause && (error.cause.message || error.cause.name || String(error.cause)));
+      console.error('   stack:', (error.stack || '').split('\n').slice(0, 6).join('\n'));
       if (error.status === 401) {
         return 'Error de autenticacion con Groq. Verifica tu API key.';
       }

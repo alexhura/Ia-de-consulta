@@ -21,8 +21,11 @@ export class KnowledgeBaseService {
   constructor() {}
 
   async search(q, limit = 8) {
+    // Se quitan caracteres no alfanuméricos: '?', '*', '(', ')', etc. rompen
+    // la sintaxis de los filtros or(...) de PostgREST (p.ej. "¿qué", "page?").
     const words = q.toLowerCase()
       .split(/\s+/)
+      .map(w => w.replace(/[^\p{L}\p{N}]/gu, ''))
       .filter(w => w.length > 2);
 
     if (words.length === 0) return [];
@@ -76,14 +79,21 @@ export class KnowledgeBaseService {
   }
 
   async getContextForQuery(q, maxItems = 6) {
-    const results = await this.search(q, maxItems);
-    if (results.length === 0) return '';
+    // El contexto es un extra: si la búsqueda falla por cualquier motivo,
+    // el chat debe responder igual (sin contexto), nunca romper la consulta.
+    try {
+      const results = await this.search(q, maxItems);
+      if (results.length === 0) return '';
 
-    let context = 'INFORMACIÓN RELEVANTE DE LA BASE DE CONOCIMIENTO:\n\n';
-    for (const item of results) {
-      context += `## ${item.icon || '📄'} ${item.title} (${item.category})\n${item.content}\n\n`;
+      let context = 'INFORMACIÓN RELEVANTE DE LA BASE DE CONOCIMIENTO:\n\n';
+      for (const item of results) {
+        context += `## ${item.icon || '📄'} ${item.title} (${item.category})\n${item.content}\n\n`;
+      }
+      return context;
+    } catch (error) {
+      console.error('Error buscando contexto de conocimiento:', error.message);
+      return '';
     }
-    return context;
   }
 
   async addItem(category, title, content, keywords, priority = 0) {
