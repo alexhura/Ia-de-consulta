@@ -25,6 +25,18 @@ const logoBtn = document.getElementById('logoBtn');
 const topbarTitle = document.getElementById('topbarTitle');
 const topbarUser = document.getElementById('topbarUser');
 
+// Notificaciones DOM
+const bellWrap = document.getElementById('bellWrap');
+const bellBtn = document.getElementById('bellBtn');
+const bellBadge = document.getElementById('bellBadge');
+const bellDropdown = document.getElementById('bellDropdown');
+const bellList = document.getElementById('bellList');
+const bellMarkAll = document.getElementById('bellMarkAll');
+const bellEmpty = document.getElementById('bellEmpty');
+const toastContainer = document.getElementById('toastContainer');
+const notifEnabledToggle = document.getElementById('notifEnabledToggle');
+const notifSoundToggle = document.getElementById('notifSoundToggle');
+
 const greetingText = document.getElementById('greetingText');
 const heroSection = document.getElementById('heroSection');
 const chatSection = document.getElementById('chatSection');
@@ -119,14 +131,17 @@ function updateUIForAuth() {
         authModal.classList.add('hidden');
         app.classList.remove('hidden');
         topbarTitle.textContent = 'Chat';
-        topbarUser.textContent = `${currentUser.fullName || currentUser.username} · ${roleLabel(currentUser.role)}`;
+        topbarUser.textContent = currentUser.username;
         greetingText.textContent = `¡Hola, ${currentUser.fullName || currentUser.username}! ¿En qué te ayudo hoy?`;
-        settingsBtn.classList.toggle('hidden', currentUser.role !== 'admin');
+        settingsBtn.classList.remove('hidden');
         sidebarAvatar.textContent = initials(currentUser);
         sidebarAvatar.title = `${currentUser.fullName || currentUser.username} — Cerrar sesión`;
+        startNotifications();
     } else {
         authModal.classList.remove('hidden');
         app.classList.add('hidden');
+        settingsBtn.classList.add('hidden');
+        stopNotifications();
     }
 }
 
@@ -417,21 +432,281 @@ newChatBtn.addEventListener('click', () => {
     showHero();
 });
 
-// ---------------- Ventana de usuarios (admin) ----------------
-function openAdminPanel() {
-    if (!currentUser || currentUser.role !== 'admin') return;
-    topbarTitle.textContent = 'Configuración';
-    closeOverlay(adminPanel);
-    loadUsers();
-    openOverlay(adminPanel);
+// ---------------- Notificaciones ----------------
+const NOTIF_SETTINGS_KEY = 'ia_notif_settings';
+const sessionStartTs = Date.now();
+
+let notifications = [];
+let unreadCount = 0;
+let notifPollTimer = null;
+let notifiedIds = new Set();
+let expandedNotifId = null;
+
+function loadNotifSettings() {
+    try {
+        const s = JSON.parse(localStorage.getItem(NOTIF_SETTINGS_KEY) || '{}');
+        return { enabled: s.enabled !== false, sound: s.sound !== false };
+    } catch (e) {
+        return { enabled: true, sound: true };
+    }
 }
 
+let notifSettings = loadNotifSettings();
+
+function saveNotifSettings() {
+    localStorage.setItem(NOTIF_SETTINGS_KEY, JSON.stringify(notifSettings));
+}
+
+function playNotifSound() {
+    try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        const ctx = new Ctx();
+        [880, 1174].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            const t = ctx.currentTime + i * 0.14;
+            gain.gain.setValueAtTime(0.0001, t);
+            gain.gain.exponentialRampToValueAtTime(0.16, t + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t);
+            osc.stop(t + 0.4);
+        });
+        setTimeout(() => ctx.close().catch(() => {}), 1200);
+    } catch (e) {}
+}
+
+function bellItemPreview(message) {
+    const plain = String(message || '').replace(/[*#_`>]/g, '').replace(/\s+/g, ' ');
+    return plain.length > 140 ? plain.slice(0, 140) + '…' : plain;
+}
+
+function renderBellBadge() {
+    bellBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+    bellBadge.classList.toggle('hidden', unreadCount <= 0);
+    bellBtn.classList.toggle('has-unread', unreadCount > 0);
+}
+
+// silent = true → NO dispara toasts (carga inicial / al abrir el panel)
+async function refreshNotifications({ silent = false } = {}) {
+    if (!currentUser || !notifSettings.enabled) return;
+    try {
+        const data = await apiRequest('/api/notifications');
+        if (!data.success) return;
+
+        const fresh = (data.notifications || []).filter(n => {
+            const t = new Date(n.createdAt).getTime();
+            return t > sessionStartTs && !notifiedIds.has(n.id);
+        });
+
+        notifications = data.notifications || [];
+        unreadCount = data.unreadCount || 0;
+        notifications.forEach(n => notifiedIds.add(n.id));
+        renderBellBadge();
+
+        if (!silent) {
+            fresh.forEach(n => showNotificationToast(n));
+        }
+    } catch (e) {
+        // Silencioso: el polling no debe molestar al usuario
+    }
+}
+
+function showNotificationToast(n) {
+    if (!notifSettings.enabled) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `
+        <div class="toast-title">${escapeHtml(n.title)}</div>
+        <div class="toast-preview">${escapeHtml(bellItemPreview(n.message))}</div>
+    `;
+    toast.addEventListener('click', () => {
+        openNotificationDetail(n.id);
+        dismissToast(toast);
+    });
+    toastContainer.appendChild(toast);
+    if (notifSettings.sound) playNotifSound();
+    setTimeout(() => dismissToast(toast), 6500);
+}
+
+function dismissToast(toast) {
+    if (!toast.parentNode) return;
+    toast.classList.add('out');
+    setTimeout(() => toast.remove(), 320);
+}
+
+function renderBellList() {
+    bellList.innerHTML = '';
+    bellEmpty.classList.toggle('hidden', notifications.length > 0);
+    bellMarkAll.style.display = unreadCount > 0 ? '' : 'none';
+
+    notifications.forEach(n => {
+        const item = document.createElement('div');
+        item.className = 'bell-item' + (n.read ? ' read' : ' unread');
+        item.innerHTML = `
+            <div class="bell-item-head">
+                <span class="bell-item-dot"></span>
+                <span class="bell-item-title">${escapeHtml(n.title)}</span>
+                <span class="bell-item-date">${formatDate(n.createdAt)}</span>
+            </div>
+            ${expandedNotifId === n.id
+                ? `<div class="bell-item-detail">${escapeHtml(n.message)}</div>`
+                : `<div class="bell-item-preview">${escapeHtml(bellItemPreview(n.message))}</div>`}
+        `;
+        item.addEventListener('click', () => {
+            if (expandedNotifId === n.id) {
+                expandedNotifId = null;
+                renderBellList();
+                return;
+            }
+            openNotificationDetail(n.id);
+        });
+        bellList.appendChild(item);
+    });
+}
+
+function openNotificationDetail(id) {
+    expandedNotifId = id;
+    openOverlay(bellDropdown);
+    renderBellList();
+    const target = notifications.find(n => n.id === id);
+    if (target && !target.read) {
+        markNotifsRead([id]);
+    }
+}
+
+function toggleBell() {
+    if (bellDropdown.classList.contains('hidden')) {
+        openOverlay(bellDropdown);
+        refreshNotifications({ silent: true }).then(() => renderBellList());
+    } else {
+        closeOverlay(bellDropdown);
+    }
+}
+
+async function markNotifsRead(ids) {
+    if (!ids || ids.length === 0) return;
+    try {
+        await apiRequest('/api/notifications/read', {
+            method: 'POST',
+            body: JSON.stringify({ ids })
+        });
+    } catch (e) {}
+    ids.forEach(id => {
+        const n = notifications.find(x => x.id === id);
+        if (n && !n.read) {
+            n.read = true;
+            if (unreadCount > 0) unreadCount--;
+        }
+    });
+    renderBellBadge();
+    renderBellList();
+}
+
+bellBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleBell();
+});
+
+bellMarkAll.addEventListener('click', async () => {
+    const unread = notifications.filter(n => !n.read).map(n => n.id);
+    await markNotifsRead(unread);
+});
+
+document.addEventListener('click', (e) => {
+    if (!bellDropdown.classList.contains('hidden') &&
+        !bellDropdown.contains(e.target) &&
+        !bellWrap.contains(e.target)) {
+        closeOverlay(bellDropdown);
+    }
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && currentUser && notifSettings.enabled) {
+        refreshNotifications({ silent: true });
+    }
+});
+
+function startNotifications() {
+    stopNotifications();
+    if (!currentUser) return;
+    bellWrap.classList.toggle('hidden', !notifSettings.enabled);
+    renderBellBadge();
+    if (!notifSettings.enabled) return;
+    refreshNotifications({ silent: true });
+    notifPollTimer = setInterval(() => refreshNotifications({ silent: false }), 30000);
+}
+
+function stopNotifications() {
+    if (notifPollTimer) {
+        clearInterval(notifPollTimer);
+        notifPollTimer = null;
+    }
+    closeOverlay(bellDropdown);
+    bellWrap.classList.add('hidden');
+}
+
+notifEnabledToggle.addEventListener('change', () => {
+    notifSettings.enabled = notifEnabledToggle.checked;
+    saveNotifSettings();
+    if (notifSettings.enabled) {
+        startNotifications();
+    } else {
+        stopNotifications();
+    }
+});
+
+notifSoundToggle.addEventListener('change', () => {
+    notifSettings.sound = notifSoundToggle.checked;
+    saveNotifSettings();
+    if (notifSoundToggle.checked) playNotifSound();
+});
+
+function renderNotifSettings() {
+    notifEnabledToggle.checked = notifSettings.enabled;
+    notifSoundToggle.checked = notifSettings.sound;
+}
+
+// ---------------- Ventana de configuración (tabs) ----------------
+const settingsTabs = document.querySelectorAll('.settings-tab');
+const PANE_TABS = { notifications: 'paneNotifications', users: 'paneUsers', announcements: 'paneAnnouncements' };
+
+function setSettingsTab(tab) {
+    const isAdmin = currentUser && currentUser.role === 'admin';
+    settingsTabs.forEach(btn => {
+        const t = btn.dataset.tab;
+        const adminOnly = t !== 'notifications';
+        btn.classList.toggle('hidden', adminOnly && !isAdmin);
+        btn.classList.toggle('active', t === tab);
+    });
+    Object.keys(PANE_TABS).forEach(key => {
+        document.getElementById(PANE_TABS[key]).classList.toggle('active', key === tab);
+    });
+    renderNotifSettings();
+    if (tab === 'users') loadUsers();
+    if (tab === 'announcements') loadAnnouncements();
+}
+
+function openSettings(tab) {
+    if (!currentUser) return;
+    topbarTitle.textContent = 'Configuración';
+    openOverlay(adminPanel);
+    setSettingsTab(tab || 'notifications');
+}
+
+settingsTabs.forEach(btn => btn.addEventListener('click', () => setSettingsTab(btn.dataset.tab)));
+
+// ---------------- Ventana de usuarios (admin) ----------------
 adminCloseBtn.addEventListener('click', () => {
     topbarTitle.textContent = 'Chat';
     closeOverlay(adminPanel);
 });
 
-settingsBtn.addEventListener('click', openAdminPanel);
+settingsBtn.addEventListener('click', () => openSettings('notifications'));
 
 async function loadUsers() {
     try {
@@ -642,6 +917,98 @@ createUserForm.addEventListener('submit', async (e) => {
         createUserMsg.classList.add('error');
     }
 });
+
+// ---------------- Anuncios (admin) ----------------
+const announcementForm = document.getElementById('announcementForm');
+const annTitle = document.getElementById('annTitle');
+const annMessage = document.getElementById('annMessage');
+const annMsg = document.getElementById('annMsg');
+const annList = document.getElementById('annList');
+const annListMsg = document.getElementById('annListMsg');
+
+announcementForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = annTitle.value.trim();
+    const message = annMessage.value.trim();
+
+    annMsg.textContent = '';
+    annMsg.classList.remove('error', 'success');
+
+    if (!title || !message) {
+        annMsg.textContent = 'Completa el título y el mensaje';
+        annMsg.classList.add('error');
+        return;
+    }
+
+    const targetRoles = Array.from(
+        document.querySelectorAll('#annRolesCheck input:checked')
+    ).map(c => c.value);
+
+    try {
+        const data = await apiRequest('/api/notifications', {
+            method: 'POST',
+            body: JSON.stringify({ title, message, targetRoles })
+        });
+
+        if (data.success) {
+            annMsg.textContent = '✅ Anuncio publicado.';
+            annMsg.classList.add('success');
+            announcementForm.reset();
+            refreshNotifications({ silent: true });
+            loadAnnouncements();
+        } else {
+            annMsg.textContent = data.error || 'Error al publicar';
+            annMsg.classList.add('error');
+        }
+    } catch (error) {
+        annMsg.textContent = error.message;
+        annMsg.classList.add('error');
+    }
+});
+
+function targetLabel(roles) {
+    if (!roles || roles.length === 0) return 'Todos';
+    return roles.map(r => ROLE_LABELS[r] || r).join(', ');
+}
+
+async function loadAnnouncements() {
+    if (!currentUser || currentUser.role !== 'admin') return;
+    try {
+        const data = await apiRequest('/api/notifications/admin');
+        if (!data.success) {
+            annListMsg.textContent = data.error || 'Error obteniendo anuncios';
+            annListMsg.classList.add('error');
+            return;
+        }
+        annListMsg.textContent = '';
+        annListMsg.classList.remove('error');
+        annList.innerHTML = '';
+
+        const list = data.notifications || [];
+        if (list.length === 0) {
+            annListMsg.textContent = 'Aún no has publicado anuncios.';
+            return;
+        }
+
+        list.forEach(n => {
+            const all = !n.targetRoles || n.targetRoles.length === 0;
+            const item = document.createElement('div');
+            item.className = 'ann-item';
+            item.innerHTML = `
+                <div class="ann-item-title">
+                    <strong>${escapeHtml(n.title)}</strong>
+                    <span>${formatDate(n.createdAt)}</span>
+                </div>
+                <div class="ann-item-preview">${escapeHtml(bellItemPreview(n.message))}</div>
+                <span class="ann-target ${all ? 'all' : ''}">${escapeHtml(targetLabel(n.targetRoles))}</span>
+            `;
+            annList.appendChild(item);
+        });
+    } catch (error) {
+        annListMsg.textContent = error.message;
+        annListMsg.classList.add('error');
+    }
+}
 
 // Check auth on load
 async function checkAuth() {

@@ -74,7 +74,26 @@
         <main class="main">
             <header class="topbar">
                 <span class="topbar-title" id="topbarTitle">Chat</span>
-                <span class="topbar-user" id="topbarUser"></span>
+                <div class="topbar-actions">
+                    <span class="topbar-user" id="topbarUser"></span>
+                    <div class="bell-wrap hidden" id="bellWrap">
+                        <button class="bell-btn" id="bellBtn" title="Notificaciones">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                            <span class="bell-badge hidden" id="bellBadge">0</span>
+                        </button>
+                        <div class="bell-dropdown hidden" id="bellDropdown">
+                            <div class="bell-head">
+                                <span>Notificaciones</span>
+                                <button class="bell-markall" id="bellMarkAll">Marcar todas leídas</button>
+                            </div>
+                            <div class="bell-list" id="bellList"></div>
+                            <p class="bell-empty hidden" id="bellEmpty">No hay notificaciones</p>
+                        </div>
+                    </div>
+                </div>
             </header>
 
             <!-- Chat view -->
@@ -157,65 +176,145 @@
                 </div>
             </section>
 
-            <!-- Users window (ventana adicional, solo admin) -->
+            <!-- Settings window (tabs: Notificaciones / Usuarios / Anuncios) -->
             <div id="adminPanel" class="window-overlay hidden">
                 <div class="window admin-window">
                     <div class="window-head">
-                        <h2>⚙ Configuración · Usuarios</h2>
+                        <h2>⚙ Configuración</h2>
                         <button class="window-close" id="adminCloseBtn" title="Cerrar">&times;</button>
                     </div>
-                    <div class="window-body">
-                        <div class="admin-card">
-                            <h3>➕ Crear usuario</h3>
-                            <form id="createUserForm" class="admin-form">
-                                <div class="form-group">
-                                    <label for="newUsername">Usuario</label>
-                                    <input type="text" id="newUsername" required minlength="3" autocomplete="off">
+                    <div class="settings-tabs">
+                        <button class="settings-tab active" data-tab="notifications" id="tabBtnNotifications">
+                            <span class="settings-tab-icon">🔔</span> Notificaciones
+                        </button>
+                        <button class="settings-tab admin-only hidden" data-tab="users">
+                            <span class="settings-tab-icon">👥</span> Usuarios
+                        </button>
+                        <button class="settings-tab admin-only hidden" data-tab="announcements">
+                            <span class="settings-tab-icon">📢</span> Anuncios
+                        </button>
+                    </div>
+                    <div class="window-body settings-body">
+
+                        <!-- PESTAÑA: Notificaciones (todos los usuarios) -->
+                        <div class="settings-pane active" id="paneNotifications">
+                            <div class="admin-card">
+                                <h3>🔔 Notificaciones</h3>
+                                <div class="setting-row">
+                                    <div>
+                                        <p class="setting-label">Recibir notificaciones</p>
+                                        <p class="setting-desc">Muestra la campanita y avisos al llegar anuncios nuevos</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="notifEnabledToggle" checked>
+                                        <span class="slider"></span>
+                                    </label>
                                 </div>
-                                <div class="form-group">
-                                    <label for="newPassword">Contraseña</label>
-                                    <input type="password" id="newPassword" required minlength="6" autocomplete="new-password">
+                                <div class="setting-row">
+                                    <div>
+                                        <p class="setting-label">Sonido al llegar</p>
+                                        <p class="setting-desc">Reproduce un aviso sonoro cuando hay una notificación nueva</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="notifSoundToggle" checked>
+                                        <span class="slider"></span>
+                                    </label>
                                 </div>
-                                <div class="form-group">
-                                    <label for="newFullName">Nombre completo</label>
-                                    <input type="text" id="newFullName" autocomplete="off">
-                                </div>
-                                <div class="form-group">
-                                    <label for="newEmail">Email (opcional)</label>
-                                    <input type="email" id="newEmail" autocomplete="off">
-                                </div>
-                                <div class="form-group">
-                                    <label for="newRole">Rol</label>
-                                    <select id="newRole" class="admin-select">
-                                        <option value="call center">Call Center</option>
-                                        <option value="desarrollo">Desarrollo</option>
-                                        <option value="customer">Customer</option>
-                                        <option value="sales">Sales</option>
-                                        <option value="admin">Admin</option>
-                                    </select>
-                                </div>
-                                <button type="submit" class="btn btn-primary">Crear usuario</button>
-                            </form>
-                            <p id="createUserMsg" class="admin-msg"></p>
+                            </div>
                         </div>
 
-                        <div class="admin-card admin-card-table">
-                            <h3>📋 Usuarios existentes</h3>
-                            <div class="admin-table-wrap">
-                                <table class="admin-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Usuario</th>
-                                            <th>Nombre</th>
-                                            <th>Rol</th>
-                                            <th>Estado</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="usersTableBody"></tbody>
-                                </table>
+                        <!-- PESTAÑA: Usuarios (solo admin) -->
+                        <div class="settings-pane" id="paneUsers">
+                            <div class="body-grid">
+                                <div class="admin-card">
+                                    <h3>➕ Crear usuario</h3>
+                                    <form id="createUserForm" class="admin-form">
+                                        <div class="form-group">
+                                            <label for="newUsername">Usuario</label>
+                                            <input type="text" id="newUsername" required minlength="3" autocomplete="off">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="newPassword">Contraseña</label>
+                                            <input type="password" id="newPassword" required minlength="6" autocomplete="new-password">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="newFullName">Nombre completo</label>
+                                            <input type="text" id="newFullName" autocomplete="off">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="newEmail">Email (opcional)</label>
+                                            <input type="email" id="newEmail" autocomplete="off">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="newRole">Rol</label>
+                                            <select id="newRole" class="admin-select">
+                                                <option value="call center">Call Center</option>
+                                                <option value="desarrollo">Desarrollo</option>
+                                                <option value="customer">Customer</option>
+                                                <option value="sales">Sales</option>
+                                                <option value="admin">Admin</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">Crear usuario</button>
+                                    </form>
+                                    <p id="createUserMsg" class="admin-msg"></p>
+                                </div>
+
+                                <div class="admin-card admin-card-table">
+                                    <h3>📋 Usuarios existentes</h3>
+                                    <div class="admin-table-wrap">
+                                        <table class="admin-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Usuario</th>
+                                                    <th>Nombre</th>
+                                                    <th>Rol</th>
+                                                    <th>Estado</th>
+                                                    <th>Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="usersTableBody"></tbody>
+                                        </table>
+                                    </div>
+                                    <p id="usersMsg" class="admin-msg"></p>
+                                </div>
                             </div>
-                            <p id="usersMsg" class="admin-msg"></p>
+                        </div>
+
+                        <!-- PESTAÑA: Anuncios (solo admin) -->
+                        <div class="settings-pane" id="paneAnnouncements">
+                            <div class="admin-card">
+                                <h3>📢 Publicar anuncio</h3>
+                                <form id="announcementForm" class="admin-form">
+                                    <div class="form-group">
+                                        <label for="annTitle">Título</label>
+                                        <input type="text" id="annTitle" required maxlength="200" autocomplete="off" placeholder="Ej: Nueva funcionalidad disponible">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="annMessage">Mensaje</label>
+                                        <textarea id="annMessage" class="admin-textarea" required maxlength="5000" rows="5" placeholder="Escribe el anuncio..."></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Destinatarios</label>
+                                        <div class="roles-check" id="annRolesCheck">
+                                            <label><input type="checkbox" value="call center"> Call Center</label>
+                                            <label><input type="checkbox" value="desarrollo"> Desarrollo</label>
+                                            <label><input type="checkbox" value="customer"> Customer</label>
+                                            <label><input type="checkbox" value="sales"> Sales</label>
+                                            <label><input type="checkbox" value="admin"> Admin</label>
+                                        </div>
+                                        <p class="setting-desc">Sin marcar = visible para todos los roles</p>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Publicar anuncio</button>
+                                </form>
+                                <p id="annMsg" class="admin-msg"></p>
+                            </div>
+
+                            <div class="admin-card">
+                                <h3>🗞 Anuncios publicados</h3>
+                                <div id="annList" class="ann-list"></div>
+                                <p id="annListMsg" class="admin-msg"></p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -260,6 +359,9 @@
             </div>
         </main>
     </div>
+
+    <!-- Toasts de notificaciones -->
+    <div id="toastContainer" class="toast-container"></div>
 
     <script src="/assets/js/chat.js"></script>
 </body>

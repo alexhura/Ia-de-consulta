@@ -5,6 +5,7 @@ import { initDatabase } from './services/db.js';
 import { GroqService } from './services/GroqService.js';
 import { KnowledgeBaseService } from './services/KnowledgeBaseService.js';
 import authRoutes, { authMiddleware } from './routes/auth.js';
+import notificationRoutes from './routes/notifications.js';
 
 const app = express();
 export { app };
@@ -50,6 +51,9 @@ app.get('/api/health', (req, res) => {
 
 // Auth routes
 app.use('/api/auth', authRoutes);
+
+// Notifications routes
+app.use('/api/notifications', notificationRoutes);
 
 // Chat endpoint (protected)
 app.post('/api/chat', authMiddleware, async (req, res) => {
