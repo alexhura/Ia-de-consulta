@@ -7,6 +7,7 @@ import { KnowledgeBaseService } from './services/KnowledgeBaseService.js';
 import authRoutes, { authMiddleware } from './routes/auth.js';
 
 const app = express();
+export { app };
 const groqService = new GroqService();
 const kbService = new KnowledgeBaseService();
 
@@ -19,7 +20,7 @@ if (!config.supabase.key) missingEnv.push('SUPABASE_API_KEY');
 if (missingEnv.length > 0) {
   console.error('❌ Faltan variables de entorno requeridas:');
   missingEnv.forEach(v => console.error('   - ' + v));
-  console.error('   Configúralas en el panel de Hostinger > Node.js > Environment Variables');
+  console.error('   Configúralas como variables de entorno en tu plataforma (Hostinger / Cloudflare)');
   process.exit(1);
 }
 

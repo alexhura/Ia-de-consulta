@@ -1,9 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
-import ws from 'ws';
 import crypto from 'crypto';
 import { config } from '../config/index.js';
 
 let client = null;
+
+// 'ws' solo se necesita en Node < 22 (Hostinger). En Cloudflare se usa el WebSocket nativo,
+// así que esta importación puede fallar ahí sin afectar nada (no usamos canales realtime).
+let realtimeTransport = null;
+try {
+  const mod = await import('ws');
+  realtimeTransport = mod.default || null;
+} catch (e) {
+  realtimeTransport = null;
+}
 
 export function getSupabase() {
   if (!client) {
@@ -11,7 +20,7 @@ export function getSupabase() {
       throw new Error('SUPABASE_URL y SUPABASE_API_KEY no configurados. Revísalos en .env');
     }
     client = createClient(config.supabase.url, config.supabase.key, {
-      realtime: { transport: ws }
+      realtime: realtimeTransport ? { transport: realtimeTransport } : undefined
     });
   }
   return client;

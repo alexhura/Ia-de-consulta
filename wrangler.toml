@@ -1,0 +1,18 @@
+# Configuración de Cloudflare Workers/Pages.
+# Los secretos (GROQ_API_KEY, SUPABASE_API_KEY, JWT_SECRET) se definen en el
+# dashboard de Cloudflare Pages > Settings > Environment Variables (Encrypted).
+
+name = "ia-consulta"
+pages_build_output_dir = "public"
+compatibility_date = "2026-06-01"
+compatibility_flags = [
+    "nodejs_compat",
+    "enable_nodejs_http_modules",
+    "enable_nodejs_http_server_modules",
+    "experimental"
+]
+
+[vars]
+NODE_ENV = "production"
+GROQ_MODEL = "openai/gpt-oss-20b"
+SUPABASE_URL = "https://pamzcgktgbzientqdprx.supabase.co"
