@@ -1604,9 +1604,8 @@ body::before {
 }
 
 /* Drag & drop: asegurar que la tarjeta sea arrastrable */
-.pm-kanban-card[draggable="true"] {
+.pm-kanban-card {
     cursor: grab;
-    -webkit-user-drag: element;
 }
 .pm-kanban-card.dragging {
     opacity: 0.45;
@@ -1708,6 +1707,16 @@ body::before {
     transition: background 0.15s ease;
 }
 
+.pm-column-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    flex: 1;
+    min-height: 90px;
+    border-radius: 0 0 14px 14px;
+    transition: background 0.15s ease;
+}
 .pm-column-body.drop-active {
     background: rgba(0, 212, 255, 0.08);
 }
@@ -1717,18 +1726,13 @@ body::before {
     border: 1px solid rgba(255, 255, 255, 0.09);
     border-radius: 12px;
     padding: 10px 12px;
+    margin: 9px;
     cursor: grab;
     transition: border-color 0.15s ease, opacity 0.15s ease;
 }
 
 .pm-kanban-card:hover {
     border-color: rgba(0, 212, 255, 0.35);
-}
-
-.pm-kanban-card.dragging {
-    opacity: 0.45;
-    border-style: dashed;
-    cursor: grabbing;
 }
 
 .pm-kanban-card.pm-done {
