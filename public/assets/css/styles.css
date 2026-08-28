@@ -59,13 +59,13 @@ body::before {
 
 /* ---- Sidebar ---- */
 .sidebar {
-    width: 76px;
+    width: 56px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    padding: 20px 0 24px;
+    padding: 16px 0 18px;
     background: rgba(10, 10, 15, 0.55);
     backdrop-filter: blur(16px);
     border-right: 1px solid rgba(255, 255, 255, 0.06);
@@ -77,17 +77,17 @@ body::before {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
     width: 100%;
 }
 
 .sidebar-logo {
-    width: 44px;
-    height: 44px;
+    width: 38px;
+    height: 38px;
     object-fit: contain;
     cursor: pointer;
     transition: transform 0.25s ease, filter 0.25s ease;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 
 .sidebar-logo:hover {
@@ -96,12 +96,12 @@ body::before {
 }
 
 .sidebar-btn {
-    width: 42px;
-    height: 42px;
+    width: 36px;
+    height: 36px;
     border: none;
     background: transparent;
-    border-radius: 12px;
-    padding: 9px;
+    border-radius: 10px;
+    padding: 7px;
     color: #a1a1aa;
     cursor: pointer;
     display: flex;
@@ -118,12 +118,12 @@ body::before {
 }
 
 .sidebar-avatar {
-    width: 42px;
-    height: 42px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: linear-gradient(135deg, #00d4ff 0%, #8b5cf6 100%);
     color: #ffffff;
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -1515,7 +1515,7 @@ body::before {
 /* ============ Responsive ============ */
 @media (max-width: 768px) {
     .sidebar {
-        width: 62px;
+        width: 48px;
     }
 
     .window-body {
