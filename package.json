@@ -5,9 +5,9 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "node local.js",
     "build:cf": "node scripts/build-cf.mjs",
-    "dev": "node --watch server.js",
+    "dev": "node --watch local.js",
     "test": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
@@ -19,7 +19,9 @@
     "ws": "^8.21.3"
   },
   "devDependencies": {
-    "esbuild": "^0.24.2"
+    "@cloudflare/workerd-linux-64": "^1.20260828.1",
+    "esbuild": "^0.24.2",
+    "wrangler": "^4.127.0"
   },
   "engines": {
     "node": ">=18.0.0"

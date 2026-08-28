@@ -39,3 +39,7 @@ coverage/
 *.tmp
 *.temp
 tmp/
+# Wrangler local
+.dev.vars
+.dev.vars.*
+.wrangler/

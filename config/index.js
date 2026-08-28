@@ -1,4 +1,10 @@
-import 'dotenv/config';
+// Carga .env solo al correr en Node local (dev).
+// En Cloudflare preview/producción las variables vienen del entorno
+// (dotenv mete un require() dinámico que workerd no soporta).
+if (process.env.NODE_ENV !== 'production') {
+  const { config: loadEnv } = await import('dotenv');
+  loadEnv();
+}
 
 export const config = {
   port: parseInt(process.env.PORT) || 3000,

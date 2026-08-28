@@ -11,26 +11,12 @@ export { app };
 const groqService = new GroqService();
 const kbService = new KnowledgeBaseService();
 
-// Validar variables de entorno requeridas antes de arrancar
-const missingEnv = [];
-if (!config.groq.apiKey) missingEnv.push('GROQ_API_KEY');
-if (!config.supabase.url) missingEnv.push('SUPABASE_URL');
-if (!config.supabase.key) missingEnv.push('SUPABASE_API_KEY');
-
-if (missingEnv.length > 0) {
-  console.error('❌ Faltan variables de entorno requeridas:');
-  missingEnv.forEach(v => console.error('   - ' + v));
-  console.error('   Configúralas como variables de entorno en tu plataforma (Hostinger / Cloudflare)');
-  process.exit(1);
-}
-
-// Inicializar base de datos Supabase antes de aceptar requests
-try {
+// Inicializa la base de datos y el usuario admin inicial.
+// - Local (local.js): se llama al arrancar.
+// - Cloudflare (src/worker.js): se llama en el primer request (los workers
+//   no permiten I/O asíncrono en scope global).
+export async function bootstrap() {
   await initDatabase();
-} catch (error) {
-  console.error('❌ No se pudo inicializar la base de datos:', error.message);
-  console.error('   Revisa SUPABASE_URL y SUPABASE_API_KEY. Si es un problema de conexión, revisa los logs.');
-  process.exit(1);
 }
 
 // Middleware
@@ -217,7 +203,7 @@ app.delete('/api/admin/knowledge/:id', authMiddleware, async (req, res) => {
 });
 
 // Servir archivos estáticos (frontend)
-import { resolve } from 'path';
+import { resolve } from 'node:path';
 const publicPath = resolve('./public');
 app.use(express.static(publicPath));
 

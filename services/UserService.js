@@ -1,6 +1,6 @@
 import { config } from '../config/index.js';
 import { getSupabase } from './db.js';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 export class UserService {
   constructor() {}
