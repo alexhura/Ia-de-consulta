@@ -145,12 +145,31 @@ async function apiRequest(endpoint, options = {}) {
         headers
     });
 
-    if (response.status === 401) {
-        clearAuth();
-        throw new Error('Sesión expirada');
+    const raw = await response.text();
+    let data = null;
+    try {
+        data = JSON.parse(raw) || null;
+    } catch (e) {
+        data = null;
     }
 
-    return response.json();
+    if (response.status === 401) {
+        if (endpoint !== '/api/auth/login' && authToken) {
+            clearAuth();
+            throw new Error('Sesión expirada');
+        }
+        throw new Error((data && data.error) || (response.statusText || 'No autorizado'));
+    }
+
+    if (!response.ok) {
+        throw new Error((data && data.error) || `Error del servidor (HTTP ${response.status})`);
+    }
+
+    if (data === null && raw.trim() === '') {
+        throw new Error('Respuesta vacía del servidor');
+    }
+
+    return data;
 }
 
 // Auth form handlers

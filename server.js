@@ -37,13 +37,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check
+// Health check (sin auth ni DB, para diagnosticar el despliegue)
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
     version: '1.0.0',
-    groqConfigured: !!config.groq.apiKey
+    groqConfigured: !!config.groq.apiKey,
+    supabaseConfigured: !!config.supabase.url && !!config.supabase.key
   });
 });
 
