@@ -1495,7 +1495,6 @@ body::before {
 /* Avatares apilados en tarjetas */
 .pm-avatars-stack {
     display: inline-flex;
-    margin-left: auto;
 }
 .pm-avatars-stack .pm-avatar-sm {
     margin-left: -8px;
@@ -1516,6 +1515,58 @@ body::before {
 .pm-avatars-stack .pm-avatar-sm:hover {
     transform: scale(1.15);
     z-index: 10 !important;
+}
+
+/* Nueva estructura de tarjeta kanban */
+.pm-task-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.pm-task-avatars {
+    flex-shrink: 0;
+}
+
+.pm-task-avatars .pm-avatars-stack {
+    margin-left: 0;
+}
+
+.pm-task-title {
+    flex: 1;
+    min-width: 0;
+    color: #e4e4e7;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pm-task-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.pm-task-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Drag & drop: asegurar que la tarjeta sea arrastrable */
+.pm-kanban-card[draggable="true"] {
+    cursor: grab;
+    -webkit-user-drag: element;
+}
+.pm-kanban-card.dragging {
+    opacity: 0.45;
+    border-style: dashed;
+    cursor: grabbing;
 }
 
 /* Celebración "En revisión" */
