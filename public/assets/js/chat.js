@@ -957,8 +957,9 @@ function renderProjectDetail(p) {
     pmDetailStatus.className = `pm-status pm-status-${p.status}`;
     pmDetailProgress.textContent = `${p.progress}%`;
     pmDetailProgressFill.style.width = `${p.progress}%`;
+    const effClass = p.efficiency_raw == null ? 'pm-eff-na' : p.efficiency_raw >= 75 ? 'pm-eff-good' : p.efficiency_raw >= 50 ? 'pm-eff-mid' : 'pm-eff-bad';
     pmDetailEfficiency.textContent = eff;
-    pmDetailEfficiency.className = 'pm-stat-value pm-eff' + (p.efficiency_raw != null ? ` pm-eff-text-${p.efficiency_raw >= 75 ? 'good' : p.efficiency_raw >= 50 ? 'mid' : 'bad'}` : '');
+    pmDetailEfficiency.className = `pm-stat-value pm-eff ${effClass}`;
     pmDetailTasks.textContent = `${p.task_count || 0}`;
     document.querySelectorAll('.pm-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin()));
 

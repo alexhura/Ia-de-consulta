@@ -1328,7 +1328,6 @@ body::before {
 
 .pm-detail-actions {
     display: flex;
-    flex-direction: column;
     gap: 8px;
 }
 
@@ -1336,6 +1335,33 @@ body::before {
     display: flex;
     justify-content: flex-start;
     margin-bottom: 12px;
+}
+
+.pm-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.15s ease;
+}
+
+.pm-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(0, 212, 255, 0.4);
+    transform: scale(1.08);
+}
+
+.pm-icon-btn.pm-icon-danger:hover {
+    border-color: rgba(239, 68, 68, 0.5);
+    background: rgba(239, 68, 68, 0.12);
 }
 
 /* Informacion extra del negocio y acceso WP */
@@ -2069,27 +2095,32 @@ body::before {
 }
 
 .pm-btn-icon {
-    width: 30px;
-    height: 30px;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     color: #a1a1aa;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: all 0.15s ease;
 }
 
 .pm-btn-icon:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.12);
     color: #ffffff;
+    border-color: rgba(0, 212, 255, 0.4);
+    transform: scale(1.08);
 }
 
 .pm-btn-icon.danger:hover {
-    background: rgba(239, 68, 68, 0.15);
+    background: rgba(239, 68, 68, 0.12);
     color: #f87171;
+    border-color: rgba(239, 68, 68, 0.5);
 }
 
 .pm-priority {
