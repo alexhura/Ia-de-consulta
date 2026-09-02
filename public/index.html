@@ -18,21 +18,25 @@
 
             <!-- Login Form -->
             <div id="loginForm" class="auth-form">
-                <div class="auth-header">
-                    <img src="/assets/images/logo-ant.png" alt="Logo" class="auth-logo">
-                    <h2>Iniciar Sesión</h2>
-                    <p>Accede a tu asistente IA</p>
+                <div class="auth-columns">
+                    <div class="auth-left">
+                        <img src="/assets/images/logo-ant.png" alt="Logo" class="auth-logo">
+                        <h2>Iniciar Sesión</h2>
+                        <p>Accede a tu asistente IA</p>
+                    </div>
+                    <div class="auth-right">
+                        <form id="loginFormElement">
+                            <div class="form-group">
+                                <input type="text" id="loginUsername" placeholder="Usuario" required autocomplete="username">
+                            </div>
+                            <div class="form-group">
+                                <input type="password" id="loginPassword" placeholder="Contraseña" required autocomplete="current-password">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-full">Entrar</button>
+                        </form>
+                        <p class="auth-hint">Acceso autorizado por el administrador</p>
+                    </div>
                 </div>
-                <form id="loginFormElement">
-                    <div class="form-group">
-                        <input type="text" id="loginUsername" placeholder="Usuario" required autocomplete="username">
-                    </div>
-                    <div class="form-group">
-                        <input type="password" id="loginPassword" placeholder="Contraseña" required autocomplete="current-password">
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-full">Entrar</button>
-                </form>
-                <p class="auth-hint">Acceso autorizado por el administrador</p>
             </div>
         </div>
     </div>
