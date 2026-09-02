@@ -177,6 +177,14 @@ function escapeHtml(text) {
     return html;
 }
 
+// Escapa texto plano (sin auto-link de URLs) y lo envuelve en un enlace seguro.
+function safeUrlLink(url) {
+    const div = document.createElement('div');
+    div.textContent = url;
+    const plain = div.innerHTML;
+    return `<a href="${plain}" target="_blank" rel="noopener">${plain}</a>`;
+}
+
 function openOverlay(el) {
     el.classList.remove('hidden');
 }
@@ -1015,7 +1023,7 @@ function renderProjectDetail(p) {
     if (p.phone) info.push(['Teléfono', `<a href="tel:${escapeHtml(p.phone)}">${escapeHtml(p.phone)}</a>`]);
     if (p.services) info.push(['Servicios', escapeHtml(p.services)]);
     if (p.areas) info.push(['Áreas de servicio', escapeHtml(p.areas)]);
-    if (p.url) info.push(['URL', `<a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">${escapeHtml(p.url)}</a>`]);
+    if (p.url) info.push(['URL', safeUrlLink(p.url)]);
     if (p.description) info.push(['Descripción', escapeHtml(p.description)]);
     pmDetailInfo.classList.toggle('hidden', info.length === 0);
     pmInfoFields.innerHTML = info.map(([k, v]) => `<div class="pm-info-item"><span class="pm-info-k">${k}</span><span class="pm-info-v">${v}</span></div>`).join('');
