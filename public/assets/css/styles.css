@@ -2215,8 +2215,8 @@ body::before {
 }
 
 .auth-logo {
-    width: 100px;
-    height: 100px;
+    width: 180px;
+    height: 180px;
     object-fit: contain;
     margin-bottom: 16px;
 }
