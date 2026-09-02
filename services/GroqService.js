@@ -22,18 +22,21 @@ export class GroqService {
     this.whisperModel = config.groq.whisperModel;
   }
 
-  buildUserContent(userMessage, image) {
-    if (!image) return userMessage;
+  buildUserContent(userMessage, images) {
+    const list = Array.isArray(images) ? images : (images ? [images] : []);
+    if (!list.length) return userMessage;
     return [
       { type: 'text', text: userMessage },
-      { type: 'image_url', image_url: { url: image } }
+      ...list.map(img => ({ type: 'image_url', image_url: { url: img } }))
     ];
   }
 
-  async chat(userMessage, context = '', conversationHistory = [], image = null) {
+  async chat(userMessage, context = '', conversationHistory = [], images = null) {
     if (!this.client) {
       return 'El servicio de IA no esta configurado. Por favor configura GROQ_API_KEY en .env';
     }
+
+    const hasImages = (Array.isArray(images) ? images : (images ? [images] : [])).length > 0;
 
     try {
       const messages = [
@@ -47,12 +50,12 @@ export class GroqService {
         })),
         {
           role: 'user',
-          content: this.buildUserContent(userMessage, image)
+          content: this.buildUserContent(userMessage, images)
         }
       ];
 
       const completion = await this.client.chat.completions.create({
-        model: image ? this.visionModel : this.model,
+        model: hasImages ? this.visionModel : this.model,
         messages,
         temperature: 0.7,
         max_tokens: 2048,
@@ -78,11 +81,13 @@ export class GroqService {
     }
   }
 
-  async chatStream(userMessage, context = '', conversationHistory = [], onChunk, image = null) {
+  async chatStream(userMessage, context = '', conversationHistory = [], onChunk, images = null) {
     if (!this.client) {
       onChunk('El servicio de IA no esta configurado.');
       return;
     }
+
+    const hasImages = (Array.isArray(images) ? images : (images ? [images] : [])).length > 0;
 
     try {
       const messages = [
@@ -96,12 +101,12 @@ export class GroqService {
         })),
         {
           role: 'user',
-          content: this.buildUserContent(userMessage, image)
+          content: this.buildUserContent(userMessage, images)
         }
       ];
 
       const stream = await this.client.chat.completions.create({
-        model: image ? this.visionModel : this.model,
+        model: hasImages ? this.visionModel : this.model,
         messages,
         temperature: 0.7,
         max_tokens: 2048,

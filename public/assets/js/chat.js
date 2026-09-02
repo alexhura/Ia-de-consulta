@@ -44,13 +44,9 @@ const sendButton = document.getElementById('sendButton');
 const chatInput = document.getElementById('chatInput');
 const chatSendBtn = document.getElementById('chatSendBtn');
 const chatMicBtn = document.getElementById('chatMicBtn');
-const chatImgBtn = document.getElementById('chatImgBtn');
-const chatFileInput = document.getElementById('chatFileInput');
 const chatAttachments = document.getElementById('chatAttachments');
 const chatStatus = document.getElementById('chatStatus');
 const heroMicBtn = document.getElementById('heroMicBtn');
-const heroImgBtn = document.getElementById('heroImgBtn');
-const heroFileInput = document.getElementById('heroFileInput');
 const heroAttachments = document.getElementById('heroAttachments');
 const heroStatus = document.getElementById('heroStatus');
 const actionBtns = document.querySelectorAll('.action-btn');
@@ -155,7 +151,7 @@ let activeConvId = null;
 let editingUserId = null;
 
 // Adjuntos y dictado
-let pendingImage = null;
+let pendingImages = [];
 let mediaRecorder = null;
 let mediaStream = null;
 let micChunks = [];
@@ -275,21 +271,72 @@ function resizeImage(file, maxDim = 1400, quality = 0.82) {
 function renderAttachment() {
     [chatAttachments, heroAttachments].forEach(container => {
         container.innerHTML = '';
-        if (!pendingImage) {
+        if (!pendingImages.length) {
             container.classList.add('hidden');
             return;
         }
-        const el = document.createElement('div');
-        el.className = 'chat-attachment';
-        el.innerHTML = `<img src="${pendingImage}" alt="Adjunto"><button class="att-remove" title="Quitar imagen">&times;</button>`;
-        el.querySelector('.att-remove').addEventListener('click', () => {
-            pendingImage = null;
-            renderAttachment();
+        pendingImages.forEach((img, i) => {
+            const el = document.createElement('div');
+            el.className = 'chat-attachment';
+            el.innerHTML = `<img src="${img}" alt="Adjunto"><button class="att-remove" data-idx="${i}" title="Quitar imagen">&times;</button>`;
+            container.appendChild(el);
         });
-        container.appendChild(el);
+        container.querySelectorAll('.att-remove').forEach(b => {
+            b.addEventListener('click', () => {
+                pendingImages.splice(parseInt(b.dataset.idx), 1);
+                renderAttachment();
+            });
+        });
         container.classList.remove('hidden');
     });
 }
+
+function addChatPendingImages(files) {
+    const imgs = Array.from(files || []).filter(f => f && f.type && f.type.startsWith('image/'));
+    if (!imgs.length) return;
+    let added = 0;
+    const available = 4 - pendingImages.length;
+    imgs.slice(0, available).forEach(file => {
+        resizeImage(file).then(dataUrl => {
+            pendingImages.push(dataUrl);
+            renderAttachment();
+        });
+    });
+}
+
+function bindChatImageDrop(input) {
+    input.addEventListener('paste', (e) => {
+        const items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+        const files = [];
+        for (const item of items) {
+            if (item.type && item.type.startsWith('image/')) {
+                const f = item.getAsFile();
+                if (f) files.push(f);
+            }
+        }
+        if (files.length) {
+            e.preventDefault();
+            addChatPendingImages(files);
+        }
+    });
+    input.addEventListener('dragover', (e) => {
+        if (e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) {
+            e.preventDefault();
+            input.closest('.input-container, .chat-input-container').classList.add('drag-over');
+        }
+    });
+    input.addEventListener('dragleave', (e) => {
+        input.closest('.input-container, .chat-input-container').classList.remove('drag-over');
+    });
+    input.addEventListener('drop', (e) => {
+        e.preventDefault();
+        input.closest('.input-container, .chat-input-container').classList.remove('drag-over');
+        addChatPendingImages(e.dataTransfer && e.dataTransfer.files);
+    });
+}
+bindChatImageDrop(messageInput);
+bindChatImageDrop(chatInput);
 
 function setChatStatus(msg, isRec = false) {
     [chatStatus, heroStatus].forEach(el => {
@@ -1378,33 +1425,34 @@ function showHero() {
     chatContainer.innerHTML = '';
     conversationHistory = [];
     activeConvId = null;
-    pendingImage = null;
+    pendingImages = [];
     renderAttachment();
     messageInput.value = '';
     messageInput.focus();
 }
 
-function addMessage(content, role, image) {
+function addMessage(content, role, images) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}`;
     if (role === 'assistant') {
         messageDiv.innerHTML = `<div class="msg-avatar avatar-wrap"><img src="/assets/images/avatar-iA.gif" alt="IA"></div><div class="message-content">${escapeHtml(content)}</div>`;
     } else if (role === 'user') {
-        const imgHtml = image
-            ? `<img class="msg-image" src="${image}" alt="Imagen adjunta">`
+        const imgList = Array.isArray(images) ? images : (images ? [images] : []);
+        const imgsHtml = imgList.length
+            ? `<div class="msg-images">${imgList.map(img => `<img class="msg-image" src="${img}" alt="Imagen adjunta">`).join('')}</div>`
             : '';
         const userAv = currentUser ? avatarFor(currentUser.id) : null;
         const userAvatarHtml = userAv
             ? `<div class="msg-avatar user-avatar photo"><img src="${userAv}" alt="Avatar"></div>`
             : `<div class="msg-avatar user-avatar">${currentUser ? initials(currentUser) : ''}</div>`;
-        messageDiv.innerHTML = `<div class="message-content">${imgHtml}${escapeHtml(content)}</div>${userAvatarHtml}`;
+        messageDiv.innerHTML = `<div class="message-content">${imgsHtml}${escapeHtml(content)}</div>${userAvatarHtml}`;
     } else {
         messageDiv.innerHTML = `<div class="message-content">${escapeHtml(content)}</div>`;
     }
     chatContainer.appendChild(messageDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
 
-    conversationHistory.push({ role, content, image });
+    conversationHistory.push({ role, content, image: Array.isArray(images) ? images[0] : (images || null) });
     if (conversationHistory.length > 12) {
         conversationHistory = conversationHistory.slice(-12);
     }
@@ -1439,12 +1487,12 @@ function hideTyping() {
 }
 
 async function sendMessage(message) {
-    const image = pendingImage;
-    if (!message.trim() && !image) return;
-    if (!message.trim() && image) message = 'Describe esta imagen';
+    const images = pendingImages.slice();
+    if (!message.trim() && images.length === 0) return;
+    if (!message.trim() && images.length) message = 'Describe estas imágenes';
 
     showChat();
-    addMessage(message, 'user', image);
+    addMessage(message, 'user', images);
 
     sendButton.disabled = true;
     chatSendBtn.disabled = true;
@@ -1458,7 +1506,7 @@ async function sendMessage(message) {
             message,
             history: conversationHistory.slice(0, -1).map(m => ({ role: m.role, content: m.content }))
         };
-        if (image) payload.image = image;
+        if (images.length) payload.images = images;
 
         const data = await apiRequest('/api/chat', {
             method: 'POST',
@@ -1469,7 +1517,7 @@ async function sendMessage(message) {
 
         if (data.success) {
             addMessage(data.response, 'assistant');
-            pendingImage = null;
+            pendingImages = [];
             renderAttachment();
         } else {
             addMessage('Lo siento, ocurrió un error. Por favor intenta de nuevo.', 'assistant');
@@ -2471,32 +2519,6 @@ async function checkAuth() {
 sendButton.addEventListener('click', () => sendMessage(messageInput.value));
 chatSendBtn.addEventListener('click', () => sendMessage(chatInput.value));
 
-function bindImagePicker(btn, fileInput) {
-    btn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', () => {
-        const file = fileInput.files && fileInput.files[0];
-        fileInput.value = '';
-        handleFilePick(file);
-    });
-}
-
-async function handleFilePick(file) {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-        setChatStatus('Solo se permiten archivos de imagen');
-        return;
-    }
-    try {
-        pendingImage = await resizeImage(file);
-        renderAttachment();
-        setChatStatus('');
-    } catch (e) {
-        setChatStatus('No se pudo procesar la imagen');
-    }
-}
-
-bindImagePicker(chatImgBtn, chatFileInput);
-bindImagePicker(heroImgBtn, heroFileInput);
 chatMicBtn.addEventListener('click', toggleMic);
 heroMicBtn.addEventListener('click', toggleMic);
 

@@ -61,7 +61,7 @@ app.use('/api/notifications', notificationRoutes);
 // Chat endpoint (protected)
 app.post('/api/chat', authMiddleware, async (req, res) => {
   try {
-    const { message, history = [], image } = req.body;
+    const { message, history = [], images = null, image = null } = req.body;
 
     if (!message || !message.trim()) {
       return res.status(400).json({ 
@@ -77,17 +77,23 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
       });
     }
 
-    // Imagen opcional: data URL de imagen. Se valida tipo y tamaño.
-    let safeImage = null;
-    if (image) {
-      if (typeof image !== 'string' || !/^data:image\/(png|jpeg|webp|gif);base64,/.test(image)) {
+    // Imágenes opcionales: data URLs de imagen. Soporta un array o una sola
+    // imagen (compatibilidad). Se valida tipo y tamaño.
+    let imgList = image != null ? [image] : (Array.isArray(images) ? images : (images ? [images] : []));
+    const safeImages = [];
+    for (const img of imgList) {
+      if (typeof img !== 'string' || !/^data:image\/(png|jpeg|webp|gif);base64,/.test(img)) {
         return res.status(400).json({ success: false, error: 'Imagen inválida' });
       }
-      if (image.length > 5 * 1024 * 1024) {
+      if (img.length > 5 * 1024 * 1024) {
         return res.status(400).json({ success: false, error: 'Imagen demasiado grande (máx 5MB)' });
       }
-      safeImage = image;
+      safeImages.push(img);
     }
+    if (safeImages.length > 4) {
+      return res.status(400).json({ success: false, error: 'Máximo 4 imágenes por consulta' });
+    }
+    const safeImage = safeImages.length ? safeImages : null;
 
     // Buscar conocimiento relevante
     let context = await kbService.getContextForQuery(message, 8);
@@ -98,7 +104,8 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
     let platformUrl = extractUrl(message);
     if (!platformUrl && safeImage) {
       try {
-        const extracted = await groqService.extractUrlFromImage(safeImage);
+        const firstImg = Array.isArray(safeImage) ? safeImage[0] : safeImage;
+        const extracted = await groqService.extractUrlFromImage(firstImg);
         platformUrl = extractUrl(extracted);
       } catch (err) {
         console.error('Error extrayendo URL de la imagen:', err.message);

@@ -120,17 +120,10 @@
                             <input
                                 type="text"
                                 id="messageInput"
-                                placeholder="Pregúntame sobre cambios, mantenimiento, tiempos, productos..."
+                                placeholder="Pregúntame sobre cambios, mantenimiento, tiempos, productos... (pega o arrastra imágenes aquí)"
                                 autocomplete="off"
                             />
                             <div class="input-actions">
-                                <button id="heroImgBtn" class="chat-tool-btn" title="Adjuntar imagen" type="button">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                                        <polyline points="21 15 16 10 5 21"></polyline>
-                                    </svg>
-                                </button>
                                 <button id="heroMicBtn" class="chat-tool-btn" title="Dictar por voz" type="button">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
@@ -139,7 +132,6 @@
                                         <line x1="8" y1="23" x2="16" y2="23"></line>
                                     </svg>
                                 </button>
-                                <input type="file" id="heroFileInput" accept="image/*" hidden>
                                 <button id="sendButton" class="send-btn" title="Enviar">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <line x1="12" y1="19" x2="12" y2="5"></line>
@@ -193,16 +185,9 @@
                             <input
                                 type="text"
                                 id="chatInput"
-                                placeholder="Escribe tu mensaje..."
+                                placeholder="Escribe tu mensaje... (pega o arrastra imágenes aquí)"
                                 autocomplete="off"
                             />
-                            <button id="chatImgBtn" class="chat-tool-btn" title="Adjuntar imagen" type="button">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                                    <polyline points="21 15 16 10 5 21"></polyline>
-                                </svg>
-                            </button>
                             <button id="chatMicBtn" class="chat-tool-btn" title="Dictar por voz" type="button">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
@@ -217,7 +202,6 @@
                                     <polyline points="5 12 12 5 19 12"></polyline>
                                 </svg>
                             </button>
-                            <input type="file" id="chatFileInput" accept="image/*" hidden>
                         </div>
                         <div id="chatStatus" class="chat-status"></div>
                     </div>
@@ -263,8 +247,12 @@
                                     <span id="pmDetailTasks" class="pm-stat-value"></span>
                                 </div>
                                 <div class="pm-detail-actions">
-                                    <button type="button" class="pm-icon-btn pm-admin-only hidden" id="pmEditProjectBtn" title="Editar proyecto">✏️</button>
-                                    <button type="button" class="pm-icon-btn pm-icon-danger pm-admin-only hidden" id="pmDeleteProjectBtn" title="Eliminar proyecto">🗑</button>
+                                    <button type="button" class="pm-icon-btn pm-admin-only hidden" id="pmEditProjectBtn" title="Editar proyecto">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                    </button>
+                                    <button type="button" class="pm-icon-btn pm-icon-danger pm-admin-only hidden" id="pmDeleteProjectBtn" title="Eliminar proyecto">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -740,8 +728,12 @@
                     <div class="window-head">
                         <h2 id="taskDetailTitle"></h2>
                         <div class="pm-detail-window-actions">
-                            <button type="button" class="pm-icon-btn pm-admin-only hidden" id="taskDetailEditBtn" title="Editar">✏️</button>
-                            <button type="button" class="pm-icon-btn pm-icon-danger pm-admin-only hidden" id="taskDetailDeleteBtn" title="Eliminar">🗑</button>
+                            <button type="button" class="pm-icon-btn pm-admin-only hidden" id="taskDetailEditBtn" title="Editar">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                            </button>
+                            <button type="button" class="pm-icon-btn pm-icon-danger pm-admin-only hidden" id="taskDetailDeleteBtn" title="Eliminar">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
                             <button class="window-close" data-close="pmTaskDetailWindow" title="Cerrar">&times;</button>
                         </div>
                     </div>
