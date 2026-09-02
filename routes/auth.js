@@ -31,8 +31,15 @@ export async function authMiddleware(req, res, next) {
     if (!user || !user.isActive) {
       return res.status(401).json({ success: false, error: 'Usuario no encontrado o inactivo' });
     }
+
+    // Verificar que este token sea la sesión activa vigente del usuario
+    const sessionActive = await userService.isTokenSessionActive(decoded.sub, token);
+    if (!sessionActive) {
+      return res.status(401).json({ success: false, error: 'Sesión expirada o reemplazada. Inicia sesión de nuevo.' });
+    }
     
     req.user = { ...user, passwordHash: undefined };
+    req.token = token;
     next();
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Error de autenticación' });
@@ -73,10 +80,20 @@ router.post('/login', async (req, res) => {
     if (!userService.verifyPassword(password, user.passwordHash)) {
       return res.status(401).json({ success: false, error: 'Credenciales inválidas' });
     }
-    
+
+    // Login único: rechazar si ya hay una sesión activa vigente
+    const hasActive = await userService.hasActiveSession(user.id);
+    if (hasActive) {
+      return res.status(409).json({
+        success: false,
+        error: 'Ya tienes una sesión activa en otro dispositivo. Cierra sesión desde ese dispositivo o espera a que expire.'
+      });
+    }
+
     await userService.updateLastLogin(user.id);
-    
+
     const token = userService.generateToken(user);
+    await userService.registerSession(user.id, token);
     
     res.json({
       success: true,
@@ -101,8 +118,14 @@ router.get('/me', authMiddleware, (req, res) => {
 });
 
 // POST /api/auth/logout
-router.post('/logout', authMiddleware, (req, res) => {
-  res.json({ success: true, message: 'Sesión cerrada' });
+router.post('/logout', authMiddleware, async (req, res) => {
+  try {
+    await userService.clearSession(req.user.id);
+    res.json({ success: true, message: 'Sesión cerrada' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ success: false, error: 'Error interno' });
+  }
 });
 
 // Admin: POST /api/admin/users - alta de usuario (user + password + rol)

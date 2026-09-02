@@ -17,13 +17,15 @@ export class UserService {
     return hash === verifyHash;
   }
 
+  static SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 días, igual que el JWT
+
   generateToken(user) {
     const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
     const payload = Buffer.from(JSON.stringify({
       sub: user.id,
       username: user.username,
       role: user.role,
-      exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 días
+      exp: Date.now() + this.constructor.SESSION_DURATION_MS // 7 días
     })).toString('base64url');
 
     const secret = config.jwtSecret || 'fallback-secret-change-in-production';
@@ -32,6 +34,62 @@ export class UserService {
       .digest('base64url');
 
     return `${header}.${payload}.${signature}`;
+  }
+
+  // Verifica si un usuario ya tiene una sesión activa (no expirada)
+  async hasActiveSession(userId) {
+    const { data, error } = await getSupabase()
+      .from('users')
+      .select('active_session_token, session_expires_at')
+      .eq('id', parseInt(userId))
+      .maybeSingle();
+    if (error) throw error;
+    if (!data || !data.active_session_token) return false;
+    const expires = data.session_expires_at ? new Date(data.session_expires_at).getTime() : 0;
+    // Si la sesión expiró, se considera libre para un nuevo login
+    if (expires && Date.now() < expires) return true;
+    return false;
+  }
+
+  // Registra el token como la sesión activa del usuario
+  async registerSession(userId, token) {
+    const { error } = await getSupabase()
+      .from('users')
+      .update({
+        active_session_token: token,
+        session_expires_at: new Date(Date.now() + this.constructor.SESSION_DURATION_MS).toISOString()
+      })
+      .eq('id', parseInt(userId));
+    if (error) throw error;
+  }
+
+  // Limpia la sesión activa del usuario (logout)
+  async clearSession(userId) {
+    const { error } = await getSupabase()
+      .from('users')
+      .update({ active_session_token: null, session_expires_at: null })
+      .eq('id', parseInt(userId));
+    if (error) throw error;
+  }
+
+  // Valida que un token sea la sesión activa vigente de su usuario
+  async isTokenSessionActive(userId, token) {
+    const { data, error } = await getSupabase()
+      .from('users')
+      .select('active_session_token, session_expires_at')
+      .eq('id', parseInt(userId))
+      .maybeSingle();
+    if (error) throw error;
+    if (!data || !data.active_session_token) return false;
+    if (data.active_session_token !== token) return false;
+    if (data.session_expires_at) {
+      const expires = new Date(data.session_expires_at).getTime();
+      if (Date.now() > expires) {
+        await this.clearSession(userId);
+        return false;
+      }
+    }
+    return true;
   }
 
   verifyToken(token) {

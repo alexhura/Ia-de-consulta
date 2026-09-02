@@ -39,6 +39,9 @@ create table if not exists users (
   last_login timestamptz
 );
 
+alter table users add column if not exists active_session_token text;
+alter table users add column if not exists session_expires_at timestamptz;
+
 -- ============ PROJECT MANAGER ============
 
 create table if not exists pm_projects (
