@@ -7,6 +7,16 @@ export const PM_PRIORITIES = ['baja', 'media', 'alta'];
 
 const FINALIZADO = 'finalizado_sin_errores';
 
+function generateToken() {
+  const bytes = new Uint8Array(16);
+  if (globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
+
 function sanitize(val, allowed, fallback) {
   return allowed.includes(val) ? val : fallback;
 }
@@ -27,7 +37,7 @@ function addTimestamps(d) {
 function normProject(body) {
   const d = {};
   if (body.client !== undefined) d.client = String(body.client || '').trim();
-  for (const f of ['business', 'description', 'email', 'phone', 'services', 'areas', 'url', 'wp_user', 'wp_pass']) {
+  for (const f of ['business', 'description', 'email', 'phone', 'services', 'areas', 'url', 'wp_user', 'wp_pass', 'notif_email']) {
     if (body[f] !== undefined) d[f] = String(body[f] || '').trim();
   }
   if (body.status !== undefined) d.status = sanitize(body.status, PM_STATUSES, 'pendiente');
@@ -152,14 +162,24 @@ export class PmService {
     const d = normProject(body);
     d.created_by = userId;
     d.status = d.status || 'pendiente';
+    d.share_token = d.share_token || generateToken();
     delete d.updated_at;
     const fields = {};
-    for (const f of ['client', 'business', 'description', 'email', 'phone', 'services', 'areas', 'url', 'wp_user', 'wp_pass', 'status', 'created_by']) {
+    for (const f of ['client', 'business', 'description', 'email', 'phone', 'services', 'areas', 'url', 'wp_user', 'wp_pass', 'notif_email', 'share_token', 'status', 'created_by']) {
       fields[f] = d[f];
     }
-    const { data, error } = await getSupabase().from('pm_projects').insert(fields).select('*').single();
-    if (error) throw error;
-    return data;
+    let result = await getSupabase().from('pm_projects').insert(fields).select('*').single();
+    // Si la tabla aún no tiene las columnas nuevas (share_token/notif_email),
+    // reintenta solo con los campos base para no romper el alta.
+    if (result.error) {
+      const base = {};
+      for (const f of ['client', 'business', 'description', 'email', 'phone', 'services', 'areas', 'url', 'wp_user', 'wp_pass', 'status', 'created_by']) {
+        base[f] = fields[f];
+      }
+      result = await getSupabase().from('pm_projects').insert(base).select('*').single();
+    }
+    if (result.error) throw result.error;
+    return result.data;
   }
 
   async updateProject(id, body) {
@@ -310,5 +330,43 @@ export class PmService {
     const { error } = await getSupabase().from('pm_task_attachments').delete().eq('id', parseInt(id));
     if (error) throw error;
     return { success: true };
+  }
+
+  // Resuelve el token público de compartir de un proyecto, generándolo si falta.
+  async ensureShareToken(projectId) {
+    const id = parseInt(projectId);
+    const { data, error } = await getSupabase().from('pm_projects').select('share_token').eq('id', id).single();
+    if (error) return generateToken();
+    if (data && data.share_token) return data.share_token;
+    const token = generateToken();
+    try {
+      await getSupabase().from('pm_projects').update({ share_token: token }).eq('id', id);
+    } catch (e) {
+      // columna aún no existe: usamos el token en memoria
+    }
+    return token;
+  }
+
+  // Busca un proyecto por su token público de compartir (devuelve null si no existe).
+  async findProjectByToken(token) {
+    if (!token) return null;
+    const { data, error } = await getSupabase()
+      .from('pm_projects')
+      .select('*')
+      .eq('share_token', token)
+      .maybeSingle();
+    if (error) throw error;
+    return data || null;
+  }
+
+  // Reconstruye/alimenta el share_token de proyectos existentes que no lo tengan.
+  async backfillShareTokens() {
+    const { data, error } = await getSupabase().from('pm_projects').select('id, share_token');
+    if (error) throw error;
+    for (const p of data || []) {
+      if (!p.share_token) {
+        await getSupabase().from('pm_projects').update({ share_token: generateToken() }).eq('id', p.id);
+      }
+    }
   }
 }

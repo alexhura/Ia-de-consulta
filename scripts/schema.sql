@@ -63,6 +63,8 @@ alter table pm_projects add column if not exists areas text default '';
 alter table pm_projects add column if not exists url text default '';
 alter table pm_projects add column if not exists wp_user text default '';
 alter table pm_projects add column if not exists wp_pass text default '';
+alter table pm_projects add column if not exists notif_email text default '';
+alter table pm_projects add column if not exists share_token text default '';
 
 create table if not exists pm_tasks (
   id serial primary key,

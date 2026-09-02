@@ -2002,6 +2002,66 @@ body::before {
     letter-spacing: 2px;
 }
 
+.pm-auto-card {
+    margin-top: 20px;
+    padding: 18px 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(29, 78, 216, 0.35);
+    border-radius: 14px;
+}
+
+.pm-auto-title {
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #00d4ff;
+}
+
+.pm-auto-desc {
+    margin: 0 0 14px;
+    font-size: 13px;
+    color: #9ca3af;
+}
+
+.pm-auto-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.pm-auto-field label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #e4e4e7;
+    white-space: nowrap;
+}
+
+.pm-auto-field .admin-input {
+    flex: 1;
+    min-width: 220px;
+}
+
+.pm-auto-field input {
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #e4e4e7;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 9px;
+    outline: none;
+    transition: border-color .15s ease;
+}
+
+.pm-auto-field input:focus {
+    border-color: rgba(0, 212, 255, 0.45);
+}
+
+.pm-auto-status {
+    font-size: 13px;
+    color: #34d399;
+}
+
 /* Detalle de tarea */
 .pm-detail-window .window-body {
     display: block;

@@ -8,6 +8,7 @@ import { detectPlatform, extractUrl, trimNextSteps } from './services/siteDetect
 import authRoutes, { authMiddleware, requireRole } from './routes/auth.js';
 import notificationRoutes from './routes/notifications.js';
 import { PmService, PM_STATUSES, PM_PRIORITIES } from './services/PmService.js';
+import { emailService } from './services/EmailService.js';
 
 const app = express();
 export { app };
@@ -319,6 +320,67 @@ app.delete('/api/admin/knowledge/:id', authMiddleware, async (req, res) => {
 // ---- Project Manager (solo admin y Desarrollo) ----
 const pmOnly = [authMiddleware, requireRole('admin', 'desarrollo')];
 
+// Envía el correo de "proyecto finalizado" cuando una tarea "One page"/"Full web"
+// llega a "Finalizado sin errores". Utiliza el email de notificación configurable
+// del proyecto; si no hay, usa el email general del proyecto.
+async function sendProjectFinishedEmail(task) {
+  const project = await pmService.getProject(task.project_id);
+  const to = (project && (project.notif_email || project.email)) || '';
+  if (!to) {
+    console.warn('[email] Proyecto sin destinatario, correo no enviado.');
+    return;
+  }
+  const token = await pmService.ensureShareToken(task.project_id);
+  const shareLink = new URL(`${config.appUrl}/compartir.html?p=${encodeURIComponent(token)}`).toString();
+  await emailService.sendProjectFinished({
+    to,
+    client: project.client,
+    business: project.business,
+    url: project.url,
+    shareLink
+  });
+}
+
+// ---- Compatir enlace de perfil de Google (público, sin login) ----
+// El botón del correo lleva a /compartir.html?p=<token> (página estática) que
+// llama a estos endpoints públicos para obtener los datos y crear la tarea.
+
+// Datos públicos (solo nombre del cliente/negocio) para mostrar en la página.
+app.get('/api/share/project', async (req, res) => {
+  try {
+    const p = await pmService.findProjectByToken(req.query.p);
+    if (!p) return res.status(404).json({ success: false, error: 'Proyecto no encontrado' });
+    await pmService.ensureShareToken(p.id);
+    res.json({ success: true, project: { id: p.id, client: p.client, business: p.business } });
+  } catch (error) {
+    console.error('Error en /api/share/project:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Crea la tarea de "compartir perfil de Google" en el proyecto correspondiente.
+app.post('/api/share/link', async (req, res) => {
+  try {
+    const { token, url, profileName } = req.body || {};
+    if (!token || !url || !/^https?:\/\//i.test(url)) {
+      return res.status(400).json({ success: false, error: 'Enlace de Google inválido' });
+    }
+    const p = await pmService.findProjectByToken(token);
+    if (!p) return res.status(404).json({ success: false, error: 'Proyecto no encontrado' });
+    await pmService.addTask({
+      project_id: p.id,
+      title: 'Compartir perfil de Google',
+      description: `Enlace del perfil de Google a compartir: ${url}${profileName ? `\nNegocio: ${profileName}` : ''}`,
+      status: 'por_iniciar',
+      priority: 'alta'
+    }, 1);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error en /api/share/link:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/api/pm/projects', pmOnly, async (req, res) => {
   try {
     const projects = await pmService.listProjects();
@@ -378,6 +440,13 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
       return res.status(403).json({ success: false, error: 'Solo el admin puede mover a "Finalizado sin errores"' });
     }
     const task = await pmService.updateTask(req.params.id, req.body);
+    // Al finalizarse un proyecto "One page" / "Full web" se avisa por correo.
+    if (task.status === 'finalizado_sin_errores') {
+      const title = String(task.title || '').toLowerCase();
+      if (title === 'one page' || title === 'full web' || title.includes('one page') || title.includes('full web')) {
+        sendProjectFinishedEmail(task).catch(err => console.error('[email] no enviado:', err.message));
+      }
+    }
     res.json({ success: true, task });
   } catch (error) {
     console.error('Error updating PM task:', error);

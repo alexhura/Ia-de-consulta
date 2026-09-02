@@ -87,6 +87,10 @@ const pmBtn = document.getElementById('pmBtn');
 const pmView = document.getElementById('pmView');
 const pmGrid = document.getElementById('pmGrid');
 const pmSearchInput = document.getElementById('pmSearchInput');
+const pmAutomationsCard = document.getElementById('pmAutomationsCard');
+const pmNotifEmail = document.getElementById('pmNotifEmail');
+const pmNotifEmailSave = document.getElementById('pmNotifEmailSave');
+const pmNotifEmailStatus = document.getElementById('pmNotifEmailStatus');
 const pmProjectsView = document.getElementById('pmProjectsView');
 const pmDetailView = document.getElementById('pmDetailView');
 const pmBackBtn = document.getElementById('pmBackBtn');
@@ -1040,6 +1044,22 @@ pmTaskForm.addEventListener('submit', async (e) => {
     }
 });
 
+// Guardar el email de Google Notification de la automatización (solo admin).
+pmNotifEmailSave.addEventListener('click', async () => {
+    if (!openProjectId) return;
+    try {
+        await apiRequest(`/api/pm/projects/${openProjectId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ notif_email: pmNotifEmail.value.trim() })
+        });
+        pmNotifEmailStatus.textContent = 'Guardado ✓';
+        const p = pmProjects.find(x => x.id === openProjectId);
+        if (p) { p.notif_email = pmNotifEmail.value.trim(); }
+    } catch (err) {
+        pmNotifEmailStatus.textContent = err.message;
+    }
+});
+
 // ---------- Detalle de proyecto ----------
 let openProjectId = null;
 
@@ -1327,7 +1347,9 @@ async function openTaskDetail(taskId) {
         taskAttachments.innerHTML = attachments.length
             ? attachments.map(a => `<div class="pm-attach"><img src="${escapeHtml(a.data_url)}" alt="adjunto"><button type="button" class="pm-btn-icon danger pm-admin-only hidden" data-action="pm-att-del" data-id="${a.id}" title="Eliminar imagen">×</button></div>`).join('')
             : '';
-        document.querySelectorAll('.pm-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin()));
+    document.querySelectorAll('.pm-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin()));
+    if (pmNotifEmail) pmNotifEmail.value = p.notif_email || '';
+    if (pmNotifEmailStatus) pmNotifEmailStatus.textContent = '';
 
         taskComments.innerHTML = comments.length
             ? comments.map(c => `

@@ -318,6 +318,17 @@
                             </div>
                         </div>
                         <p id="pmDetailMsg" class="admin-msg"></p>
+
+                        <div class="pm-auto-card pm-admin-only hidden" id="pmAutomationsCard">
+                            <h4 class="pm-auto-title">Automatizaciones</h4>
+                            <p class="pm-auto-desc">Al finalizar una tarea "One page" o "Full web" se envía un correo de aviso al email de Google Notification.</p>
+                            <div class="pm-auto-field">
+                                <label for="pmNotifEmail">Google Notification email</label>
+                                <input type="email" id="pmNotifEmail" class="admin-input" placeholder="notificaciones@ejemplo.com" autocomplete="off">
+                                <button type="button" class="btn btn-primary btn-small" id="pmNotifEmailSave">Guardar</button>
+                                <span id="pmNotifEmailStatus" class="pm-auto-status"></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
