@@ -86,6 +86,7 @@ const profileLogoutBtn = document.getElementById('profileLogoutBtn');
 const pmBtn = document.getElementById('pmBtn');
 const pmView = document.getElementById('pmView');
 const pmGrid = document.getElementById('pmGrid');
+const pmSearchInput = document.getElementById('pmSearchInput');
 const pmProjectsView = document.getElementById('pmProjectsView');
 const pmDetailView = document.getElementById('pmDetailView');
 const pmBackBtn = document.getElementById('pmBackBtn');
@@ -737,6 +738,7 @@ const PM_STAGE_LABEL = {
 const PM_STAGES = ['por_iniciar', 'en_progreso', 'en_revision', 'finalizado_sin_errores', 'por_corregir'];
 
 let pmProjects = [];
+let pmSearch = '';
 let editingProjectId = null;
 let editingTaskId = null;
 let taskProjectId = null;
@@ -810,7 +812,23 @@ function renderPMProjects() {
         pmGrid.innerHTML = '<p class="pm-tasks-empty">No hay proyectos todavía. Crea el primero con "+ Proyecto".</p>';
         return;
     }
-    pmGrid.innerHTML = pmProjects.map(pmProjectCard).join('');
+    const q = pmSearch.trim().toLowerCase();
+    const filtered = q ? pmProjects.filter(p =>
+        (p.client || '').toLowerCase().includes(q) ||
+        (p.business || '').toLowerCase().includes(q)
+    ) : pmProjects;
+    if (filtered.length === 0) {
+        pmGrid.innerHTML = `<p class="pm-tasks-empty">Sin resultados para "${escapeHtml(pmSearch.trim())}".</p>`;
+        return;
+    }
+    pmGrid.innerHTML = filtered.map(pmProjectCard).join('');
+}
+
+if (pmSearchInput) {
+    pmSearchInput.addEventListener('input', () => {
+        pmSearch = pmSearchInput.value;
+        renderPMProjects();
+    });
 }
 
 async function loadPMProjects() {
