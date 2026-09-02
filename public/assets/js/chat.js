@@ -185,6 +185,44 @@ function safeUrlLink(url) {
     return `<a href="${plain}" target="_blank" rel="noopener">${plain}</a>`;
 }
 
+// Escapa texto para usarlo dentro de un atributo HTML (value, data-*, etc.).
+function escapeAttr(text) {
+    const div = document.createElement('div');
+    div.textContent = (text == null ? '' : String(text));
+    return div.innerHTML;
+}
+
+// Copia texto al portapapeles (fallback para navegadores sin clipboard API).
+async function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+    }
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+}
+
+// Pequeño aviso temporal (toast) para confirmar acciones como copiar.
+function showPmToast(msg, isError = false) {
+    let el = document.getElementById('pmToast');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'pmToast';
+        document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.className = 'pm-toast' + (isError ? ' error' : '');
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
 function openOverlay(el) {
     el.classList.remove('hidden');
 }
@@ -705,6 +743,9 @@ let taskProjectId = null;
 
 const PM_ICON_PENCIL = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>';
 const PM_ICON_TRASH = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+const PM_ICON_COPY = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+const PM_ICON_EYE = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+const PM_ICON_EYE_OFF = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
 
 function isAdmin() {
     return currentUser && currentUser.role === 'admin';
@@ -1029,9 +1070,47 @@ function renderProjectDetail(p) {
     pmInfoFields.innerHTML = info.map(([k, v]) => `<div class="pm-info-item"><span class="pm-info-k">${k}</span><span class="pm-info-v">${v}</span></div>`).join('');
 
     const wp = [];
-    if (p.wp_user) wp.push(['Usuario', escapeHtml(p.wp_user)]);
-    if (p.wp_pass) wp.push(['Contraseña', `<span class="pm-wp-pass">${escapeHtml(p.wp_pass)}</span>`]);
-    pmWpFields.innerHTML = wp.length ? wp.map(([k, v]) => `<div class="pm-info-item"><span class="pm-info-k">${k}</span><span class="pm-info-v">${v}</span></div>`).join('') : '<span class="pm-info-v pm-muted">Sin credenciales guardadas.</span>';
+    if (p.wp_user) {
+        wp.push(`
+            <div class="pm-info-item pm-cred">
+                <span class="pm-info-k">Usuario</span>
+                <span class="pm-info-v wp-user-value">${escapeHtml(p.wp_user)}</span>
+                <button type="button" class="pm-icon-btn sm" data-copy="${escapeAttr(p.wp_user)}" title="Copiar usuario">${PM_ICON_COPY}</button>
+            </div>`);
+    }
+    if (p.wp_pass) {
+        wp.push(`
+            <div class="pm-info-item pm-cred">
+                <span class="pm-info-k">Contraseña</span>
+                <span class="pm-info-v wp-pass-value" data-secret="${escapeAttr(p.wp_pass)}">${'•'.repeat(Math.min(p.wp_pass.length, 10))}</span>
+                <button type="button" class="pm-icon-btn sm toggle-pass" data-secret="${escapeAttr(p.wp_pass)}" title="Ver contraseña">${PM_ICON_EYE}</button>
+                <button type="button" class="pm-icon-btn sm" data-copy="${escapeAttr(p.wp_pass)}" title="Copiar contraseña">${PM_ICON_COPY}</button>
+            </div>`);
+    }
+    pmWpFields.innerHTML = wp.length ? wp.join('') : '<span class="pm-info-v pm-muted">Sin credenciales guardadas.</span>';
+
+    pmWpFields.querySelectorAll('[data-copy]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            try {
+                await copyToClipboard(btn.dataset.copy);
+                showPmToast('Copiado al portapapeles');
+            } catch (e) {
+                showPmToast('No se pudo copiar', true);
+            }
+        });
+    });
+    pmWpFields.querySelectorAll('.toggle-pass').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const secret = btn.dataset.secret;
+            const value = btn.closest('.pm-cred').querySelector('.wp-pass-value');
+            const hidden = value.dataset.hidden !== '1';
+            value.textContent = hidden ? secret : '•'.repeat(Math.min(secret.length, 10));
+            value.dataset.hidden = hidden ? '1' : '0';
+            btn.innerHTML = hidden ? PM_ICON_EYE_OFF : PM_ICON_EYE;
+            btn.title = hidden ? 'Ocultar contraseña' : 'Ver contraseña';
+        });
+    });
+
     pmWpOpenBtn.disabled = !p.url;
     pmWpOpenBtn.onclick = () => {
         if (!p.url) return;

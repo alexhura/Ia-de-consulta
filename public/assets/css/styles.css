@@ -1385,6 +1385,56 @@ body::before {
     background: rgba(239, 68, 68, 0.12);
 }
 
+.pm-icon-btn.sm {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    border-radius: 8px;
+}
+
+.pm-cred {
+    align-items: center;
+    gap: 8px;
+}
+
+.pm-cred .pm-info-v {
+    word-break: break-all;
+    flex: 1;
+}
+
+.wp-pass-value {
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1px;
+}
+
+.pm-toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translate(-50%, 20px);
+    background: rgba(15, 15, 25, 0.95);
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    color: #ffffff;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 10001;
+}
+
+.pm-toast.error {
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.pm-toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
 /* Informacion extra del negocio y acceso WP */
 .pm-info-grid {
     display: grid;
