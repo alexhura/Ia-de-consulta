@@ -752,12 +752,10 @@
                         <h4 class="pm-task-detail-h">Comentarios</h4>
                         <div id="taskComments" class="pm-task-comments"></div>
                         <div class="pm-comment-box">
-                            <textarea id="taskCommentInput" class="admin-textarea" rows="2" placeholder="Escribe un comentario..."></textarea>
+                            <div id="taskPendingImages" class="pm-pending-images"></div>
+                            <textarea id="taskCommentInput" class="admin-textarea" rows="2" placeholder="Escribe un comentario... (pega o arrastra imágenes aquí)"></textarea>
                             <div class="pm-comment-actions">
-                                <label class="btn btn-secondary btn-small pm-upload-label">
-                                    📷 Imagen
-                                    <input type="file" id="taskImageInput" accept="image/*" hidden>
-                                </label>
+                                <span class="pm-upload-hint">📷 Suelta o pega una imagen aquí</span>
                                 <button type="button" class="btn btn-primary btn-small" id="taskCommentSendBtn">Enviar</button>
                             </div>
                         </div>

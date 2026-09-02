@@ -147,7 +147,7 @@ const taskAttachments = document.getElementById('taskAttachments');
 const taskComments = document.getElementById('taskComments');
 const taskCommentInput = document.getElementById('taskCommentInput');
 const taskCommentSendBtn = document.getElementById('taskCommentSendBtn');
-const taskImageInput = document.getElementById('taskImageInput');
+const taskPendingImages = document.getElementById('taskPendingImages');
 const taskDetailMsg = document.getElementById('taskDetailMsg');
 
 let conversationHistory = [];
@@ -1159,6 +1159,8 @@ async function openTaskDetail(taskId) {
             : '<p class="pm-muted">Sin comentarios.</p>';
 
         taskCommentInput.value = '';
+        pendingCommentImages = [];
+        taskPendingImagesRender();
         openOverlay(pmTaskDetailWindow);
     } catch (e) {
         taskDetailMsg.textContent = e.message;
@@ -1210,9 +1212,17 @@ taskComments.addEventListener('click', async (e) => {
 
 taskCommentSendBtn.addEventListener('click', async () => {
     const content = taskCommentInput.value.trim();
-    if (!content) return;
+    const images = pendingCommentImages.slice();
+    if (!content && images.length === 0) return;
     try {
-        await apiRequest(`/api/pm/tasks/${editingDetailTaskId}/comments`, { method: 'POST', body: JSON.stringify({ content }) });
+        for (const dataUrl of images) {
+            await apiRequest(`/api/pm/tasks/${editingDetailTaskId}/attachments`, { method: 'POST', body: JSON.stringify({ data_url: dataUrl }) });
+        }
+        pendingCommentImages = [];
+        taskPendingImagesRender();
+        if (content) {
+            await apiRequest(`/api/pm/tasks/${editingDetailTaskId}/comments`, { method: 'POST', body: JSON.stringify({ content }) });
+        }
         await openTaskDetail(editingDetailTaskId);
     } catch (err) {
         taskDetailMsg.textContent = err.message;
@@ -1244,18 +1254,71 @@ function fileToDataUrl(file, maxSize, callback) {
     reader.readAsDataURL(file);
 }
 
-taskImageInput.addEventListener('change', async () => {
-    const file = taskImageInput.files && taskImageInput.files[0];
-    if (!file) return;
-    try {
-        fileToDataUrl(file, 1100, async (dataUrl) => {
-            await apiRequest(`/api/pm/tasks/${editingDetailTaskId}/attachments`, { method: 'POST', body: JSON.stringify({ data_url: dataUrl }) });
-            await openTaskDetail(editingDetailTaskId);
+// ---- Imágenes en comentarios: pegar o arrastrar ----
+let pendingCommentImages = [];
+
+function taskPendingImagesRender() {
+    taskPendingImages.innerHTML = pendingCommentImages.map((u, i) => `
+        <div class="pm-pending-img">
+            <img src="${u}" alt="imagen pendiente">
+            <button type="button" class="pm-btn-icon danger" data-pminx="${i}" title="Quitar imagen">×</button>
+        </div>`).join('');
+    taskPendingImages.classList.toggle('hidden', pendingCommentImages.length === 0);
+    taskPendingImages.classList.toggle('drag-over', false);
+}
+
+function addPendingImageFiles(files) {
+    const imgs = Array.from(files || []).filter(f => f && f.type && f.type.startsWith('image/'));
+    if (!imgs.length) return;
+    let remaining = imgs.length;
+    imgs.forEach(file => {
+        fileToDataUrl(file, 1100, (dataUrl) => {
+            pendingCommentImages.push(dataUrl);
+            remaining--;
+            taskPendingImagesRender();
         });
-    } catch (err) {
-        taskDetailMsg.textContent = err.message;
+    });
+}
+
+taskPendingImages.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-pminx]');
+    if (btn) {
+        const idx = parseInt(btn.dataset.pminx);
+        pendingCommentImages.splice(idx, 1);
+        taskPendingImagesRender();
     }
-    taskImageInput.value = '';
+});
+
+taskCommentInput.addEventListener('paste', (e) => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    const files = [];
+    for (const item of items) {
+        if (item.type && item.type.startsWith('image/')) {
+            const f = item.getAsFile();
+            if (f) files.push(f);
+        }
+    }
+    if (files.length) {
+        e.preventDefault();
+        addPendingImageFiles(files);
+    }
+});
+
+taskCommentInput.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const hasFiles = e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+    if (hasFiles) taskPendingImages.classList.add('drag-over');
+});
+
+taskCommentInput.addEventListener('dragleave', (e) => {
+    taskPendingImages.classList.remove('drag-over');
+});
+
+taskCommentInput.addEventListener('drop', (e) => {
+    e.preventDefault();
+    taskPendingImages.classList.remove('drag-over');
+    addPendingImageFiles(e.dataTransfer && e.dataTransfer.files);
 });
 
 // Delegacion principal de clics del PM
