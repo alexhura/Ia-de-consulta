@@ -1139,9 +1139,27 @@ function pmTaskCard(t) {
             </div>
             <div class="pm-task-bottom">
                 <div class="pm-task-avatars">${avatarsHtml}</div>
-                <button type="button" class="pm-advance" data-action="pm-advance" data-id="${t.id}" title="Avanzar a la siguiente etapa">→</button>
+                ${pmTaskActions(t)}
             </div>
         </div>`;
+}
+
+// Acciones del pipeline según estado y rol.
+// Cuando la tarea está en "En revisión", el owner decide: aprobar (→ Finalizado
+// sin errores) o mandar a corregir (→ Por corregir). El resto no avanza desde ahí.
+function pmTaskActions(t) {
+    const isOwner = currentUser && parseInt(t.owner_id) === currentUser.id;
+    if (t.status === 'en_revision') {
+        if (!isOwner) {
+            return `<span class="pm-advance-waiting" title="Esperando revisión del owner">•••</span>`;
+        }
+        return `
+            <div class="pm-review-actions">
+                <button type="button" class="pm-advance pm-approve" data-action="pm-approve" data-id="${t.id}" title="Aprobar: mover a Finalizado sin errores">✓</button>
+                <button type="button" class="pm-advance pm-reject" data-action="pm-reject" data-id="${t.id}" title="Rechazar: mover a Por corregir">↺</button>
+            </div>`;
+    }
+    return `<button type="button" class="pm-advance" data-action="pm-advance" data-id="${t.id}" title="Avanzar a la siguiente etapa">→</button>`;
 }
 
 function renderPipeline(p) {
@@ -1161,6 +1179,19 @@ pmPipeline.addEventListener('click', (e) => {
     const id = parseInt(e.target.dataset.id);
     const task = pmProjects.flatMap(p => p.tasks || []).find(t => t.id === id);
     if (!task) return;
+    const action = e.target.dataset.action;
+    if (action === 'pm-approve') {
+        if (!isAdmin()) {
+            pmMsg.textContent = 'Solo el admin puede aprobar a "Finalizado sin errores".';
+            return;
+        }
+        moveTaskTo(id, 'finalizado_sin_errores');
+        return;
+    }
+    if (action === 'pm-reject') {
+        moveTaskTo(id, 'por_corregir');
+        return;
+    }
     const idx = PM_STAGES.indexOf(task.status);
     const next = task.status === PM_STAGES[PM_STAGES.length - 1] ? PM_STAGES[0] : PM_STAGES[idx + 1];
     moveTaskTo(id, next);

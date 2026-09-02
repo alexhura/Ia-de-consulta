@@ -1934,6 +1934,38 @@ body::before {
     background: rgba(0, 212, 255, 0.3);
 }
 
+.pm-review-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.pm-advance.pm-approve {
+    background: rgba(52, 211, 153, 0.16);
+    color: #34d399;
+}
+
+.pm-advance.pm-approve:hover {
+    background: rgba(52, 211, 153, 0.32);
+}
+
+.pm-advance.pm-reject {
+    background: rgba(239, 68, 68, 0.16);
+    color: #f87171;
+}
+
+.pm-advance.pm-reject:hover {
+    background: rgba(239, 68, 68, 0.32);
+}
+
+.pm-advance-waiting {
+    margin-left: auto;
+    color: #6b7280;
+    font-size: 13px;
+    letter-spacing: 2px;
+}
+
 /* Detalle de tarea */
 .pm-detail-window .window-body {
     display: block;
