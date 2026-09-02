@@ -81,17 +81,10 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Credenciales inválidas' });
     }
 
-    // Login único: rechazar si ya hay una sesión activa vigente
-    const hasActive = await userService.hasActiveSession(user.id);
-    if (hasActive) {
-      return res.status(409).json({
-        success: false,
-        error: 'Ya tienes una sesión activa en otro dispositivo. Cierra sesión desde ese dispositivo o espera a que expire.'
-      });
-    }
-
     await userService.updateLastLogin(user.id);
 
+    // Login único: la nueva sesión reemplaza/invalida cualquier sesión anterior del usuario.
+    // El token nuevo se registra como la sesión activa; el middleware rechazará el token viejo.
     const token = userService.generateToken(user);
     await userService.registerSession(user.id, token);
     
