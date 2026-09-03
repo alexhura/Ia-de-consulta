@@ -1096,6 +1096,8 @@ function renderProjectDetail(p) {
     pmDetailEfficiency.className = `pm-stat-value pm-eff ${effClass}`;
     pmDetailTasks.textContent = `${p.task_count || 0}`;
     document.querySelectorAll('.pm-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin()));
+    if (pmNotifEmail) pmNotifEmail.value = p.notif_email || '';
+    if (pmNotifEmailStatus) pmNotifEmailStatus.textContent = '';
 
     const info = [];
     if (p.email) info.push(['Email', `<a href="mailto:${escapeHtml(p.email)}">${escapeHtml(p.email)}</a>`]);
@@ -1356,9 +1358,6 @@ async function openTaskDetail(taskId) {
         taskAttachments.innerHTML = attachments.length
             ? attachments.map(a => `<div class="pm-attach"><img src="${escapeHtml(a.data_url)}" alt="adjunto"><button type="button" class="pm-btn-icon danger pm-admin-only hidden" data-action="pm-att-del" data-id="${a.id}" title="Eliminar imagen">×</button></div>`).join('')
             : '';
-    document.querySelectorAll('.pm-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin()));
-    if (pmNotifEmail) pmNotifEmail.value = p.notif_email || '';
-    if (pmNotifEmailStatus) pmNotifEmailStatus.textContent = '';
 
         taskComments.innerHTML = comments.length
             ? comments.map(c => `
