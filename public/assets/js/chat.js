@@ -194,7 +194,7 @@ function safeUrlLink(url) {
 function escapeAttr(text) {
     const div = document.createElement('div');
     div.textContent = (text == null ? '' : String(text));
-    return div.innerHTML;
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // Copia texto al portapapeles (fallback para navegadores sin clipboard API).
@@ -1113,24 +1113,33 @@ function renderProjectDetail(p) {
             <div class="pm-info-item pm-cred">
                 <span class="pm-info-k">Usuario</span>
                 <span class="pm-info-v wp-user-value">${escapeHtml(p.wp_user)}</span>
-                <button type="button" class="pm-icon-btn sm" data-copy="${escapeAttr(p.wp_user)}" title="Copiar usuario">${PM_ICON_COPY}</button>
+                <button type="button" class="pm-icon-btn sm copy-user" title="Copiar usuario">${PM_ICON_COPY}</button>
             </div>`);
     }
     if (p.wp_pass) {
         wp.push(`
             <div class="pm-info-item pm-cred">
                 <span class="pm-info-k">Contraseña</span>
-                <span class="pm-info-v wp-pass-value" data-secret="${escapeAttr(p.wp_pass)}">${'•'.repeat(Math.min(p.wp_pass.length, 10))}</span>
-                <button type="button" class="pm-icon-btn sm toggle-pass" data-secret="${escapeAttr(p.wp_pass)}" title="Ver contraseña">${PM_ICON_EYE}</button>
-                <button type="button" class="pm-icon-btn sm" data-copy="${escapeAttr(p.wp_pass)}" title="Copiar contraseña">${PM_ICON_COPY}</button>
+                <span class="pm-info-v wp-pass-value">${'•'.repeat(12)}</span>
+                <button type="button" class="pm-icon-btn sm toggle-pass" title="Ver contraseña">${PM_ICON_EYE}</button>
+                <button type="button" class="pm-icon-btn sm copy-pass" title="Copiar contraseña">${PM_ICON_COPY}</button>
             </div>`);
     }
     pmWpFields.innerHTML = wp.length ? wp.join('') : '<span class="pm-info-v pm-muted">Sin credenciales guardadas.</span>';
 
-    pmWpFields.querySelectorAll('[data-copy]').forEach(btn => {
+    if (p.wp_user) {
+        pmWpFields.querySelector('.copy-user')._secret = p.wp_user;
+    }
+    if (p.wp_pass) {
+        const toggleBtn = pmWpFields.querySelector('.toggle-pass');
+        const copyBtn = pmWpFields.querySelector('.copy-pass');
+        toggleBtn._secret = p.wp_pass;
+        copyBtn._secret = p.wp_pass;
+    }
+    pmWpFields.querySelectorAll('.copy-user, .copy-pass').forEach(btn => {
         btn.addEventListener('click', async () => {
             try {
-                await copyToClipboard(btn.dataset.copy);
+                await copyToClipboard(btn._secret);
                 showPmToast('Copiado al portapapeles');
             } catch (e) {
                 showPmToast('No se pudo copiar', true);
@@ -1139,10 +1148,10 @@ function renderProjectDetail(p) {
     });
     pmWpFields.querySelectorAll('.toggle-pass').forEach(btn => {
         btn.addEventListener('click', () => {
-            const secret = btn.dataset.secret;
+            const secret = btn._secret;
             const value = btn.closest('.pm-cred').querySelector('.wp-pass-value');
             const hidden = value.dataset.hidden !== '1';
-            value.textContent = hidden ? secret : '•'.repeat(Math.min(secret.length, 10));
+            value.textContent = hidden ? secret : '•'.repeat(12);
             value.dataset.hidden = hidden ? '1' : '0';
             btn.innerHTML = hidden ? PM_ICON_EYE_OFF : PM_ICON_EYE;
             btn.title = hidden ? 'Ocultar contraseña' : 'Ver contraseña';
