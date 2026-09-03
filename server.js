@@ -345,6 +345,26 @@ async function sendProjectFinishedEmail(task) {
 // El botón del correo lleva a /compartir.html?p=<token> (página estática) que
 // llama a estos endpoints públicos para obtener los datos y crear la tarea.
 
+// Diagnóstico: envía un correo de prueba via Brevo (solo admin) para verificar
+// la configuración del remitente/API key.
+app.post('/api/pm/email-test', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const to = (req.body && req.body.to) ? String(req.body.to).trim() : '';
+    if (!to) return res.status(400).json({ success: false, error: 'Email destino requerido' });
+    const result = await emailService.sendProjectFinished({
+      to,
+      client: 'Cliente de Prueba',
+      business: 'Negocio de Prueba',
+      url: 'https://ia-consulta.alejandro-c79.workers.dev',
+      shareLink: `${config.appUrl}/compartir.html?p=test`
+    });
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('Error en email-test:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 // Datos públicos (solo nombre del cliente/negocio) para mostrar en la página.
 app.get('/api/share/project', async (req, res) => {
   try {
@@ -441,10 +461,16 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
     }
     const task = await pmService.updateTask(req.params.id, req.body);
     // Al finalizarse un proyecto "One page" / "Full web" se avisa por correo.
+    // Se espera el envío dentro del request para que no sea cancelado por
+    // Cloudflare al terminar (los fetch asíncronos "sueltos" se pueden cortar).
     if (task.status === 'finalizado_sin_errores') {
       const title = String(task.title || '').toLowerCase();
       if (title === 'one page' || title === 'full web' || title.includes('one page') || title.includes('full web')) {
-        sendProjectFinishedEmail(task).catch(err => console.error('[email] no enviado:', err.message));
+        try {
+          await sendProjectFinishedEmail(task);
+        } catch (err) {
+          console.error('[email] no enviado:', err.message);
+        }
       }
     }
     res.json({ success: true, task });
