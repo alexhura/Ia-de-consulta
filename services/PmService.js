@@ -347,6 +347,19 @@ export class PmService {
     return token;
   }
 
+  // Invalida el enlace actual de compartir generando un token nuevo.
+  // Así una misma página/enlace solo sirve una vez (uso único).
+  async rotateShareToken(projectId) {
+    const id = parseInt(projectId);
+    const token = generateToken();
+    try {
+      await getSupabase().from('pm_projects').update({ share_token: token }).eq('id', id);
+    } catch (e) {
+      // columna aún no existe: el token sigue vigente
+    }
+    return token;
+  }
+
   // Busca un proyecto por su token público de compartir (devuelve null si no existe).
   async findProjectByToken(token) {
     if (!token) return null;

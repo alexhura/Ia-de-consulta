@@ -369,7 +369,7 @@ app.post('/api/pm/email-test', authMiddleware, requireRole('admin'), async (req,
 app.get('/api/share/project', async (req, res) => {
   try {
     const p = await pmService.findProjectByToken(req.query.p);
-    if (!p) return res.status(404).json({ success: false, error: 'Proyecto no encontrado' });
+    if (!p) return res.status(404).json({ success: false, expired: true, error: 'El enlace ha expirado o ya fue utilizado.' });
     await pmService.ensureShareToken(p.id);
     res.json({ success: true, project: { id: p.id, client: p.client, business: p.business } });
   } catch (error) {
@@ -386,7 +386,7 @@ app.post('/api/share/link', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Enlace de Google inválido' });
     }
     const p = await pmService.findProjectByToken(token);
-    if (!p) return res.status(404).json({ success: false, error: 'Proyecto no encontrado' });
+    if (!p) return res.status(404).json({ success: false, expired: true, error: 'El enlace ha expirado o ya fue utilizado.' });
     await pmService.addTask({
       project_id: p.id,
       title: 'Compartir perfil de Google',
@@ -394,6 +394,9 @@ app.post('/api/share/link', async (req, res) => {
       status: 'por_iniciar',
       priority: 'alta'
     }, 1);
+    // El enlace es de un solo uso: invalidamos el token para que no pueda
+    // reutilizarse después de compartir.
+    await pmService.rotateShareToken(p.id);
     res.json({ success: true });
   } catch (error) {
     console.error('Error en /api/share/link:', error);

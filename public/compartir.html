@@ -98,12 +98,25 @@
             fetch(api + '/project?p=' + encodeURIComponent(token))
                 .then(r => r.json())
                 .then(data => {
-                    if (!data.success) throw new Error(data.error || 'Proyecto no encontrado');
+                    if (!data.success) {
+                        if (data.expired) throw { expired: true, message: data.error };
+                        throw { message: (data.error || 'Proyecto no encontrado') };
+                    }
                     renderForm(data.project);
                 })
                 .catch(err => {
+                    if (err && err.expired) { showExpired(); return; }
                     content.innerHTML = '<div class="msg err" style="display:block">No se pudo cargar el proyecto: ' + (err.message || 'error') + '</div>';
                 });
+
+            function showExpired() {
+                content.innerHTML = `
+                    <div class="expired">
+                        <p class="expired-icon" style="font-size:44px;text-align:center;margin:20px 0;">&#128337;</p>
+                        <p class="lead" style="text-align:center;margin-bottom:8px;"><strong>Este enlace ya no está disponible</strong></p>
+                        <p class="lead" style="text-align:center;">Ha expirado o ya fue utilizado. Solicita un nuevo enlace para compartir tu perfil de Google.</p>
+                    </div>`;
+            }
 
             function renderForm(p) {
                 content.innerHTML = `
@@ -138,13 +151,18 @@
                 })
                     .then(r => r.json())
                     .then(data => {
-                        if (!data.success) throw new Error(data.error || 'Error al enviar');
+                        if (!data.success) {
+                            if (data.expired) { showExpired(); throw { skip: true }; }
+                            throw new Error(data.error || 'Error al enviar');
+                        }
                         msg.className = 'msg ok';
                         msg.textContent = '¡Enviado! Hemos creado una tarea para revisar tu perfil.';
                         document.getElementById('gUrl').value = '';
-                        btn.disabled = false;
+                        btn.disabled = true;
+                        btn.textContent = 'Enlace utilizado';
                     })
                     .catch(err => {
+                        if (err && err.skip) return;
                         msg.className = 'msg err';
                         msg.textContent = 'No se pudo enviar: ' + (err.message || 'error');
                         btn.disabled = false;
