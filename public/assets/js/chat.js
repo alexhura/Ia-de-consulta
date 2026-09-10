@@ -91,6 +91,9 @@ const pmAutomationsCard = document.getElementById('pmAutomationsCard');
 const pmNotifEmail = document.getElementById('pmNotifEmail');
 const pmNotifEmailSave = document.getElementById('pmNotifEmailSave');
 const pmNotifEmailStatus = document.getElementById('pmNotifEmailStatus');
+const pmNotifEmailFb = document.getElementById('pmNotifEmailFb');
+const pmNotifEmailFbSave = document.getElementById('pmNotifEmailFbSave');
+const pmNotifEmailFbStatus = document.getElementById('pmNotifEmailFbStatus');
 const pmProjectsView = document.getElementById('pmProjectsView');
 const pmDetailView = document.getElementById('pmDetailView');
 const pmBackBtn = document.getElementById('pmBackBtn');
@@ -1068,6 +1071,22 @@ pmNotifEmailSave.addEventListener('click', async () => {
     }
 });
 
+// Guardar el email de redes sociales (Facebook/Instagram) de la automatización (solo admin).
+pmNotifEmailFbSave.addEventListener('click', async () => {
+    if (!openProjectId) return;
+    try {
+        await apiRequest(`/api/pm/projects/${openProjectId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ notif_email_fb: pmNotifEmailFb.value.trim() })
+        });
+        pmNotifEmailFbStatus.textContent = 'Guardado ✓';
+        const p = pmProjects.find(x => x.id === openProjectId);
+        if (p) { p.notif_email_fb = pmNotifEmailFb.value.trim(); }
+    } catch (err) {
+        pmNotifEmailFbStatus.textContent = err.message;
+    }
+});
+
 // ---------- Detalle de proyecto ----------
 let openProjectId = null;
 
@@ -1106,6 +1125,8 @@ function renderProjectDetail(p) {
     document.querySelectorAll('.pm-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin()));
     if (pmNotifEmail) pmNotifEmail.value = p.notif_email || '';
     if (pmNotifEmailStatus) pmNotifEmailStatus.textContent = '';
+    if (pmNotifEmailFb) pmNotifEmailFb.value = p.notif_email_fb || '';
+    if (pmNotifEmailFbStatus) pmNotifEmailFbStatus.textContent = '';
 
     const info = [];
     if (p.email) info.push(['Email', `<a href="mailto:${escapeHtml(p.email)}">${escapeHtml(p.email)}</a>`]);

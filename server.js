@@ -341,6 +341,28 @@ async function sendProjectFinishedEmail(task) {
   });
 }
 
+// Envía el correo de "proyecto finalizado" para redes sociales cuando la tarea
+// "Dominio" llega a "Finalizado sin errores". Usa el email de notificación de
+// redes (notif_email_fb) o el email general del proyecto. El enlace lleva a la
+// página pública que pide los perfiles de Facebook e Instagram.
+async function sendProjectFinishedFbEmail(task) {
+  const project = await pmService.getProject(task.project_id);
+  const to = (project && (project.notif_email_fb || project.email)) || '';
+  if (!to) {
+    console.warn('[email] Proyecto sin destinatario, correo no enviado.');
+    return;
+  }
+  const token = await pmService.ensureShareTokenFb(task.project_id);
+  const shareLink = new URL(`${config.appUrl}/compartir-redes.html?p=${encodeURIComponent(token)}`).toString();
+  await emailService.sendProjectFinishedFb({
+    to,
+    client: project.client,
+    business: project.business,
+    url: project.url,
+    shareLink
+  });
+}
+
 // ---- Compatir enlace de perfil de Google (público, sin login) ----
 // El botón del correo lleva a /compartir.html?p=<token> (página estática) que
 // llama a estos endpoints públicos para obtener los datos y crear la tarea.
@@ -361,6 +383,25 @@ app.post('/api/pm/email-test', authMiddleware, requireRole('admin'), async (req,
     res.json({ success: true, result });
   } catch (error) {
     console.error('Error en email-test:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Diagnóstico: correo de prueba para redes sociales (Facebook/Instagram).
+app.post('/api/pm/email-test-fb', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const to = (req.body && req.body.to) ? String(req.body.to).trim() : '';
+    if (!to) return res.status(400).json({ success: false, error: 'Email destino requerido' });
+    const result = await emailService.sendProjectFinishedFb({
+      to,
+      client: 'Cliente de Prueba',
+      business: 'Negocio de Prueba',
+      url: 'https://ia-consulta.alejandro-c79.workers.dev',
+      shareLink: `${config.appUrl}/compartir-redes.html?p=test`
+    });
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('Error en email-test-fb:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -400,6 +441,48 @@ app.post('/api/share/link', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error en /api/share/link:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Datos públicos de un proyecto para la página de compartir redes sociales
+// (Facebook/Instagram). Token independiente del de Google (share_token_fb).
+app.get('/api/share/fb-project', async (req, res) => {
+  try {
+    const p = await pmService.findProjectByFbToken(req.query.p);
+    if (!p) return res.status(404).json({ success: false, expired: true, error: 'El enlace ha expirado o ya fue utilizado.' });
+    await pmService.ensureShareTokenFb(p.id);
+    res.json({ success: true, project: { id: p.id, client: p.client, business: p.business } });
+  } catch (error) {
+    console.error('Error en /api/share/fb-project:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Crea la tarea de "compartir redes sociales" (Facebook/Instagram) en el
+// proyecto correspondiente. Valida las URLs y rota el token (un solo uso).
+app.post('/api/share/fb-link', async (req, res) => {
+  try {
+    const { token, fbUrl, igUrl, profileName } = req.body || {};
+    if (!token || !fbUrl || !/^https?:\/\//i.test(fbUrl)) {
+      return res.status(400).json({ success: false, error: 'Enlace de Facebook inválido' });
+    }
+    if (igUrl && !/^https?:\/\//i.test(igUrl)) {
+      return res.status(400).json({ success: false, error: 'Enlace de Instagram inválido' });
+    }
+    const p = await pmService.findProjectByFbToken(token);
+    if (!p) return res.status(404).json({ success: false, expired: true, error: 'El enlace ha expirado o ya fue utilizado.' });
+    await pmService.addTask({
+      project_id: p.id,
+      title: 'Compartir redes sociales (Facebook/Instagram)',
+      description: `Enlace de Facebook: ${fbUrl}${igUrl ? `\nEnlace de Instagram: ${igUrl}` : ''}${profileName ? `\nNegocio: ${profileName}` : ''}`,
+      status: 'por_iniciar',
+      priority: 'alta'
+    }, 1);
+    await pmService.rotateShareTokenFb(p.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error en /api/share/fb-link:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -463,17 +546,21 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
       return res.status(403).json({ success: false, error: 'Solo el admin puede mover a "Finalizado sin errores"' });
     }
     const task = await pmService.updateTask(req.params.id, req.body);
-    // Al finalizarse un proyecto "One page" / "Full web" se avisa por correo.
-    // Se espera el envío dentro del request para que no sea cancelado por
-    // Cloudflare al terminar (los fetch asíncronos "sueltos" se pueden cortar).
+    // Al finalizarse un proyecto "One page" / "Full web" se avisa por correo a
+    // Google; al finalizar la tarea "Dominio" se avisa para compartir redes
+    // sociales (Facebook/Instagram). Se espera el envío dentro del request para
+    // que no sea cancelado por Cloudflare al terminar (los fetch asíncronos
+    // "sueltos" se pueden cortar).
     if (task.status === 'finalizado_sin_errores') {
       const title = String(task.title || '').toLowerCase();
-      if (title === 'one page' || title === 'full web' || title.includes('one page') || title.includes('full web')) {
-        try {
+      try {
+        if (title === 'dominio' || title.includes('dominio')) {
+          await sendProjectFinishedFbEmail(task);
+        } else if (title === 'one page' || title === 'full web' || title.includes('one page') || title.includes('full web')) {
           await sendProjectFinishedEmail(task);
-        } catch (err) {
-          console.error('[email] no enviado:', err.message);
         }
+      } catch (err) {
+        console.error('[email] no enviado:', err.message);
       }
     }
     res.json({ success: true, task });

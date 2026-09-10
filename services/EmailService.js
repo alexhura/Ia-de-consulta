@@ -103,4 +103,52 @@ function sendProjectFinished({ to, client, business, url, shareLink }) {
   return send({ to, subject, html });
 }
 
-export const emailService = { send, configured, sender, sendProjectFinished };
+// Correo de aviso cuando se finaliza una tarea "Dominio". Similar al de One
+// page/Full web pero pide compartir los enlaces de redes sociales
+// (Facebook e Instagram) en lugar del perfil de Google.
+function sendProjectFinishedFb({ to, client, business, url, shareLink }) {
+  const subject = `¡Proyecto ${business || client} finalizado!`;
+  const site = url && /^https?:\/\//i.test(url) ? url : (url ? `https://${url}` : '');
+  const html = `<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background-color:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#000000;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#ffffff;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
+          <tr>
+            <td style="background-color:#1d4ed8;padding:28px 32px;">
+              <div style="color:#ffffff;font-size:24px;font-weight:bold;">¡Proyecto finalizado!</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">Hola,</p>
+              <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#000000;">
+                El proyecto del negocio <strong style="color:#1d4ed8;">${esc(business || client)}</strong>
+                del cliente <strong style="color:#1d4ed8;">${esc(client)}</strong> se ha finalizado correctamente.
+              </p>
+              ${site ? `<p style="margin:0 0 24px;font-size:16px;line-height:1.6;">Sitio web:&nbsp;<a href="${esc(site)}" style="color:#2563eb;">${esc(site)}</a></p>` : ''}
+              <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#000000;">
+                Para completar, comparte los enlaces de tus perfiles de <strong style="color:#1d4ed8;">Facebook</strong> e <strong style="color:#1d4ed8;">Instagram</strong>.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:32px 0 8px;">
+                <tr>
+                  <td align="center">
+                    <a href="${esc(shareLink)}" style="display:inline-block;background-color:#1d4ed8;color:#ffffff;text-decoration:none;font-size:16px;font-weight:bold;padding:14px 28px;border-radius:8px;">Compartir enlaces de Facebook e Instagram</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:24px 0 0;font-size:13px;color:#6b7280;">Gracias por confiar en nosotros.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+  return send({ to, subject, html });
+}
+
+export const emailService = { send, configured, sender, sendProjectFinished, sendProjectFinishedFb };

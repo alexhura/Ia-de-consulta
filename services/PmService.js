@@ -37,7 +37,7 @@ function addTimestamps(d) {
 function normProject(body) {
   const d = {};
   if (body.client !== undefined) d.client = String(body.client || '').trim();
-  for (const f of ['business', 'description', 'email', 'phone', 'services', 'areas', 'url', 'wp_user', 'wp_pass', 'notif_email']) {
+  for (const f of ['business', 'description', 'email', 'phone', 'services', 'areas', 'url', 'wp_user', 'wp_pass', 'notif_email', 'notif_email_fb']) {
     if (body[f] !== undefined) d[f] = String(body[f] || '').trim();
   }
   if (body.status !== undefined) d.status = sanitize(body.status, PM_STATUSES, 'pendiente');
@@ -163,9 +163,10 @@ export class PmService {
     d.created_by = userId;
     d.status = d.status || 'pendiente';
     d.share_token = d.share_token || generateToken();
+    d.share_token_fb = d.share_token_fb || generateToken();
     delete d.updated_at;
     const fields = {};
-    for (const f of ['client', 'business', 'description', 'email', 'phone', 'services', 'areas', 'url', 'wp_user', 'wp_pass', 'notif_email', 'share_token', 'status', 'created_by']) {
+    for (const f of ['client', 'business', 'description', 'email', 'phone', 'services', 'areas', 'url', 'wp_user', 'wp_pass', 'notif_email', 'notif_email_fb', 'share_token', 'share_token_fb', 'status', 'created_by']) {
       fields[f] = d[f];
     }
     let result = await getSupabase().from('pm_projects').insert(fields).select('*').single();
@@ -367,6 +368,44 @@ export class PmService {
       .from('pm_projects')
       .select('*')
       .eq('share_token', token)
+      .maybeSingle();
+    if (error) throw error;
+    return data || null;
+  }
+
+  // Token de compartir de redes sociales (Facebook/Instagram). Independiente
+  // del token de Google para que cada enlace/mail sea de un solo uso propio.
+  async ensureShareTokenFb(projectId) {
+    const id = parseInt(projectId);
+    const { data, error } = await getSupabase().from('pm_projects').select('share_token_fb').eq('id', id).single();
+    if (error) return generateToken();
+    if (data && data.share_token_fb) return data.share_token_fb;
+    const token = generateToken();
+    try {
+      await getSupabase().from('pm_projects').update({ share_token_fb: token }).eq('id', id);
+    } catch (e) {
+      // columna aún no existe: usamos el token en memoria
+    }
+    return token;
+  }
+
+  async rotateShareTokenFb(projectId) {
+    const id = parseInt(projectId);
+    const token = generateToken();
+    try {
+      await getSupabase().from('pm_projects').update({ share_token_fb: token }).eq('id', id);
+    } catch (e) {
+      // columna aún no existe: el token sigue vigente
+    }
+    return token;
+  }
+
+  async findProjectByFbToken(token) {
+    if (!token) return null;
+    const { data, error } = await getSupabase()
+      .from('pm_projects')
+      .select('*')
+      .eq('share_token_fb', token)
       .maybeSingle();
     if (error) throw error;
     return data || null;

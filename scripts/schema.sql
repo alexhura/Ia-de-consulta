@@ -65,6 +65,8 @@ alter table pm_projects add column if not exists wp_user text default '';
 alter table pm_projects add column if not exists wp_pass text default '';
 alter table pm_projects add column if not exists notif_email text default '';
 alter table pm_projects add column if not exists share_token text default '';
+alter table pm_projects add column if not exists notif_email_fb text default '';
+alter table pm_projects add column if not exists share_token_fb text default '';
 
 create table if not exists pm_tasks (
   id serial primary key,
