@@ -428,6 +428,61 @@ async function sendProjectDeliveredEmail(task) {
   });
 }
 
+// Genera un resumen breve y en tono profesional (inglés US) de cómo se resolvió
+// un ticket, a partir de la información de la tarea (título, descripción,
+// comentarios). Devuelve texto plano; si Groq falla usa un resumen genérico.
+async function buildTicketSummary(taskDetail, project) {
+  const task = taskDetail.task || {};
+  const comments = (taskDetail.comments || [])
+    .map(c => c.content).filter(Boolean).join('\n');
+  try {
+    const info = [
+      `Cliente: ${project.client || ''}`,
+      `Negocio: ${project.business || ''}`,
+      `Ticket: ${task.title || ''}`,
+      `Descripción: ${task.description || ''}`,
+      comments ? `Historial / resolución: ${comments}` : ''
+    ].filter(Boolean).join('\n');
+
+    const prompt = `Eres el equipo de desarrollo web. Redacta un correo CORTO dirigido al cliente resumiendo su ticket y cómo se resolvió. Solo un resumen de 3 a 5 líneas, en inglés de EE.UU., tono profesional y amable, dirigido directamente al cliente. NO menciones nombres internos, áreas, ni precios. Contesta solo el cuerpo del correo sin saludo inicial ni firma.\n\nINFORMACIÓN DEL TICKET:\n${info}`;
+
+    const response = await groqService.chat(prompt, '');
+    const clean = String(response || '')
+      .replace(/^```(\w+)?\s*/i, '').replace(/\s*```$/, '')
+      .trim();
+    if (clean.length > 10) return clean;
+  } catch (err) {
+    console.error('[ticket] no se generó resumen con IA:', err.message);
+  }
+  const desc = (task.description || '').trim();
+  return desc
+    ? `Your request was reviewed by our team and has been resolved. ${desc.replace(/\.$/, '')}.`
+    : 'Your request was reviewed by our team and has been resolved.';
+}
+
+// Correo de resolución de ticket al cliente cuando una tarea cuyo título
+// contiene "ticket" llega a "Finalizado sin errores". Va dirigido al cliente
+// (a sus múltiples emails) y con copia a ADL / desarrollo / help.
+async function sendTicketResolvedEmail(task) {
+  const project = await pmService.getProject(task.project_id);
+  const to = [
+    (project && project.email) || '',
+    (project && project.email2) || ''
+  ].filter(Boolean);
+  if (to.length === 0) {
+    console.warn('[email] Proyecto sin email de cliente, correo de ticket no enviado.');
+    return;
+  }
+  const detail = await pmService.getTaskDetail(task.id);
+  const summary = await buildTicketSummary(detail, project);
+  await emailService.sendTicketResolved({
+    to,
+    client: project.client,
+    ticketTitle: task.title,
+    summary
+  });
+}
+
 // Notifica en la campanita a la persona asignada cuando recibe una tarea.
 // Destinatario individual (target_user_id) para que solo la vea esa persona.
 async function notifyTaskAssigned(task) {
@@ -487,6 +542,31 @@ app.post('/api/pm/email-test-fb', authMiddleware, requireRole('admin'), async (r
     res.json({ success: true, result });
   } catch (error) {
     console.error('Error en email-test-fb:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Diagnóstico: correo de resolución de ticket al cliente.
+app.post('/api/pm/email-test-ticket', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const to = (req.body && req.body.to) ? String(req.body.to).trim() : '';
+    if (!to) return res.status(400).json({ success: false, error: 'Email destino requerido' });
+    const summary = await buildTicketSummary({
+      task: {
+        title: 'Ticket #1021',
+        description: 'El cliente reportó que el formulario de contacto de su sitio no enviaba los mensajes. El plugin fue actualizado y la configuración del correo quedó vinculada a su dominio.'
+      },
+      comments: []
+    }, { client: 'Cliente de Prueba', business: 'Negocio de Prueba' });
+    const result = await emailService.sendTicketResolved({
+      to,
+      client: 'Cliente de Prueba',
+      ticketTitle: 'Ticket #1021',
+      summary
+    });
+    res.json({ success: true, result, summary });
+  } catch (error) {
+    console.error('Error en email-test-ticket:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -694,6 +774,7 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
     } catch (e) { /* si falla, se intenta notificar igual */ }
     const task = await pmService.updateTask(req.params.id, req.body);
     // Automatizaciones por correo al alcanzar "Finalizado sin errores":
+    // - Tareas "ticket ..."  -> correo de resolución al cliente (multi-correo)
     // - "One page"/"Full web"  -> aviso a Google (compartir perfil de Google)
     // - "Dominio"              -> aviso de redes (compartir Facebook/Instagram)
     // - "Compartir perfil de Google"                     -> vinculación exitosa (Google)
@@ -703,7 +784,9 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
     if (task.status === 'finalizado_sin_errores') {
       const title = String(task.title || '').toLowerCase();
       try {
-        if (title.includes('entrega y revision') || title.includes('entrega y revisión')) {
+        if (title.includes('ticket')) {
+          await sendTicketResolvedEmail(task);
+        } else if (title.includes('entrega y revision') || title.includes('entrega y revisión')) {
           await sendProjectDeliveredEmail(task);
         } else if (title.includes('compartir perfil de google')) {
           await sendProjectLinkedEmail(task);

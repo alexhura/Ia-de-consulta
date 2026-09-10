@@ -224,6 +224,62 @@ const DELIVERY_CC = [
   process.env.BREVO_DEV_EMAIL || 'desarrollo.academiadelimpieza@gmail.com'
 ];
 
+// Cc fijo para el correo de resolución de tickets.
+const TICKET_CC = [
+  process.env.BREVO_HANDOVER_CC || 'adldigital00@gmail.com',
+  process.env.BREVO_DEV_EMAIL || 'desarrollo.academiadelimpieza@gmail.com',
+  process.env.BREVO_HELP_EMAIL || 'help.academiadelimpieza@gmail.com'
+];
+
+// Convierte texto plano (párrafos separados por doble salto de línea) a HTML.
+function textToHtml(text) {
+  return String(text || '').trim()
+    .split(/\n{2,}/)
+    .map(p => `<p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#000000;">${esc(p.replace(/\n/g, '<br>'))}</p>`)
+    .join('');
+}
+
+// Correo de resolución de ticket al cliente: solo resume el ticket y cómo se
+// resolvió. Dirigido siempre al cliente (a sus múltiples emails), con copia a
+// ADL y al equipo de ayuda. El resumen (summary) lo genera el asistente.
+function sendTicketResolved({ to, client, ticketTitle, summary }) {
+  const subject = `Your Support Ticket Has Been Resolved — ${ticketTitle || 'Ticket'}`;
+  const cc = TICKET_CC;
+  const html = `<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background-color:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#000000;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#ffffff;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
+          <tr>
+            <td style="background-color:#1d4ed8;padding:28px 32px;">
+              <div style="color:#ffffff;font-size:24px;font-weight:bold;">Your Support Ticket Has Been Resolved</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 24px;font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Ticket: ${esc(ticketTitle || '—')}</p>
+              ${summary ? textToHtml(summary) : '<p style="margin:0 0 16px;font-size:16px;color:#000000;">Your ticket has been resolved.</p>'}
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0 0;">
+                <tr>
+                  <td align="center">
+                    <span style="font-size:16px;color:#000000;">Web development team</span><br>
+                    <span style="font-size:14px;color:#6b7280;font-weight:600;letter-spacing:0.5px;">by ADL</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+  return send({ to, subject, html, cc });
+}
+
 // Correo de entrega formal al cliente cuando la tarea "Entrega y Revision"
 // llega a "Finalizado sin errores". Menciona que el sitio web ya está listo y
 // que se hace la entrega formal con la URL. Redacción en inglés US, sin
@@ -288,4 +344,4 @@ function sendProjectDelivered({ to, client, business, url }) {
   return send({ to, subject, html, cc: DELIVERY_CC });
 }
 
-export const emailService = { send, configured, sender, sendProjectFinished, sendProjectFinishedFb, sendProjectLinked, sendProjectLinkedFb, sendProjectDelivered };
+export const emailService = { send, configured, sender, sendProjectFinished, sendProjectFinishedFb, sendProjectLinked, sendProjectLinkedFb, sendProjectDelivered, sendTicketResolved };
