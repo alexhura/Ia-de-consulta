@@ -2156,6 +2156,16 @@ body::before {
     transition: border-color .15s ease;
 }
 
+.pm-auto-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    flex-shrink: 0;
+}
+
 .pm-auto-field input:focus {
     border-color: rgba(0, 212, 255, 0.45);
 }
