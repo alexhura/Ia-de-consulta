@@ -19,8 +19,8 @@ function configured() {
 }
 
 // Envía un correo HTML transaccional.
-// Params: { to: 'a@b.com', subject, html }
-async function send({ to, subject, html }) {
+// Params: { to: 'a@b.com', subject, html, cc: 'c@d.com', fromName }
+async function send({ to, subject, html, cc, fromName }) {
   if (!configured()) {
     console.warn('[EmailService] BREVO_API_KEY no configurada; correo no enviado:', subject);
     return { skipped: true, reason: 'no_brevo_key' };
@@ -30,6 +30,16 @@ async function send({ to, subject, html }) {
     return { skipped: true, reason: 'no_recipient' };
   }
 
+  const payload = {
+    sender: fromName ? { name: fromName, email: sender().email } : sender(),
+    to: [{ email: to.trim() }],
+    subject,
+    htmlContent: html
+  };
+  if (cc && cc.trim()) {
+    payload.cc = [{ email: cc.trim() }];
+  }
+
   const res = await fetch(`${BREVO_API}/smtp/email`, {
     method: 'POST',
     headers: {
@@ -37,12 +47,7 @@ async function send({ to, subject, html }) {
       'content-type': 'application/json',
       accept: 'application/json'
     },
-    body: JSON.stringify({
-      sender: sender(),
-      to: [{ email: to.trim() }],
-      subject,
-      htmlContent: html
-    })
+    body: JSON.stringify(payload)
   });
 
   if (!res.ok) {
@@ -208,4 +213,72 @@ function sendProjectLinkedFb({ to, client, business, url, shareLink }) {
   return buildLinkedHtml('perfil de Facebook e Instagram', { to, client, business, url, shareLink });
 }
 
-export const emailService = { send, configured, sender, sendProjectFinished, sendProjectFinishedFb, sendProjectLinked, sendProjectLinkedFb };
+// Dirección fija de Cc para el correo de entrega.
+const DELIVERY_CC = process.env.BREVO_HANDOVER_CC || 'adldigital00@gmail.com';
+
+// Correo de entrega formal al cliente cuando la tarea "Entrega y Revision"
+// llega a "Finalizado sin errores". Menciona que el sitio web ya está listo y
+// que se hace la entrega formal con la URL. Redacción en inglés US, sin
+// mencionar el área de desarrollo — la agencia es ADL. CC siempre a adldigital00.
+function sendProjectDelivered({ to, client, business, url }) {
+  const subject = `Your Website Is Ready for Delivery — ${business || client}`;
+  const site = url && /^https?:\/\//i.test(url) ? url : (url ? `https://${url}` : '');
+  const cc = DELIVERY_CC;
+  const html = `<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background-color:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#000000;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#ffffff;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
+          <tr>
+            <td style="background-color:#1d4ed8;padding:28px 32px;">
+              <div style="color:#ffffff;font-size:24px;font-weight:bold;">Your Website Is Ready!</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hello,</p>
+              <p style="margin:0 0 24px;font-size:16px;line-height:1.7;color:#000000;">
+                We are excited to let you know that your website has been completed
+                and is officially ready for delivery.
+              </p>
+              <p style="margin:0 0 24px;font-size:16px;line-height:1.7;color:#000000;">
+                Your new site is now live at:
+              </p>
+              ${site ? `<p style="margin:0 0 24px;font-size:16px;line-height:1.7;">&nbsp;&nbsp;<a href="${esc(site)}" style="color:#2563eb;">${esc(site)}</a></p>` : ''}
+              <p style="margin:0 0 24px;font-size:16px;line-height:1.7;color:#000000;">
+                We will continue working together to make this website a powerful
+                tool that connects you with your customers and grows alongside your
+                business.
+              </p>
+              <p style="margin:0 0 24px;font-size:16px;line-height:1.7;color:#000000;">
+                If you need any adjustments, customizations, or have any questions
+                about your new website, please do not hesitate to call us at
+                <a href="tel:+17023285251" style="color:#2563eb;font-weight:bold;">(702) 328-5251</a>.
+                We are always happy to help.
+              </p>
+              <p style="margin:0 0 24px;font-size:16px;line-height:1.7;color:#000000;">
+                We are proud to be part of ADL and to support the growth of your
+                business through technology and design.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0 0;">
+                <tr>
+                  <td align="center">
+                    <span style="font-size:16px;color:#000000;">Web development team</span><br>
+                    <span style="font-size:14px;color:#6b7280;font-weight:600;letter-spacing:0.5px;">by ADL</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+  return send({ to, subject, html, cc, fromName: 'ADL' });
+}
+
+export const emailService = { send, configured, sender, sendProjectFinished, sendProjectFinishedFb, sendProjectLinked, sendProjectLinkedFb, sendProjectDelivered };

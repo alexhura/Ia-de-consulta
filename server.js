@@ -401,6 +401,25 @@ async function sendProjectLinkedFbEmail(task) {
   });
 }
 
+// Correo formal de entrega al cliente cuando la tarea "Entrega y Revision"
+// llega a "Finalizado sin errores". El destinatario es el email del cliente
+// (project.email); siempre incluye Cc a ADL. Se envía con el nombre de
+// remitente "ADL" en vez de "Desarrollo Web".
+async function sendProjectDeliveredEmail(task) {
+  const project = await pmService.getProject(task.project_id);
+  const to = (project && project.email) || '';
+  if (!to) {
+    console.warn('[email] Proyecto sin email de cliente, correo de entrega no enviado.');
+    return;
+  }
+  await emailService.sendProjectDelivered({
+    to,
+    client: project.client,
+    business: project.business,
+    url: project.url
+  });
+}
+
 // ---- Compatir enlace de perfil de Google (público, sin login) ----
 // El botón del correo lleva a /compartir.html?p=<token> (página estática) que
 // llama a estos endpoints públicos para obtener los datos y crear la tarea.
@@ -478,6 +497,24 @@ app.post('/api/pm/email-test-linked-fb', authMiddleware, requireRole('admin'), a
     res.json({ success: true, result });
   } catch (error) {
     console.error('Error en email-test-linked-fb:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Diagnóstico: correo de prueba de entrega formal al cliente.
+app.post('/api/pm/email-test-delivery', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const to = (req.body && req.body.to) ? String(req.body.to).trim() : '';
+    if (!to) return res.status(400).json({ success: false, error: 'Email destino requerido' });
+    const result = await emailService.sendProjectDelivered({
+      to,
+      client: 'Cliente de Prueba',
+      business: 'Negocio de Prueba',
+      url: 'https://ia-consulta.alejandro-c79.workers.dev'
+    });
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('Error en email-test-delivery:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -632,7 +669,9 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
     if (task.status === 'finalizado_sin_errores') {
       const title = String(task.title || '').toLowerCase();
       try {
-        if (title.includes('compartir perfil de google')) {
+        if (title.includes('entrega y revision') || title.includes('entrega y revisión')) {
+          await sendProjectDeliveredEmail(task);
+        } else if (title.includes('compartir perfil de google')) {
           await sendProjectLinkedEmail(task);
         } else if (title.includes('compartir redes sociales')) {
           await sendProjectLinkedFbEmail(task);
