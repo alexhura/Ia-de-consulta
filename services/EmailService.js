@@ -36,8 +36,10 @@ async function send({ to, subject, html, cc, fromName }) {
     subject,
     htmlContent: html
   };
-  if (cc && cc.trim()) {
-    payload.cc = [{ email: cc.trim() }];
+  if (cc) {
+    const list = Array.isArray(cc) ? cc : [cc];
+    const valid = list.filter(c => c && typeof c === 'string' && c.trim());
+    if (valid.length) payload.cc = valid.map(c => ({ email: c.trim() }));
   }
 
   const res = await fetch(`${BREVO_API}/smtp/email`, {
@@ -213,8 +215,11 @@ function sendProjectLinkedFb({ to, client, business, url, shareLink }) {
   return buildLinkedHtml('perfil de Facebook e Instagram', { to, client, business, url, shareLink });
 }
 
-// Dirección fija de Cc para el correo de entrega.
-const DELIVERY_CC = process.env.BREVO_HANDOVER_CC || 'adldigital00@gmail.com';
+// Direcciones fijas de Cc para el correo de entrega.
+const DELIVERY_CC = [
+  process.env.BREVO_HANDOVER_CC || 'adldigital00@gmail.com',
+  process.env.BREVO_DEV_EMAIL || 'desarrollo.academiadelimpieza@gmail.com'
+];
 
 // Correo de entrega formal al cliente cuando la tarea "Entrega y Revision"
 // llega a "Finalizado sin errores". Menciona que el sitio web ya está listo y
@@ -223,7 +228,6 @@ const DELIVERY_CC = process.env.BREVO_HANDOVER_CC || 'adldigital00@gmail.com';
 function sendProjectDelivered({ to, client, business, url }) {
   const subject = `Your Website Is Ready for Delivery — ${business || client}`;
   const site = url && /^https?:\/\//i.test(url) ? url : (url ? `https://${url}` : '');
-  const cc = DELIVERY_CC;
   const html = `<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background-color:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#000000;">
@@ -278,7 +282,7 @@ function sendProjectDelivered({ to, client, business, url }) {
   </table>
 </body>
 </html>`;
-  return send({ to, subject, html, cc, fromName: 'ADL' });
+  return send({ to, subject, html, cc: DELIVERY_CC });
 }
 
 export const emailService = { send, configured, sender, sendProjectFinished, sendProjectFinishedFb, sendProjectLinked, sendProjectLinkedFb, sendProjectDelivered };
