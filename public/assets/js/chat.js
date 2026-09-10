@@ -744,6 +744,16 @@ const PM_STAGE_LABEL = {
 };
 const PM_STAGES = ['por_iniciar', 'en_progreso', 'en_revision', 'finalizado_sin_errores', 'por_corregir'];
 
+// Progreso visual de cada tarea según su etapa en el pipeline.
+// Pronóstico de avance por columna; "por corregir" es un retorno (no avance lineal).
+const PM_STAGE_PROGRESS = {
+    por_iniciar: 0,
+    en_progreso: 40,
+    en_revision: 70,
+    finalizado_sin_errores: 100,
+    por_corregir: 45
+};
+
 let pmProjects = [];
 let pmSearch = '';
 let editingProjectId = null;
@@ -1207,9 +1217,18 @@ function pmTaskCard(t) {
             ${pmPeopleAvatar(t.assigned_to, t.assigned_name, 'sm')}
             ${pmPeopleAvatar(t.owner_id, t.owner_name, 'sm')}
         </div>`;
+    const pct = PM_STAGE_PROGRESS[t.status] ?? 0;
+    const progClass = t.status === 'finalizado_sin_errores' ? 'prog-done' : t.status === 'por_corregir' ? 'prog-corr' : '';
+    const progStage = PM_STAGE_LABEL[t.status] || t.status;
     return `
         <div class="pm-kanban-card${t.status === 'finalizado_sin_errores' ? ' pm-done' : ''} draggable="true" data-task-id="${t.id}" data-stage="${t.status}">
             <div class="pm-task-title">${escapeHtml(t.title)}</div>
+            <div class="pm-task-progress" title="${escapeAttr(progStage)} · ${pct}% de avance">
+                <div class="pm-task-progress-track">
+                    <div class="pm-task-progress-fill ${progClass}" style="width:${pct}%"></div>
+                </div>
+                <span class="pm-task-progress-label">${pct}%</span>
+            </div>
             <div class="pm-task-meta">
                 ${due}
                 <span class="pm-priority pm-priority-${t.priority}">${PM_PRIORITY_LABEL[t.priority] || t.priority}</span>
