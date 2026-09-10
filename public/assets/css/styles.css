@@ -2156,7 +2156,7 @@ body::before {
     transition: border-color .15s ease;
 }
 
-.pm-auto-icon-btn {
+.btn.pm-auto-icon-btn { 
     display: inline-flex;
     align-items: center;
     justify-content: center;
