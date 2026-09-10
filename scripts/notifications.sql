@@ -25,3 +25,12 @@ create table if not exists public.notification_reads (
 -- Índice para listar anuncios por fecha.
 create index if not exists notifications_created_at_idx
     on public.notifications (created_at desc);
+
+-- ============================================================
+-- PARA NOTIFICACIONES DE TAREAS (EJECUTAR AHORA)
+-- "Cada tarea avisa a la persona asignada" (campanita + sonido).
+-- Agrega destinatario individual: si se define, la notificación
+-- solo la ve ESE usuario (aunque target_roles sea NULL).
+-- ============================================================
+alter table public.notifications
+    add column if not exists target_user_id integer references public.users (id);

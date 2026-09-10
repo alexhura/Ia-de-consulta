@@ -9,6 +9,7 @@ import authRoutes, { authMiddleware, requireRole } from './routes/auth.js';
 import notificationRoutes from './routes/notifications.js';
 import { PmService, PM_STATUSES, PM_PRIORITIES } from './services/PmService.js';
 import { emailService } from './services/EmailService.js';
+import { notificationService } from './services/NotificationService.js';
 
 const app = express();
 export { app };
@@ -420,6 +421,26 @@ async function sendProjectDeliveredEmail(task) {
   });
 }
 
+// Notifica en la campanita a la persona asignada cuando recibe una tarea.
+// Destinatario individual (target_user_id) para que solo la vea esa persona.
+async function notifyTaskAssigned(task) {
+  if (!task || !task.assigned_to) return;
+  try {
+    const project = await pmService.getProject(task.project_id);
+    const projectName = project && (project.business || project.client)
+      ? (project.business || project.client)
+      : `Proyecto #${task.project_id}`;
+    await notificationService.create({
+      title: 'Nueva tarea asignada',
+      message: `Se te asignó la tarea "${task.title}" del proyecto "${projectName}".`,
+      targetUserId: task.assigned_to
+    });
+    console.log(`[notif] Tarea #${task.id} asignada -> user ${task.assigned_to}`);
+  } catch (err) {
+    console.error('[notif] no enviada:', err.message);
+  }
+}
+
 // ---- Compatir enlace de perfil de Google (público, sin login) ----
 // El botón del correo lleva a /compartir.html?p=<token> (página estática) que
 // llama a estos endpoints públicos para obtener los datos y crear la tarea.
@@ -645,6 +666,7 @@ app.delete('/api/pm/projects/:id', authMiddleware, requireRole('admin'), async (
 app.post('/api/pm/tasks', pmOnly, async (req, res) => {
   try {
     const task = await pmService.addTask(req.body, req.user.id);
+    await notifyTaskAssigned(task);
     res.json({ success: true, task });
   } catch (error) {
     console.error('Error creating PM task:', error);
@@ -658,6 +680,11 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
     if (req.body.status === 'finalizado_sin_errores' && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, error: 'Solo el admin puede mover a "Finalizado sin errores"' });
     }
+    let prevAssigned = null;
+    try {
+      const prev = await pmService.getTask(req.params.id);
+      prevAssigned = prev ? prev.assigned_to : null;
+    } catch (e) { /* si falla, se intenta notificar igual */ }
     const task = await pmService.updateTask(req.params.id, req.body);
     // Automatizaciones por correo al alcanzar "Finalizado sin errores":
     // - "One page"/"Full web"  -> aviso a Google (compartir perfil de Google)
@@ -683,6 +710,9 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
       } catch (err) {
         console.error('[email] no enviado:', err.message);
       }
+    }
+    if (task.assigned_to && task.assigned_to !== prevAssigned) {
+      await notifyTaskAssigned(task);
     }
     res.json({ success: true, task });
   } catch (error) {

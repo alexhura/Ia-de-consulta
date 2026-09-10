@@ -1889,17 +1889,40 @@ function saveNotifSettings() {
     localStorage.setItem(NOTIF_SETTINGS_KEY, JSON.stringify(notifSettings));
 }
 
+let notifAudioCtx = null;
+
+// Mantiene el contexto de audio listo tras la primera interacción del usuario
+// (los navegadores bloquean el audio hasta que haya una interacción).
+function unlockNotifAudio() {
+    try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        if (!notifAudioCtx) notifAudioCtx = new Ctx();
+        if (notifAudioCtx.state === 'suspended') {
+            notifAudioCtx.resume().catch(() => {});
+        }
+    } catch (e) {}
+}
+if (typeof document !== 'undefined') {
+    ['pointerdown', 'keydown', 'touchstart', 'click'].forEach(ev =>
+        document.addEventListener(ev, unlockNotifAudio, { passive: true, once: true })
+    );
+}
+
 function playNotifSound() {
     try {
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
-        const ctx = new Ctx();
+        if (!notifAudioCtx) notifAudioCtx = new Ctx();
+        const ctx = notifAudioCtx;
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+        const now = ctx.currentTime;
         [880, 1174].forEach((freq, i) => {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.type = 'sine';
             osc.frequency.value = freq;
-            const t = ctx.currentTime + i * 0.14;
+            const t = now + i * 0.14;
             gain.gain.setValueAtTime(0.0001, t);
             gain.gain.exponentialRampToValueAtTime(0.16, t + 0.02);
             gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
@@ -1908,7 +1931,6 @@ function playNotifSound() {
             osc.start(t);
             osc.stop(t + 0.4);
         });
-        setTimeout(() => ctx.close().catch(() => {}), 1200);
     } catch (e) {}
 }
 

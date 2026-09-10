@@ -234,6 +234,17 @@ export class PmService {
     return data;
   }
 
+  // Devuelve una tarea cruda (sin enriquecer) para comparar antes de actualizar.
+  async getTask(id) {
+    const { data, error } = await getSupabase()
+      .from('pm_tasks')
+      .select('*')
+      .eq('id', parseInt(id))
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
   // Transición de tarea: controla finalizado (completed_at) y los retornos
   // desde finalizado (cuentan como "por corregir").
   async updateTask(id, body) {

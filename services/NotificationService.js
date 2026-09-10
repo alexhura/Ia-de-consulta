@@ -10,12 +10,25 @@ export class NotificationService {
   async listForUser(userId, role) {
     const supabase = getSupabase();
 
-    const [notifs, reads] = await Promise.all([
-      supabase
+    // Con target_user_id (columna nueva para tareas asignadas). Si la columna
+    // aún no existe (ALTER pendiente), reintenta sin ella para no romper la
+    // campanita.
+    let query = supabase
+      .from('notifications')
+      .select('id, title, message, target_roles, target_user_id, created_by, created_at')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    let notifs = await query;
+    if (notifs.error) {
+      query = supabase
         .from('notifications')
         .select('id, title, message, target_roles, created_by, created_at')
         .order('created_at', { ascending: false })
-        .limit(100),
+        .limit(100);
+      notifs = await query;
+    }
+
+    const [reads] = await Promise.all([
       supabase
         .from('notification_reads')
         .select('notification_id')
@@ -28,8 +41,14 @@ export class NotificationService {
 
     const readSet = new Set((reads.data || []).map(r => r.notification_id));
 
+    // Una notificación es visible si:
+    //  - fue dirigida a este usuario específico (target_user_id), o
+    //  - es general/por rol (sin target_user_id) y el rol del usuario califica.
     const list = (notifs.data || [])
-      .filter(n => visibleTo(n.target_roles, role))
+      .filter(n => {
+        if (n.target_user_id != null) return n.target_user_id === userId;
+        return visibleTo(n.target_roles, role);
+      })
       .map(n => ({
         id: n.id,
         title: n.title,
@@ -53,12 +72,15 @@ export class NotificationService {
     if (error) throw error;
   }
 
-  async create({ title, message, targetRoles, createdBy }) {
+  async create({ title, message, targetRoles, targetUserId, createdBy }) {
     const supabase = getSupabase();
 
     const row = { title, message, created_by: createdBy };
     if (targetRoles && targetRoles.length > 0) {
       row.target_roles = targetRoles;
+    }
+    if (targetUserId != null) {
+      row.target_user_id = targetUserId;
     }
 
     const { data, error } = await supabase
@@ -73,6 +95,7 @@ export class NotificationService {
       title: data.title,
       message: data.message,
       targetRoles: data.target_roles,
+      targetUserId: data.target_user_id,
       createdAt: data.created_at
     };
   }
