@@ -56,15 +56,26 @@ function normTask(body) {
 }
 
 // Progreso y eficiencia de un proyecto a partir de sus tareas.
+// Progreso: promedio del avance de cada tarea según su etapa en el pipeline
+// (no solo cuenta "finalizado sin errores").
 // Eficiencia: completadas en tiempo y forma / (en tiempo + fuera de tiempo + por corregir).
+const PM_STAGE_PROGRESS = {
+  por_iniciar: 0,
+  en_progreso: 40,
+  en_revision: 70,
+  finalizado_sin_errores: 100,
+  por_corregir: 45
+};
+
 function computeMetrics(project, tasks) {
   const total = tasks.length;
-  const done = tasks.filter(t => t.status === FINALIZADO).length;
   let onTime = 0;
   let late = 0;
   let corrections = 0;
+  let progressSum = 0;
   for (const t of tasks) {
     corrections += t.corrections || 0;
+    progressSum += PM_STAGE_PROGRESS[t.status] ?? 0;
     if (t.status === FINALIZADO) {
       const deadline = t.due_date ? new Date(t.due_date + 'T23:59:59') : null;
       const completed = t.completed_at ? new Date(t.completed_at) : (deadline || new Date());
@@ -81,7 +92,7 @@ function computeMetrics(project, tasks) {
     ...project,
     tasks,
     task_count: total,
-    progress: total > 0 ? Math.round((done / total) * 100) : 0,
+    progress: total > 0 ? Math.round(progressSum / total) : 0,
     efficiency: efficiency === null ? null : `${efficiency}%`,
     efficiency_raw: efficiency
   };
