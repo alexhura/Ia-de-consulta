@@ -1271,7 +1271,18 @@ function renderPipeline(p) {
     });
 }
 
+// Drag & drop entre columnas
+let dragTaskId = null;
+let wasDragging = false;
+
 pmPipeline.addEventListener('click', (e) => {
+    const title = e.target.closest('.pm-task-title');
+    if (title) {
+        if (wasDragging) return;
+        const card = title.closest('.pm-kanban-card');
+        const id = parseInt(card.dataset.taskId);
+        if (id) { openTaskDetail(id); return; }
+    }
     if (!e.target.classList.contains('pm-advance')) return;
     const id = parseInt(e.target.dataset.id);
     const task = pmProjects.flatMap(p => p.tasks || []).find(t => t.id === id);
@@ -1342,11 +1353,11 @@ function triggerRevisionCelebration(taskId) {
 }
 
 // Drag & drop entre columnas
-let dragTaskId = null;
 
 pmPipeline.addEventListener('dragstart', (e) => {
     const card = e.target.closest('.pm-kanban-card');
     if (!card) return;
+    wasDragging = true;
     dragTaskId = parseInt(card.dataset.taskId);
     e.dataTransfer.effectAllowed = 'move';
     card.classList.add('dragging');
@@ -1356,6 +1367,7 @@ pmPipeline.addEventListener('dragend', (e) => {
     document.querySelectorAll('.pm-kanban-card').forEach(c => c.classList.remove('dragging'));
     document.querySelectorAll('.pm-column-body.drop-active').forEach(c => c.classList.remove('drop-active'));
     dragTaskId = null;
+    setTimeout(() => { wasDragging = false; }, 0);
 });
 
 pmPipeline.addEventListener('dragover', (e) => {

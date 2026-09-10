@@ -1916,6 +1916,13 @@ body::before {
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 6px;
+    cursor: pointer;
+}
+
+.pm-kanban-card .pm-task-title:hover {
+    text-decoration: underline;
+    text-decoration-color: rgba(0, 212, 255, 0.5);
+    text-underline-offset: 2px;
 }
 
 .pm-task-progress {
