@@ -363,6 +363,44 @@ async function sendProjectFinishedFbEmail(task) {
   });
 }
 
+// Avisa que el perfil de Google quedó vinculado con éxito, cuando la tarea
+// "Compartir perfil de Google" llega a "Finalizado sin errores". Usa el mismo
+// email de automatización (notif_email) o el general del proyecto.
+async function sendProjectLinkedEmail(task) {
+  const project = await pmService.getProject(task.project_id);
+  const to = (project && (project.notif_email || project.email)) || '';
+  if (!to) {
+    console.warn('[email] Proyecto sin destinatario, correo no enviado.');
+    return;
+  }
+  await emailService.sendProjectLinked({
+    to,
+    client: project.client,
+    business: project.business,
+    url: project.url,
+    shareLink: `${config.appUrl}/compartir.html?p=done`
+  });
+}
+
+// Avisa que las redes sociales (Facebook/Instagram) quedaron vinculadas, cuando
+// la tarea "Compartir redes sociales (Facebook/Instagram)" llega a "Finalizado
+// sin errores". Usa el email de automatización de redes (notif_email_fb).
+async function sendProjectLinkedFbEmail(task) {
+  const project = await pmService.getProject(task.project_id);
+  const to = (project && (project.notif_email_fb || project.email)) || '';
+  if (!to) {
+    console.warn('[email] Proyecto sin destinatario, correo no enviado.');
+    return;
+  }
+  await emailService.sendProjectLinkedFb({
+    to,
+    client: project.client,
+    business: project.business,
+    url: project.url,
+    shareLink: `${config.appUrl}/compartir-redes.html?p=done`
+  });
+}
+
 // ---- Compatir enlace de perfil de Google (público, sin login) ----
 // El botón del correo lleva a /compartir.html?p=<token> (página estática) que
 // llama a estos endpoints públicos para obtener los datos y crear la tarea.
@@ -402,6 +440,44 @@ app.post('/api/pm/email-test-fb', authMiddleware, requireRole('admin'), async (r
     res.json({ success: true, result });
   } catch (error) {
     console.error('Error en email-test-fb:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Diagnóstico: correo de prueba de vinculación de Google.
+app.post('/api/pm/email-test-linked', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const to = (req.body && req.body.to) ? String(req.body.to).trim() : '';
+    if (!to) return res.status(400).json({ success: false, error: 'Email destino requerido' });
+    const result = await emailService.sendProjectLinked({
+      to,
+      client: 'Cliente de Prueba',
+      business: 'Negocio de Prueba',
+      url: 'https://ia-consulta.alejandro-c79.workers.dev',
+      shareLink: `${config.appUrl}/compartir.html?p=test`
+    });
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('Error en email-test-linked:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Diagnóstico: correo de prueba de vinculación de redes sociales.
+app.post('/api/pm/email-test-linked-fb', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const to = (req.body && req.body.to) ? String(req.body.to).trim() : '';
+    if (!to) return res.status(400).json({ success: false, error: 'Email destino requerido' });
+    const result = await emailService.sendProjectLinkedFb({
+      to,
+      client: 'Cliente de Prueba',
+      business: 'Negocio de Prueba',
+      url: 'https://ia-consulta.alejandro-c79.workers.dev',
+      shareLink: `${config.appUrl}/compartir-redes.html?p=test`
+    });
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('Error en email-test-linked-fb:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -546,15 +622,21 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
       return res.status(403).json({ success: false, error: 'Solo el admin puede mover a "Finalizado sin errores"' });
     }
     const task = await pmService.updateTask(req.params.id, req.body);
-    // Al finalizarse un proyecto "One page" / "Full web" se avisa por correo a
-    // Google; al finalizar la tarea "Dominio" se avisa para compartir redes
-    // sociales (Facebook/Instagram). Se espera el envío dentro del request para
-    // que no sea cancelado por Cloudflare al terminar (los fetch asíncronos
-    // "sueltos" se pueden cortar).
+    // Automatizaciones por correo al alcanzar "Finalizado sin errores":
+    // - "One page"/"Full web"  -> aviso a Google (compartir perfil de Google)
+    // - "Dominio"              -> aviso de redes (compartir Facebook/Instagram)
+    // - "Compartir perfil de Google"                     -> vinculación exitosa (Google)
+    // - "Compartir redes sociales (Facebook/Instagram)"  -> vinculación exitosa (redes)
+    // Se espera el envío dentro del request para que no sea cancelado por
+    // Cloudflare al terminar (los fetch asíncronos "sueltos" se pueden cortar).
     if (task.status === 'finalizado_sin_errores') {
       const title = String(task.title || '').toLowerCase();
       try {
-        if (title === 'dominio' || title.includes('dominio')) {
+        if (title.includes('compartir perfil de google')) {
+          await sendProjectLinkedEmail(task);
+        } else if (title.includes('compartir redes sociales')) {
+          await sendProjectLinkedFbEmail(task);
+        } else if (title.includes('dominio')) {
           await sendProjectFinishedFbEmail(task);
         } else if (title === 'one page' || title === 'full web' || title.includes('one page') || title.includes('full web')) {
           await sendProjectFinishedEmail(task);
