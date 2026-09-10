@@ -57,6 +57,7 @@ create table if not exists pm_projects (
 -- Campos de detalle del proyecto (ejecutar ALTER incluso si la tabla ya existia)
 alter table pm_projects add column if not exists business text default '';
 alter table pm_projects add column if not exists email text default '';
+alter table pm_projects add column if not exists email2 text default '';
 alter table pm_projects add column if not exists phone text default '';
 alter table pm_projects add column if not exists services text default '';
 alter table pm_projects add column if not exists areas text default '';

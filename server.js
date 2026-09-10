@@ -404,12 +404,15 @@ async function sendProjectLinkedFbEmail(task) {
 
 // Correo formal de entrega al cliente cuando la tarea "Entrega y Revision"
 // llega a "Finalizado sin errores". El destinatario es el email del cliente
-// (project.email); siempre incluye Cc a ADL. Se envía con el nombre de
-// remitente "ADL" en vez de "Desarrollo Web".
+// (project.email y project.email2 — al cliente se le puede registrar un
+// segundo email). Siempre incluye Cc a ADL.
 async function sendProjectDeliveredEmail(task) {
   const project = await pmService.getProject(task.project_id);
-  const to = (project && project.email) || '';
-  if (!to) {
+  const to = [
+    (project && project.email) || '',
+    (project && project.email2) || ''
+  ].filter(Boolean);
+  if (to.length === 0) {
     console.warn('[email] Proyecto sin email de cliente, correo de entrega no enviado.');
     return;
   }

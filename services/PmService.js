@@ -37,7 +37,7 @@ function addTimestamps(d) {
 function normProject(body) {
   const d = {};
   if (body.client !== undefined) d.client = String(body.client || '').trim();
-  for (const f of ['business', 'description', 'email', 'phone', 'services', 'areas', 'url', 'wp_user', 'wp_pass', 'notif_email', 'notif_email_fb']) {
+  for (const f of ['business', 'description', 'email', 'email2', 'phone', 'services', 'areas', 'url', 'wp_user', 'wp_pass', 'notif_email', 'notif_email_fb']) {
     if (body[f] !== undefined) d[f] = String(body[f] || '').trim();
   }
   if (body.status !== undefined) d.status = sanitize(body.status, PM_STATUSES, 'pendiente');
@@ -177,7 +177,7 @@ export class PmService {
     d.share_token_fb = d.share_token_fb || generateToken();
     delete d.updated_at;
     const fields = {};
-    for (const f of ['client', 'business', 'description', 'email', 'phone', 'services', 'areas', 'url', 'wp_user', 'wp_pass', 'notif_email', 'notif_email_fb', 'share_token', 'share_token_fb', 'status', 'created_by']) {
+    for (const f of ['client', 'business', 'description', 'email', 'email2', 'phone', 'services', 'areas', 'url', 'wp_user', 'wp_pass', 'notif_email', 'notif_email_fb', 'share_token', 'share_token_fb', 'status', 'created_by']) {
       fields[f] = d[f];
     }
     let result = await getSupabase().from('pm_projects').insert(fields).select('*').single();

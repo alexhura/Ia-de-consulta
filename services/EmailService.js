@@ -19,20 +19,22 @@ function configured() {
 }
 
 // Envía un correo HTML transaccional.
-// Params: { to: 'a@b.com', subject, html, cc: 'c@d.com', fromName }
+// Params: { to: 'a@b.com' | ['a@b.com','c@d.com'], subject, html, cc, fromName }
 async function send({ to, subject, html, cc, fromName }) {
   if (!configured()) {
     console.warn('[EmailService] BREVO_API_KEY no configurada; correo no enviado:', subject);
     return { skipped: true, reason: 'no_brevo_key' };
   }
-  if (!to || !to.trim()) {
+  const toList = Array.isArray(to) ? to : [to];
+  const toValid = toList.filter(t => t && typeof t === 'string' && t.trim());
+  if (toValid.length === 0) {
     console.warn('[EmailService] Sin destinatario; correo no enviado:', subject);
     return { skipped: true, reason: 'no_recipient' };
   }
 
   const payload = {
     sender: fromName ? { name: fromName, email: sender().email } : sender(),
-    to: [{ email: to.trim() }],
+    to: toValid.map(t => ({ email: t.trim() })),
     subject,
     htmlContent: html
   };

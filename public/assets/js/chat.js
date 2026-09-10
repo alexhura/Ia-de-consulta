@@ -106,6 +106,7 @@ const pmClient = document.getElementById('pmClient');
 const pmBusiness = document.getElementById('pmBusiness');
 const pmDescription = document.getElementById('pmDescription');
 const pmEmail = document.getElementById('pmEmail');
+const pmEmail2 = document.getElementById('pmEmail2');
 const pmPhone = document.getElementById('pmPhone');
 const pmServices = document.getElementById('pmServices');
 const pmAreas = document.getElementById('pmAreas');
@@ -917,6 +918,7 @@ function openProjectForm(projectId) {
     pmBusiness.value = p ? (p.business || '') : '';
     pmDescription.value = p ? (p.description || '') : '';
     pmEmail.value = p ? (p.email || '') : '';
+    pmEmail2.value = p ? (p.email2 || '') : '';
     pmPhone.value = p ? (p.phone || '') : '';
     pmServices.value = p ? (p.services || '') : '';
     pmAreas.value = p ? (p.areas || '') : '';
@@ -1013,6 +1015,7 @@ function collectProjectPayload() {
         business: pmBusiness.value.trim(),
         description: pmDescription.value.trim(),
         email: pmEmail.value.trim(),
+        email2: pmEmail2.value.trim(),
         phone: pmPhone.value.trim(),
         services: pmServices.value.trim(),
         areas: pmAreas.value.trim(),
@@ -1140,6 +1143,7 @@ function renderProjectDetail(p) {
 
     const info = [];
     if (p.email) info.push(['Email', `<a href="mailto:${escapeHtml(p.email)}">${escapeHtml(p.email)}</a>`]);
+    if (p.email2) info.push(['Email 2', `<a href="mailto:${escapeHtml(p.email2)}">${escapeHtml(p.email2)}</a>`]);
     if (p.phone) info.push(['Teléfono', `<a href="tel:${escapeHtml(p.phone)}">${escapeHtml(p.phone)}</a>`]);
     if (p.services) info.push(['Servicios', escapeHtml(p.services)]);
     if (p.areas) info.push(['Áreas de servicio', escapeHtml(p.areas)]);
