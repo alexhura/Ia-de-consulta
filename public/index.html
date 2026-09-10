@@ -262,16 +262,26 @@
                         </div>
 
                         <div id="pmDetailInfo" class="pm-info-grid hidden">
-                            <div class="pm-info-card pm-info-details">
-                                <h4>Datos del negocio</h4>
-                                <div id="pmInfoFields" class="pm-info-fields"></div>
-                            </div>
-                            <div class="pm-info-card pm-info-access">
-                                <h4>Acceso al sitio <span class="pm-wp-badge">WordPress</span></h4>
-                                <div id="pmWpFields" class="pm-info-fields"></div>
-                                <button type="button" class="btn btn-primary btn-small pm-wp-btn" id="pmWpOpenBtn">
-                                    Ir al panel admin
+                            <div class="pm-info-card pm-info-details" data-collapsible>
+                                <button type="button" class="pm-card-toggle" title="Expandir / contraer">
+                                    <span>Datos del negocio</span>
+                                    <span class="pm-card-chevron"></span>
                                 </button>
+                                <div class="pm-card-body">
+                                    <div id="pmInfoFields" class="pm-info-fields"></div>
+                                </div>
+                            </div>
+                            <div class="pm-info-card pm-info-access" data-collapsible>
+                                <button type="button" class="pm-card-toggle" title="Expandir / contraer">
+                                    <span>Acceso al sitio <span class="pm-wp-badge">WordPress</span></span>
+                                    <span class="pm-card-chevron"></span>
+                                </button>
+                                <div class="pm-card-body">
+                                    <div id="pmWpFields" class="pm-info-fields"></div>
+                                    <button type="button" class="btn btn-primary btn-small pm-wp-btn" id="pmWpOpenBtn">
+                                        Ir al panel admin
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

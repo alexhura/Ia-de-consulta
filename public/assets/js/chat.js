@@ -986,6 +986,14 @@ document.querySelectorAll('[data-close="pmTaskDetailWindow"]').forEach(btn =>
     btn.addEventListener('click', () => closeOverlay(pmTaskDetailWindow))
 );
 
+// Tarjetas desplegables de "Datos del negocio" y "Acceso al sitio"
+pmDetailInfo.addEventListener('click', (e) => {
+    const toggle = e.target.closest('.pm-card-toggle');
+    if (!toggle) return;
+    const card = toggle.closest('[data-collapsible]');
+    if (card) card.classList.toggle('collapsed');
+});
+
 function collectProjectPayload() {
     return {
         client: pmClient.value.trim(),
