@@ -216,15 +216,17 @@
                         <h2 class="pm-title"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg> Project Manager</h2>
                         <p class="pm-subtitle">Proyectos, pipeline y eficiencia del equipo</p>
                     </div>
-                    <button type="button" class="btn btn-primary btn-small pm-admin-only hidden" id="addProjectBtn">+ Proyecto</button>
-                </div>
-
-                <div class="pm-view-body">
-                    <div id="pmProjectsView">
+                    <div class="pm-head-actions">
                         <div class="pm-search-wrap">
                             <svg class="pm-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             <input type="text" id="pmSearchInput" class="pm-search-input" placeholder="Buscar por cliente o negocio..." autocomplete="off">
                         </div>
+                        <button type="button" class="btn btn-primary btn-small pm-admin-only hidden" id="addProjectBtn">+ Proyecto</button>
+                    </div>
+                </div>
+
+                <div class="pm-view-body">
+                    <div id="pmProjectsView">
                         <div id="pmGrid" class="pm-grid"></div>
                         <p id="pmMsg" class="admin-msg"></p>
                     </div>
