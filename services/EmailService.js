@@ -1,3 +1,4 @@
+// Desarrollado por: Ing. Alejandro Huerta — https://alejandrohr.com
 import { config } from '../config/index.js';
 
 const BREVO_API = 'https://api.brevo.com/v3';

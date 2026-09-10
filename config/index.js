@@ -1,6 +1,7 @@
 // Intenta cargar .env solo cuando corre bajo Node.js con ese archivo.
 // En Cloudflare la importación falla (sin dotenv) y se ignora silenciosamente:
 // ahí las variables vienen del entorno del Worker.
+// Desarrollado por: Ing. Alejandro Huerta — https://alejandrohr.com
 try {
   const { config: loadEnv } = await import('dotenv');
   loadEnv();

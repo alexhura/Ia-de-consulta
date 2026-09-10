@@ -1,3 +1,4 @@
+// Desarrollado por: Ing. Alejandro Huerta — https://alejandrohr.com
 import { config } from '../config/index.js';
 import { getSupabase } from './db.js';
 import crypto from 'node:crypto';

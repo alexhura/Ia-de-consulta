@@ -1,5 +1,9 @@
 import express from 'express';
 import cors from 'cors';
+// ---------------------------------------------------------------
+// IA Consulta — Sistema de asistente de desarrollo web
+// Desarrollado por: Ing. Alejandro Huerta — https://alejandrohr.com
+// ---------------------------------------------------------------
 import { config } from './config/index.js';
 import { initDatabase } from './services/db.js';
 import { GroqService } from './services/GroqService.js';

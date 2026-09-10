@@ -1,3 +1,4 @@
+// Desarrollado por: Ing. Alejandro Huerta — https://alejandrohr.com
 import { getSupabase } from './db.js';
 
 // Pipeline de tareas (etapas del PM)

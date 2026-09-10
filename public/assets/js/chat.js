@@ -1,3 +1,8 @@
+/* ================================================================
+   IA Consulta — Frontend (chat app)
+   Desarrollado por: Ing. Alejandro Huerta — https://alejandrohr.com
+   ================================================================ */
+
 // Auth state
 let authToken = localStorage.getItem('authToken') || null;
 let currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');

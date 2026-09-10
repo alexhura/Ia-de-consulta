@@ -1,3 +1,4 @@
+// Desarrollado por: Ing. Alejandro Huerta — https://alejandrohr.com
 import { getSupabase } from './db.js';
 
 // Un anuncio con target_roles vacío/nulo es visible para todos los roles.
