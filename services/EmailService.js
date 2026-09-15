@@ -72,12 +72,14 @@ function esc(v) {
 // Se usa en todos los correos (encabezado) para reforzar la marca ADL.
 const LOGO_URL = `${config.appUrl}/assets/images/adl-icon.png`;
 
-// Fila con el logo centrado, encima del encabezado colorido del correo.
-function logoBlock() {
+// Encabezado del correo: logo oficial DENTRO de la franja naranja, centrado,
+// con el título debajo. Fondo degradado sutil para un acabado profesional.
+function emailHeader(heading) {
   return `
           <tr>
-            <td align="center" style="padding:28px 32px 0;">
-              <img src="${LOGO_URL}" width="88" height="82" alt="ADL" style="display:block;max-width:100%;height:auto;">
+            <td align="center" style="background-color:#f97316;background-image:linear-gradient(135deg,#ff9b26 0%,#ff7f00 55%,#f05100 100%);padding:32px 32px 26px;">
+              <img src="${LOGO_URL}" width="78" height="73" alt="ADL" style="display:inline-block;max-width:100%;height:auto;border:0;">
+              <div style="color:#ffffff;font-size:24px;font-weight:bold;margin-top:16px;">${heading}</div>
             </td>
           </tr>`;
 }
@@ -102,12 +104,7 @@ function sendProjectFinished({ to, client, business, url, shareLink }) {
     <tr>
       <td align="center" style="padding:40px 16px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
-          ${logoBlock()}
-          <tr>
-            <td style="background-color:#ff7f00;padding:28px 32px;">
-              <div style="color:#ffffff;font-size:24px;font-weight:bold;">¡Proyecto finalizado!</div>
-            </td>
-          </tr>
+          ${emailHeader('¡Proyecto finalizado!')}
           <tr>
             <td style="padding:32px;">
               <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">Hola,</p>
@@ -148,12 +145,7 @@ function sendProjectFinishedFb({ to, client, business, url, shareLink }) {
     <tr>
       <td align="center" style="padding:40px 16px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
-          ${logoBlock()}
-          <tr>
-            <td style="background-color:#ff7f00;padding:28px 32px;">
-              <div style="color:#ffffff;font-size:24px;font-weight:bold;">¡Proyecto finalizado!</div>
-            </td>
-          </tr>
+          ${emailHeader('¡Proyecto finalizado!')}
           <tr>
             <td style="padding:32px;">
               <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">Hola,</p>
@@ -197,12 +189,7 @@ function buildLinkedHtml(label, { to, client, business, url, shareLink }) {
     <tr>
       <td align="center" style="padding:40px 16px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
-          ${logoBlock()}
-          <tr>
-            <td style="background-color:#ff7f00;padding:28px 32px;">
-              <div style="color:#ffffff;font-size:24px;font-weight:bold;">Vinculación exitosa</div>
-            </td>
-          </tr>
+          ${emailHeader('Vinculación exitosa')}
           <tr>
             <td style="padding:32px;">
               <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">Hola,</p>
@@ -283,12 +270,7 @@ function sendTicketResolved({ to, client, ticketTitle, summary, isTicket = true 
     <tr>
       <td align="center" style="padding:40px 16px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
-          ${logoBlock()}
-          <tr>
-            <td style="background-color:#ff7f00;padding:28px 32px;">
-              <div style="color:#ffffff;font-size:24px;font-weight:bold;">${heading}</div>
-            </td>
-          </tr>
+          ${emailHeader(heading)}
           <tr>
             <td style="padding:32px;">
               <p style="margin:0 0 24px;font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">${label}: ${esc(clean || ticketTitle || '—')}</p>
@@ -326,12 +308,7 @@ function sendProjectDelivered({ to, client, business, url }) {
     <tr>
       <td align="center" style="padding:40px 16px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
-          ${logoBlock()}
-          <tr>
-            <td style="background-color:#ff7f00;padding:28px 32px;">
-              <div style="color:#ffffff;font-size:24px;font-weight:bold;">Your Website Is Now Live!</div>
-            </td>
-          </tr>
+          ${emailHeader('Your Website Is Now Live!')}
           <tr>
             <td style="padding:32px;">
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hello,</p>
