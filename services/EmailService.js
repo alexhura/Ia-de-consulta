@@ -68,8 +68,29 @@ function esc(v) {
     .replace(/"/g, '&quot;');
 }
 
+// Logo oficial servido desde los assets estáticos del Worker.
+// Se usa en todos los correos (encabezado) para reforzar la marca ADL.
+const LOGO_URL = `${config.appUrl}/assets/images/adl-icon.png`;
+
+// Fila con el logo centrado, encima del encabezado colorido del correo.
+function logoBlock() {
+  return `
+          <tr>
+            <td align="center" style="padding:28px 32px 0;">
+              <img src="${LOGO_URL}" width="88" height="82" alt="ADL" style="display:block;max-width:100%;height:auto;">
+            </td>
+          </tr>`;
+}
+
+// Quita un "ticket"/"request" inicial del título cuando este ya lo trae, para
+// evitar que la palabra se repita en el asunto y en el cuerpo del correo
+// (p. ej. el título de la tarea ya es "Ticket #12 ...").
+function cleanLabel(title) {
+  return String(title || '').trim().replace(/^(ticket|request)\s*[:#-]?\s*/i, '');
+}
+
 // Correo de aviso cuando se finaliza un proyecto "One page" / "Full web".
-// HTML con fondo blanco, acentos azules y texto negro, con botón para
+// HTML con fondo blanco, acentos naranjas y texto negro, con botón para
 // compartir el enlace del perfil de Google.
 function sendProjectFinished({ to, client, business, url, shareLink }) {
   const subject = `¡Proyecto ${business || client} finalizado!`;
@@ -81,8 +102,9 @@ function sendProjectFinished({ to, client, business, url, shareLink }) {
     <tr>
       <td align="center" style="padding:40px 16px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
+          ${logoBlock()}
           <tr>
-            <td style="background-color:#1d4ed8;padding:28px 32px;">
+            <td style="background-color:#ff7f00;padding:28px 32px;">
               <div style="color:#ffffff;font-size:24px;font-weight:bold;">¡Proyecto finalizado!</div>
             </td>
           </tr>
@@ -97,7 +119,7 @@ function sendProjectFinished({ to, client, business, url, shareLink }) {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:32px 0 8px;">
                 <tr>
                   <td align="center">
-                    <a href="${esc(shareLink)}" style="display:inline-block;background-color:#1d4ed8;color:#ffffff;text-decoration:none;font-size:16px;font-weight:bold;padding:14px 28px;border-radius:8px;">Compartir enlace del perfil de Google</a>
+                    <a href="${esc(shareLink)}" style="display:inline-block;background-color:#ff7f00;color:#ffffff;text-decoration:none;font-size:16px;font-weight:bold;padding:14px 28px;border-radius:8px;">Compartir enlace del perfil de Google</a>
                   </td>
                 </tr>
               </table>
@@ -126,8 +148,9 @@ function sendProjectFinishedFb({ to, client, business, url, shareLink }) {
     <tr>
       <td align="center" style="padding:40px 16px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
+          ${logoBlock()}
           <tr>
-            <td style="background-color:#1d4ed8;padding:28px 32px;">
+            <td style="background-color:#ff7f00;padding:28px 32px;">
               <div style="color:#ffffff;font-size:24px;font-weight:bold;">¡Proyecto finalizado!</div>
             </td>
           </tr>
@@ -145,7 +168,7 @@ function sendProjectFinishedFb({ to, client, business, url, shareLink }) {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:32px 0 8px;">
                 <tr>
                   <td align="center">
-                    <a href="${esc(shareLink)}" style="display:inline-block;background-color:#1d4ed8;color:#ffffff;text-decoration:none;font-size:16px;font-weight:bold;padding:14px 28px;border-radius:8px;">Compartir enlaces de Facebook e Instagram</a>
+                    <a href="${esc(shareLink)}" style="display:inline-block;background-color:#ff7f00;color:#ffffff;text-decoration:none;font-size:16px;font-weight:bold;padding:14px 28px;border-radius:8px;">Compartir enlaces de Facebook e Instagram</a>
                   </td>
                 </tr>
               </table>
@@ -174,8 +197,9 @@ function buildLinkedHtml(label, { to, client, business, url, shareLink }) {
     <tr>
       <td align="center" style="padding:40px 16px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
+          ${logoBlock()}
           <tr>
-            <td style="background-color:#1d4ed8;padding:28px 32px;">
+            <td style="background-color:#ff7f00;padding:28px 32px;">
               <div style="color:#ffffff;font-size:24px;font-weight:bold;">Vinculación exitosa</div>
             </td>
           </tr>
@@ -245,9 +269,10 @@ function textToHtml(text) {
 // Si la tarea no es un ticket (check "enviar correo al cliente"), usa un
 // asunto y encabezado genéricos ("Your Request Has Been Resolved").
 function sendTicketResolved({ to, client, ticketTitle, summary, isTicket = true }) {
+  const clean = cleanLabel(ticketTitle);
   const subject = isTicket
-    ? `Your Support Ticket Has Been Resolved — ${ticketTitle || 'Ticket'}`
-    : `Your Request Has Been Resolved — ${ticketTitle || 'Request #'}`;
+    ? `Your Support Ticket Has Been Resolved — ${clean || ticketTitle || 'Ticket'}`
+    : `Your Request Has Been Resolved — ${clean || ticketTitle || 'Request'}`;
   const heading = isTicket ? 'Your Support Ticket Has Been Resolved' : 'Your Request Has Been Resolved';
   const label = isTicket ? 'Ticket' : 'Request';
   const cc = TICKET_CC;
@@ -258,14 +283,15 @@ function sendTicketResolved({ to, client, ticketTitle, summary, isTicket = true 
     <tr>
       <td align="center" style="padding:40px 16px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
+          ${logoBlock()}
           <tr>
-            <td style="background-color:#1d4ed8;padding:28px 32px;">
+            <td style="background-color:#ff7f00;padding:28px 32px;">
               <div style="color:#ffffff;font-size:24px;font-weight:bold;">${heading}</div>
             </td>
           </tr>
           <tr>
             <td style="padding:32px;">
-              <p style="margin:0 0 24px;font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">${label}: ${esc(ticketTitle || '—')}</p>
+              <p style="margin:0 0 24px;font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">${label}: ${esc(clean || ticketTitle || '—')}</p>
               ${summary ? textToHtml(summary) : '<p style="margin:0 0 16px;font-size:16px;color:#000000;">Your request has been resolved.</p>'}
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0 0;">
                 <tr>
@@ -291,7 +317,7 @@ function sendTicketResolved({ to, client, ticketTitle, summary, isTicket = true 
 // que se hace la entrega formal con la URL. Redacción en inglés US, sin
 // mencionar el área de desarrollo — la agencia es ADL. CC siempre a adldigital00.
 function sendProjectDelivered({ to, client, business, url }) {
-  const subject = `Your Website Is Ready for Delivery — ${business || client}`;
+  const subject = `Your Website Is Now Live! — ${business || client}`;
   const site = url && /^https?:\/\//i.test(url) ? url : (url ? `https://${url}` : '');
   const html = `<!DOCTYPE html>
 <html>
@@ -300,17 +326,21 @@ function sendProjectDelivered({ to, client, business, url }) {
     <tr>
       <td align="center" style="padding:40px 16px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
+          ${logoBlock()}
           <tr>
-            <td style="background-color:#1d4ed8;padding:28px 32px;">
-              <div style="color:#ffffff;font-size:24px;font-weight:bold;">Your Website Is Ready!</div>
+            <td style="background-color:#ff7f00;padding:28px 32px;">
+              <div style="color:#ffffff;font-size:24px;font-weight:bold;">Your Website Is Now Live!</div>
             </td>
           </tr>
           <tr>
             <td style="padding:32px;">
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hello,</p>
+              <p style="margin:0 0 24px;font-size:18px;line-height:1.7;color:#000000;">
+                <strong style="color:#b45309;">${esc(business || client)}</strong> is now Live!
+              </p>
               <p style="margin:0 0 24px;font-size:16px;line-height:1.7;color:#000000;">
                 We are excited to let you know that your website has been completed
-                and is officially ready for delivery.
+                and is officially live.
               </p>
               <p style="margin:0 0 24px;font-size:16px;line-height:1.7;color:#000000;">
                 Your new site is now live at:
