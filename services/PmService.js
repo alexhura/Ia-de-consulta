@@ -198,14 +198,25 @@ export class PmService {
   async updateProject(id, body) {
     const d = normProject(body);
     if (Object.keys(d).length === 0) throw new Error('Sin datos para actualizar');
-    const { data, error } = await getSupabase()
+    let result = await getSupabase()
       .from('pm_projects')
       .update(d)
       .eq('id', parseInt(id))
       .select('*')
       .single();
-    if (error) throw error;
-    return data;
+    // Si la columna email2 aún no existe (ALTER pendiente), reintenta
+    // sin ese campo para no romper la edición del proyecto.
+    if (result.error && d.email2 !== undefined) {
+      const { email2, ...rest } = d;
+      result = await getSupabase()
+        .from('pm_projects')
+        .update(rest)
+        .eq('id', parseInt(id))
+        .select('*')
+        .single();
+    }
+    if (result.error) throw result.error;
+    return result.data;
   }
 
   async deleteProject(id) {
