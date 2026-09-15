@@ -72,14 +72,24 @@ function esc(v) {
 // Se usa en todos los correos (encabezado) para reforzar la marca ADL.
 const LOGO_URL = `${config.appUrl}/assets/images/adl-icon.png`;
 
-// Encabezado del correo: logo oficial DENTRO de la franja naranja, centrado,
-// con el título debajo. Fondo degradado sutil para un acabado profesional.
+// Encabezado del correo: logo ADL a la izquierda y el título a la derecha,
+// ambos DENTRO de la misma franja naranja (degradado sutil, acabado
+// profesional). Se usa una tabla de dos columnas para que se apilen bien en
+// pantallas angostas.
 function emailHeader(heading) {
   return `
           <tr>
-            <td align="center" style="background-color:#f97316;background-image:linear-gradient(135deg,#ff9b26 0%,#ff7f00 55%,#f05100 100%);padding:32px 32px 26px;">
-              <img src="${LOGO_URL}" width="78" height="73" alt="ADL" style="display:inline-block;max-width:100%;height:auto;border:0;">
-              <div style="color:#ffffff;font-size:24px;font-weight:bold;margin-top:16px;">${heading}</div>
+            <td style="background-color:#f97316;background-image:linear-gradient(135deg,#ff9b26 0%,#ff7f00 55%,#f05100 100%);padding:24px 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+                <tr>
+                  <td align="left" valign="middle" style="padding-right:16px;">
+                    <img src="${LOGO_URL}" width="72" height="67" alt="ADL" style="display:block;border:0;">
+                  </td>
+                  <td align="right" valign="middle">
+                    <div style="color:#ffffff;font-size:22px;font-weight:bold;line-height:1.2;">${heading}</div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>`;
 }
