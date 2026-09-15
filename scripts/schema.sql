@@ -85,6 +85,7 @@ alter table pm_tasks add column if not exists owner_id integer references users(
 alter table pm_tasks add column if not exists due_date date;
 alter table pm_tasks add column if not exists corrections integer default 0;
 alter table pm_tasks add column if not exists completed_at timestamptz;
+alter table pm_tasks add column if not exists notify_client boolean default false;
 
 create index if not exists idx_pm_tasks_project on pm_tasks(project_id);
 

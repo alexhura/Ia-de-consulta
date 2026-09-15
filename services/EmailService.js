@@ -239,11 +239,17 @@ function textToHtml(text) {
     .join('');
 }
 
-// Correo de resolución de ticket al cliente: solo resume el ticket y cómo se
+// Correo de resolución al cliente: solo resume la tarea/ticket y cómo se
 // resolvió. Dirigido siempre al cliente (a sus múltiples emails), con copia a
 // ADL y al equipo de ayuda. El resumen (summary) lo genera el asistente.
-function sendTicketResolved({ to, client, ticketTitle, summary }) {
-  const subject = `Your Support Ticket Has Been Resolved — ${ticketTitle || 'Ticket'}`;
+// Si la tarea no es un ticket (check "enviar correo al cliente"), usa un
+// asunto y encabezado genéricos ("Your Request Has Been Resolved").
+function sendTicketResolved({ to, client, ticketTitle, summary, isTicket = true }) {
+  const subject = isTicket
+    ? `Your Support Ticket Has Been Resolved — ${ticketTitle || 'Ticket'}`
+    : `Your Request Has Been Resolved — ${ticketTitle || 'Request #'}`;
+  const heading = isTicket ? 'Your Support Ticket Has Been Resolved' : 'Your Request Has Been Resolved';
+  const label = isTicket ? 'Ticket' : 'Request';
   const cc = TICKET_CC;
   const html = `<!DOCTYPE html>
 <html>
@@ -254,13 +260,13 @@ function sendTicketResolved({ to, client, ticketTitle, summary }) {
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
           <tr>
             <td style="background-color:#1d4ed8;padding:28px 32px;">
-              <div style="color:#ffffff;font-size:24px;font-weight:bold;">Your Support Ticket Has Been Resolved</div>
+              <div style="color:#ffffff;font-size:24px;font-weight:bold;">${heading}</div>
             </td>
           </tr>
           <tr>
             <td style="padding:32px;">
-              <p style="margin:0 0 24px;font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Ticket: ${esc(ticketTitle || '—')}</p>
-              ${summary ? textToHtml(summary) : '<p style="margin:0 0 16px;font-size:16px;color:#000000;">Your ticket has been resolved.</p>'}
+              <p style="margin:0 0 24px;font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">${label}: ${esc(ticketTitle || '—')}</p>
+              ${summary ? textToHtml(summary) : '<p style="margin:0 0 16px;font-size:16px;color:#000000;">Your request has been resolved.</p>'}
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0 0;">
                 <tr>
                   <td align="center">

@@ -53,6 +53,7 @@ function normTask(body) {
   if (body.priority !== undefined) d.priority = sanitize(body.priority, PM_PRIORITIES, 'media');
   if (body.assigned_to !== undefined) d.assigned_to = body.assigned_to ? parseInt(body.assigned_to) : null;
   if (body.due_date !== undefined) d.due_date = body.due_date ? String(body.due_date).slice(0, 10) : null;
+  if (body.notify_client !== undefined) d.notify_client = !!body.notify_client;
   return addTimestamps(d);
 }
 
@@ -228,7 +229,7 @@ export class PmService {
   async addTask(body, userId) {
     if (!body.title || !body.title.trim()) throw new Error('El título de la tarea es requerido');
     const d = normTask(body);
-    const { data, error } = await getSupabase()
+    let result = await getSupabase()
       .from('pm_tasks')
       .insert({
         project_id: parseInt(body.project_id),
@@ -238,12 +239,31 @@ export class PmService {
         priority: d.priority || 'media',
         assigned_to: d.assigned_to != null ? d.assigned_to : null,
         due_date: d.due_date || null,
+        notify_client: d.notify_client != null ? d.notify_client : false,
         owner_id: userId
       })
       .select('*')
       .single();
-    if (error) throw error;
-    return data;
+    // Si la columna notify_client aún no existe (ALTER pendiente), reintenta
+    // sin ese campo para no romper el alta de la tarea.
+    if (result.error) {
+      result = await getSupabase()
+        .from('pm_tasks')
+        .insert({
+          project_id: parseInt(body.project_id),
+          title: d.title,
+          description: d.description || '',
+          status: d.status || 'por_iniciar',
+          priority: d.priority || 'media',
+          assigned_to: d.assigned_to != null ? d.assigned_to : null,
+          due_date: d.due_date || null,
+          owner_id: userId
+        })
+        .select('*')
+        .single();
+    }
+    if (result.error) throw result.error;
+    return result.data;
   }
 
   // Devuelve una tarea cruda (sin enriquecer) para comparar antes de actualizar.
@@ -280,14 +300,25 @@ export class PmService {
     }
 
     if (Object.keys(d).length === 0) throw new Error('Sin datos para actualizar');
-    const { data, error } = await getSupabase()
+    let result = await getSupabase()
       .from('pm_tasks')
       .update(d)
       .eq('id', parseInt(id))
       .select('*')
       .single();
-    if (error) throw error;
-    return data;
+    // Si la columna notify_client aún no existe (ALTER pendiente), reintenta
+    // sin ese campo para no romper la actualización de la tarea.
+    if (result.error && d.notify_client !== undefined) {
+      const { notify_client, ...rest } = d;
+      result = await getSupabase()
+        .from('pm_tasks')
+        .update(rest)
+        .eq('id', parseInt(id))
+        .select('*')
+        .single();
+    }
+    if (result.error) throw result.error;
+    return result.data;
   }
 
   async deleteTask(id) {

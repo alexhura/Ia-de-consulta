@@ -757,6 +757,13 @@
                                     <input type="date" id="taskDueDate" class="admin-select">
                                 </div>
                             </div>
+                            <div class="form-group pm-task-email-check">
+                                <label class="pm-check-label" for="taskNotifyClient">
+                                    <input type="checkbox" id="taskNotifyClient">
+                                    <span>Enviar correo al cliente al finalizar</span>
+                                </label>
+                                <p class="pm-check-hint">Al pasar la tarea a "Finalizado sin errores" se envía un resumen al cliente (email + email2) con copia a ADL/desarrollo/help.</p>
+                            </div>
                             <button type="submit" class="btn btn-primary">Guardar tarea</button>
                             <p id="pmTaskMsg" class="admin-msg"></p>
                         </form>

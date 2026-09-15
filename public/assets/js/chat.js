@@ -130,6 +130,7 @@ const taskStatus = document.getElementById('taskStatus');
 const taskPriority = document.getElementById('taskPriority');
 const taskAssignee = document.getElementById('taskAssignee');
 const taskDueDate = document.getElementById('taskDueDate');
+const taskNotifyClient = document.getElementById('taskNotifyClient');
 const pmTaskMsg = document.getElementById('pmTaskMsg');
 const pmDetailName = document.getElementById('pmDetailName');
 const pmDetailBusiness = document.getElementById('pmDetailBusiness');
@@ -957,6 +958,7 @@ function openTaskForm(projectId, taskId) {
     taskPriority.value = task ? (task.priority || 'media') : 'media';
     taskAssignee.value = task && task.assigned_to ? String(task.assigned_to) : '';
     taskDueDate.value = task && task.due_date ? String(task.due_date).slice(0, 10) : '';
+    taskNotifyClient.checked = task ? !!task.notify_client : false;
     fillUsersSelect();
     pmTaskMsg.textContent = '';
     openOverlay(pmTaskWindow);
@@ -1056,7 +1058,8 @@ pmTaskForm.addEventListener('submit', async (e) => {
         status: taskStatus.value,
         priority: taskPriority.value,
         assigned_to: taskAssignee.value ? parseInt(taskAssignee.value) : null,
-        due_date: taskDueDate.value || null
+        due_date: taskDueDate.value || null,
+        notify_client: taskNotifyClient.checked
     };
     try {
         if (editingTaskId) {
@@ -1221,6 +1224,7 @@ function pmTaskCard(t) {
         ? `<span class="pm-due ${t.status === 'finalizado_sin_errores' ? '' : new Date(t.due_date + 'T23:59:59') < new Date() ? 'overdue' : ''}">📅 ${escapeHtml(fmtDate(t.due_date))}</span>`
         : '';
     const corr = t.corrections > 0 ? `<span class="pm-corr" title="Rechazada por errores ${t.corrections} ${t.corrections === 1 ? 'vez' : 'veces'}">Por corregir</span>` : '';
+    const mailBadge = t.notify_client ? `<span class="pm-mail-badge" title="Correo automático al cliente al finalizar">✉ Cliente</span>` : '';
     const avatarsHtml = `
         <div class="pm-avatars-stack">
             ${pmPeopleAvatar(t.assigned_to, t.assigned_name, 'sm')}
@@ -1239,6 +1243,7 @@ function pmTaskCard(t) {
                 <span class="pm-task-progress-label">${pct}%</span>
             </div>
             <div class="pm-task-meta">
+                ${mailBadge}
                 ${due}
                 <span class="pm-priority pm-priority-${t.priority}">${PM_PRIORITY_LABEL[t.priority] || t.priority}</span>
                 ${corr}

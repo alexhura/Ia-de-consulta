@@ -460,9 +460,10 @@ async function buildTicketSummary(taskDetail, project) {
     : 'Your request was reviewed by our team and has been resolved.';
 }
 
-// Correo de resolución de ticket al cliente cuando una tarea cuyo título
-// contiene "ticket" llega a "Finalizado sin errores". Va dirigido al cliente
-// (a sus múltiples emails) y con copia a ADL / desarrollo / help.
+// Correo de resolución al cliente cuando una tarea llega a "Finalizado sin
+// errores" con el check "enviar correo al cliente" activo, o cuyo título
+// contiene "ticket". Va dirigido al cliente (a sus múltiples emails) y con
+// copia a ADL / desarrollo / help.
 async function sendTicketResolvedEmail(task) {
   const project = await pmService.getProject(task.project_id);
   const to = [
@@ -479,7 +480,8 @@ async function sendTicketResolvedEmail(task) {
     to,
     client: project.client,
     ticketTitle: task.title,
-    summary
+    summary,
+    isTicket: String(task.title || '').toLowerCase().includes('ticket')
   });
 }
 
@@ -774,7 +776,8 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
     } catch (e) { /* si falla, se intenta notificar igual */ }
     const task = await pmService.updateTask(req.params.id, req.body);
     // Automatizaciones por correo al alcanzar "Finalizado sin errores":
-    // - Tareas "ticket ..."  -> correo de resolución al cliente (multi-correo)
+    // - Tareas con "ticket" en el título, o con el check "enviar correo al
+    //   cliente" activo  -> correo de resolución al cliente (multi-correo)
     // - "One page"/"Full web"  -> aviso a Google (compartir perfil de Google)
     // - "Dominio"              -> aviso de redes (compartir Facebook/Instagram)
     // - "Compartir perfil de Google"                     -> vinculación exitosa (Google)
@@ -783,8 +786,9 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
     // Cloudflare al terminar (los fetch asíncronos "sueltos" se pueden cortar).
     if (task.status === 'finalizado_sin_errores') {
       const title = String(task.title || '').toLowerCase();
+      const sendClientEmail = task.notify_client === true || title.includes('ticket');
       try {
-        if (title.includes('ticket')) {
+        if (sendClientEmail) {
           await sendTicketResolvedEmail(task);
         } else if (title.includes('entrega y revision') || title.includes('entrega y revisión')) {
           await sendProjectDeliveredEmail(task);
