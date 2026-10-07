@@ -776,9 +776,11 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
     } catch (e) { /* si falla, se intenta notificar igual */ }
     const task = await pmService.updateTask(req.params.id, req.body);
     // Automatizaciones por correo al alcanzar "Finalizado sin errores":
-    // - Tareas con "ticket" en el título, o con el check "enviar correo al
-    //   cliente" activo  -> correo de resolución al cliente (multi-correo)
-    // - "One page"/"Full web"  -> aviso a Google (compartir perfil de Google)
+    // - "One page"/"Full web" + check "enviar correo al cliente" -> entrega
+    //   formal del sitio ("Your Website Is Now Live!", cliente + negocio)
+    // - "One page"/"Full web" (sin check)  -> aviso a Google (compartir perfil)
+    // - "Entrega y revision"               -> entrega formal del sitio
+    // - "ticket..." o check en otras tareas -> correo de resolución al cliente
     // - "Dominio"              -> aviso de redes (compartir Facebook/Instagram)
     // - "Compartir perfil de Google"                     -> vinculación exitosa (Google)
     // - "Compartir redes sociales (Facebook/Instagram)"  -> vinculación exitosa (redes)
@@ -786,20 +788,23 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
     // Cloudflare al terminar (los fetch asíncronos "sueltos" se pueden cortar).
     if (task.status === 'finalizado_sin_errores') {
       const title = String(task.title || '').toLowerCase();
-      const sendClientEmail = task.notify_client === true || title.includes('ticket');
+      const isSiteProject = title.includes('one page') || title.includes('full web');
+      const isDelivery = title.includes('entrega y revision') || title.includes('entrega y revisión');
       try {
-        if (sendClientEmail) {
-          await sendTicketResolvedEmail(task);
-        } else if (title.includes('entrega y revision') || title.includes('entrega y revisión')) {
+        if (isSiteProject && task.notify_client === true) {
           await sendProjectDeliveredEmail(task);
+        } else if (isSiteProject) {
+          await sendProjectFinishedEmail(task);
+        } else if (isDelivery) {
+          await sendProjectDeliveredEmail(task);
+        } else if (title.includes('ticket') || task.notify_client === true) {
+          await sendTicketResolvedEmail(task);
         } else if (title.includes('compartir perfil de google')) {
           await sendProjectLinkedEmail(task);
         } else if (title.includes('compartir redes sociales')) {
           await sendProjectLinkedFbEmail(task);
         } else if (title.includes('dominio')) {
           await sendProjectFinishedFbEmail(task);
-        } else if (title === 'one page' || title === 'full web' || title.includes('one page') || title.includes('full web')) {
-          await sendProjectFinishedEmail(task);
         }
       } catch (err) {
         console.error('[email] no enviado:', err.message);

@@ -309,7 +309,8 @@ function sendTicketResolved({ to, client, ticketTitle, summary, isTicket = true 
 // que se hace la entrega formal con la URL. Redacción en inglés US, sin
 // mencionar el área de desarrollo — la agencia es ADL. CC siempre a adldigital00.
 function sendProjectDelivered({ to, client, business, url }) {
-  const subject = `Your Website Is Now Live! — ${business || client}`;
+  const scope = business && client && business !== client ? `${client} — ${business}` : (business || client || 'Your Website');
+  const subject = `Your Website Is Now Live! — ${scope}`;
   const site = url && /^https?:\/\//i.test(url) ? url : (url ? `https://${url}` : '');
   const html = `<!DOCTYPE html>
 <html>
