@@ -788,22 +788,23 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
     // Cloudflare al terminar (los fetch asíncronos "sueltos" se pueden cortar).
     if (task.status === 'finalizado_sin_errores') {
       const title = String(task.title || '').toLowerCase();
-      const isSiteProject = title.includes('one page') || title.includes('full web');
-      const isDelivery = title.includes('entrega y revision') || title.includes('entrega y revisión');
+      const norm = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+      const isSiteProject = norm.includes('onepage') || norm.includes('fullweb') || norm.includes('fullwebsite');
+      const isDelivery = norm.includes('entregayrevision');
       try {
         if (isSiteProject && task.notify_client === true) {
           await sendProjectDeliveredEmail(task);
-        } else if (isSiteProject) {
-          await sendProjectFinishedEmail(task);
         } else if (isDelivery) {
           await sendProjectDeliveredEmail(task);
-        } else if (title.includes('ticket') || task.notify_client === true) {
+        } else if (isSiteProject) {
+          await sendProjectFinishedEmail(task);
+        } else if (norm.includes('ticket') || task.notify_client === true) {
           await sendTicketResolvedEmail(task);
-        } else if (title.includes('compartir perfil de google')) {
+        } else if (norm.includes('compartirperfil') && norm.includes('google')) {
           await sendProjectLinkedEmail(task);
-        } else if (title.includes('compartir redes sociales')) {
+        } else if (norm.includes('compartirredes') || (norm.includes('compartir') && norm.includes('redes'))) {
           await sendProjectLinkedFbEmail(task);
-        } else if (title.includes('dominio')) {
+        } else if (norm.includes('dominio')) {
           await sendProjectFinishedFbEmail(task);
         }
       } catch (err) {
