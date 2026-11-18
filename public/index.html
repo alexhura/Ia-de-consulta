@@ -216,7 +216,9 @@
             <!-- Project Manager view (admin y Desarrollo) -->
             <section class="view" id="pmView">
                 <div class="pm-head">
-                    <button type="button" class="btn btn-secondary btn-small pm-back hidden" id="pmBackBtn">← Volver</button>
+                    <button type="button" class="btn btn-secondary btn-small pm-back hidden" id="pmBackBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Volver
+                    </button>
                     <div>
                         <h2 class="pm-title"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg> Project Manager</h2>
                         <p class="pm-subtitle">Proyectos, pipeline y eficiencia del equipo</p>
@@ -356,6 +358,17 @@
                                 <span id="pmNotifEmailFbStatus" class="pm-auto-status"></span>
                             </div>
                         </div>
+                    </div>
+
+                    <div id="pmMyTasksView" class="hidden">
+                        <div class="pm-my-tasks-view-head">
+                            <div class="pm-my-tasks-view-title-wrap">
+                                <h3 class="pm-my-tasks-view-title">Mis tareas asignadas</h3>
+                                <span id="pmMyTasksCounter" class="pm-counter-pill">0 pendientes</span>
+                            </div>
+                        </div>
+                        <div id="pmMyTasksList" class="pm-my-tasks-list"></div>
+                        <p id="pmMyTasksMsg" class="admin-msg"></p>
                     </div>
                 </div>
             </section>
@@ -801,7 +814,7 @@
                             <div id="taskPendingImages" class="pm-pending-images"></div>
                             <textarea id="taskCommentInput" class="admin-textarea" rows="2" placeholder="Escribe un comentario... (pega o arrastra imágenes aquí)"></textarea>
                             <div class="pm-comment-actions">
-                                <span class="pm-upload-hint">📷 Suelta o pega una imagen aquí</span>
+                                <span class="pm-upload-hint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>Suelta o pega una imagen aquí</span>
                                 <button type="button" class="btn btn-primary btn-small" id="taskCommentSendBtn">Enviar</button>
                             </div>
                         </div>
@@ -810,25 +823,7 @@
                 </div>
             </div>
 
-            <!-- Window: Mis tareas asignadas (usuarios de desarrollo y admin) -->
-            <div id="pmMyTasksWindow" class="window-overlay hidden">
-                <div class="window pm-my-tasks-window">
-                    <div class="window-head">
-                        <div class="pm-my-tasks-head-title">
-                            <h2>📋 Mis tareas asignadas</h2>
-                            <span id="pmMyTasksCounter" class="pm-counter-pill">0 pendientes</span>
-                        </div>
-                        <button class="window-close" data-close="pmMyTasksWindow" title="Cerrar">&times;</button>
-                    </div>
-                    <div class="window-body">
-                        <div class="pm-my-tasks-intro">
-                            <p>Tareas asignadas a ti (ordenadas de la más antigua a la más nueva). Puedes avanzar su estado hasta <b>En revisión</b> y abrir cada una para ver detalles o agregar comentarios.</p>
-                        </div>
-                        <div id="pmMyTasksList" class="pm-my-tasks-list"></div>
-                        <p id="pmMyTasksMsg" class="admin-msg"></p>
-                    </div>
-                </div>
-            </div>
+
 
             <!-- History window -->
             <div id="historyPanel" class="window-overlay hidden">

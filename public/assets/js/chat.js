@@ -164,10 +164,21 @@ const taskDetailStatusControl = document.getElementById('taskDetailStatusControl
 
 const pmMyTasksBtn = document.getElementById('pmMyTasksBtn');
 const pmMyTasksCount = document.getElementById('pmMyTasksCount');
-const pmMyTasksWindow = document.getElementById('pmMyTasksWindow');
+const pmMyTasksView = document.getElementById('pmMyTasksView');
 const pmMyTasksCounter = document.getElementById('pmMyTasksCounter');
 const pmMyTasksList = document.getElementById('pmMyTasksList');
 const pmMyTasksMsg = document.getElementById('pmMyTasksMsg');
+
+// Iconos SVG para el Project Manager (sin emojis)
+const PM_SVG_ALERT = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+const PM_SVG_CALENDAR = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`;
+const PM_SVG_CLOCK = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
+const PM_SVG_BRIEFCASE = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>`;
+const PM_SVG_MESSAGE = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`;
+const PM_SVG_MAIL = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>`;
+const PM_SVG_CHECK_CIRCLE = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+const PM_SVG_SEND = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
+const PM_SVG_ARROW_RIGHT = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-left:2px;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>`;
 
 let conversationHistory = [];
 let activeConvId = null;
@@ -919,6 +930,7 @@ function openPM() {
     if (!canUsePM()) return;
     chatView.classList.remove('active');
     pmView.classList.add('active');
+    closeMyTasksView();
     closeProjectDetail();
     loadPMProjects();
     startPMPolling();
@@ -991,7 +1003,13 @@ async function fillUsersSelect() {
 pmBtn.addEventListener('click', openPM);
 
 addProjectBtn.addEventListener('click', () => openProjectForm(null));
-pmBackBtn.addEventListener('click', closeProjectDetail);
+pmBackBtn.addEventListener('click', () => {
+    if (pmMyTasksView && !pmMyTasksView.classList.contains('hidden')) {
+        closeMyTasksView();
+        return;
+    }
+    closeProjectDetail();
+});
 pmEditProjectBtn.addEventListener('click', () => openProjectForm(openProjectId));
 pmAddTaskBtn.addEventListener('click', () => openTaskForm(openProjectId, null));
 pmDeleteProjectBtn.addEventListener('click', async () => {
@@ -1020,12 +1038,8 @@ document.querySelectorAll('[data-close="pmTaskDetailWindow"]').forEach(btn =>
     })
 );
 
-document.querySelectorAll('[data-close="pmMyTasksWindow"]').forEach(btn =>
-    btn.addEventListener('click', () => closeOverlay(pmMyTasksWindow))
-);
-
 // Cerrar overlays al hacer clic en el fondo oscuro
-[pmFormWindow, pmTaskWindow, pmTaskDetailWindow, pmMyTasksWindow].forEach(win => {
+[pmFormWindow, pmTaskWindow, pmTaskDetailWindow].forEach(win => {
     if (!win) return;
     win.addEventListener('click', (e) => {
         if (e.target === win) {
@@ -1153,6 +1167,7 @@ async function openProjectDetail(projectId) {
     openProjectId = projectId;
     const p = pmProjects.find(x => x.id === projectId);
     if (!p) return;
+    if (pmMyTasksView) pmMyTasksView.classList.add('hidden');
     pmProjectsView.classList.add('hidden');
     pmDetailView.classList.remove('hidden');
     pmDetailView.classList.add('active');
@@ -1259,10 +1274,10 @@ function renderProjectDetail(p) {
 
 function pmTaskCard(t) {
     const due = t.due_date
-        ? `<span class="pm-due ${t.status === 'finalizado_sin_errores' ? '' : new Date(t.due_date + 'T23:59:59') < new Date() ? 'overdue' : ''}">📅 ${escapeHtml(fmtDate(t.due_date))}</span>`
+        ? `<span class="pm-due ${t.status === 'finalizado_sin_errores' ? '' : new Date(t.due_date + 'T23:59:59') < new Date() ? 'overdue' : ''}">${PM_SVG_CALENDAR} ${escapeHtml(fmtDate(t.due_date))}</span>`
         : '';
-    const corr = t.corrections > 0 ? `<span class="pm-corr" title="Rechazada por errores ${t.corrections} ${t.corrections === 1 ? 'vez' : 'veces'}">Por corregir</span>` : '';
-    const mailBadge = t.notify_client ? `<span class="pm-mail-badge" title="Correo automático al cliente al finalizar">✉ Cliente</span>` : '';
+    const corr = t.corrections > 0 ? `<span class="pm-corr" title="Rechazada por errores ${t.corrections} ${t.corrections === 1 ? 'vez' : 'veces'}">${PM_SVG_ALERT} Por corregir</span>` : '';
+    const mailBadge = t.notify_client ? `<span class="pm-mail-badge" title="Correo automático al cliente al finalizar">${PM_SVG_MAIL} Cliente</span>` : '';
     const avatarsHtml = `
         <div class="pm-avatars-stack">
             ${pmPeopleAvatar(t.assigned_to, t.assigned_name, 'sm')}
@@ -1455,11 +1470,11 @@ async function openTaskDetail(taskId) {
         const attachments = data.attachments || [];
         taskDetailTitle.textContent = task.title;
 
-        const due = task.due_date ? ` <span class="pm-due">📅 ${escapeHtml(fmtDate(task.due_date))}</span>` : '';
+        const due = task.due_date ? ` <span class="pm-due">${PM_SVG_CALENDAR} ${escapeHtml(fmtDate(task.due_date))}</span>` : '';
         taskDetailMeta.innerHTML = `
             <span class="pm-stage-badge pm-stage-badge-${task.status}">${PM_STAGE_LABEL[task.status] || task.status}</span>
             <span class="pm-priority pm-priority-${task.priority}">${PM_PRIORITY_LABEL[task.priority] || task.priority}</span>
-            ${task.corrections > 0 ? `<span class="pm-corr">Por corregir (${task.corrections})</span>` : ''}
+            ${task.corrections > 0 ? `<span class="pm-corr">${PM_SVG_ALERT} Por corregir (${task.corrections})</span>` : ''}
             ${due}
             <span class="pm-people-block">
                 <span>Responsable: ${pmPeopleAvatar(task.owner_id, task.owner_name)} <b>${escapeHtml(task.owner_name || '—')}</b></span>
@@ -1477,7 +1492,7 @@ async function openTaskDetail(taskId) {
                     ${allowed.map(s => `<option value="${s}" ${s === task.status ? 'selected' : ''}>${PM_STAGE_LABEL[s] || s}</option>`).join('')}
                 </select>
                 ${task.status !== 'en_revision' && task.status !== 'finalizado_sin_errores'
-                    ? `<button type="button" class="btn btn-primary btn-small" id="taskDetailAdvanceBtn">Enviar a En revisión 🚀</button>`
+                    ? `<button type="button" class="btn btn-primary btn-small" id="taskDetailAdvanceBtn">Enviar a En revisión ${PM_SVG_SEND}</button>`
                     : ''}
             `;
             const sel = document.getElementById('taskDetailStatusSelect');
@@ -1730,14 +1745,41 @@ async function loadMyTasks() {
     }
 }
 
+function openMyTasksView() {
+    if (pmProjectsView) pmProjectsView.classList.add('hidden');
+    if (pmDetailView) {
+        pmDetailView.classList.remove('active');
+        pmDetailView.classList.add('hidden');
+    }
+    if (pmMyTasksView) {
+        pmMyTasksView.classList.remove('hidden');
+    }
+    if (pmBackBtn) pmBackBtn.classList.remove('hidden');
+    loadMyTasks();
+}
+
+function closeMyTasksView() {
+    if (pmMyTasksView) pmMyTasksView.classList.add('hidden');
+    if (openProjectId) {
+        if (pmDetailView) {
+            pmDetailView.classList.remove('hidden');
+            pmDetailView.classList.add('active');
+        }
+        if (pmBackBtn) pmBackBtn.classList.remove('hidden');
+    } else {
+        if (pmProjectsView) pmProjectsView.classList.remove('hidden');
+        if (pmBackBtn) pmBackBtn.classList.add('hidden');
+    }
+}
+
 function renderMyTasksList() {
     if (!pmMyTasksList) return;
     if (myTasks.length === 0) {
         pmMyTasksList.innerHTML = `
-            <div style="text-align:center;padding:40px 20px;color:#a1a1aa;">
-                <p style="font-size:36px;margin:0 0 10px;">🎉</p>
+            <div style="text-align:center;padding:48px 20px;color:#a1a1aa;">
+                <div style="margin:0 auto 12px;display:flex;align-items:center;justify-content:center;">${PM_SVG_CHECK_CIRCLE}</div>
                 <p style="font-size:16px;font-weight:600;color:#e4e4e7;margin:0 0 6px;">No tienes tareas pendientes asignadas</p>
-                <p style="font-size:13px;margin:0;">Todas tus tareas asignadas han sido finalizadas o están al día.</p>
+                <p style="font-size:13px;margin:0;color:#71717a;">Todas tus tareas asignadas han sido finalizadas o estás al día.</p>
             </div>`;
         return;
     }
@@ -1751,36 +1793,31 @@ function renderMyTasksList() {
         const isCorrection = t.status === 'por_corregir';
         const projectLabel = t.project_business || t.project_client || 'Proyecto';
         const createdDate = t.created_at ? new Date(t.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
-        const dueDate = t.due_date ? `<span>📅 Vence: ${escapeHtml(fmtDate(t.due_date))}</span>` : '';
+        const dueDate = t.due_date ? `<span>${PM_SVG_CALENDAR} Vence: ${escapeHtml(fmtDate(t.due_date))}</span>` : '';
 
         return `
-            <div class="pm-my-task-card ${isCorrection ? 'is-correction' : ''}" data-id="${t.id}">
-                ${isCorrection ? `
-                    <div class="pm-correction-banner">
-                        <span class="pm-alert-icon">⚠️</span>
-                        <span><b>¡Por corregir!</b> Esta tarea requiere atención y correcciones prioritarias.</span>
-                    </div>` : ''}
-                <div class="pm-my-task-top">
-                    <span class="pm-my-task-project">💼 ${escapeHtml(projectLabel)}</span>
-                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div class="pm-my-task-row ${isCorrection ? 'is-correction' : ''}" data-id="${t.id}">
+                <div class="pm-my-task-col-info">
+                    <div class="pm-my-task-tags">
+                        <span class="pm-my-task-project">${PM_SVG_BRIEFCASE} ${escapeHtml(projectLabel)}</span>
                         <span class="pm-priority pm-priority-${t.priority}">${PM_PRIORITY_LABEL[t.priority] || t.priority}</span>
                         <span class="pm-stage-badge pm-stage-badge-${t.status}">
-                            ${isCorrection ? '❗ ' : ''}${PM_STAGE_LABEL[t.status] || t.status}
+                            ${isCorrection ? `${PM_SVG_ALERT} ` : ''}${PM_STAGE_LABEL[t.status] || t.status}
                         </span>
+                        ${isCorrection ? `<span class="pm-alert-pill">${PM_SVG_ALERT} Por corregir</span>` : ''}
+                    </div>
+                    <h3 class="pm-my-task-title" data-action="open-my-task" data-id="${t.id}" title="Haz clic para ver detalles y comentarios">${escapeHtml(t.title)}</h3>
+                    <div class="pm-my-task-meta">
+                        ${createdDate ? `<span>${PM_SVG_CLOCK} Creada: ${createdDate}</span>` : ''}
+                        ${dueDate}
+                        ${t.corrections > 0 ? `<span class="pm-corr">${PM_SVG_ALERT} Correcciones: ${t.corrections}</span>` : ''}
                     </div>
                 </div>
-                <h3 class="pm-my-task-title" data-action="open-my-task" data-id="${t.id}" title="Haz clic para ver detalles y comentarios">${escapeHtml(t.title)}</h3>
-                <div class="pm-my-task-meta">
-                    ${createdDate ? `<span>🕒 Creada: ${createdDate}</span>` : ''}
-                    ${dueDate}
-                    ${t.corrections > 0 ? `<span class="pm-corr">Correcciones: ${t.corrections}</span>` : ''}
-                </div>
-                <div class="pm-my-task-actions">
-                    <button type="button" class="btn btn-secondary btn-small" data-action="open-my-task" data-id="${t.id}">
-                        💬 Ver detalles y comentarios
+                <div class="pm-my-task-col-actions">
+                    <button type="button" class="btn btn-secondary btn-small" data-action="open-my-task" data-id="${t.id}" title="Ver detalles y comentarios">
+                        ${PM_SVG_MESSAGE} Ver detalles
                     </button>
                     <div class="pm-status-select-wrap">
-                        <label>Estado:</label>
                         <select class="pm-status-select" data-action="my-task-status" data-id="${t.id}">
                             ${allowedStages.map(s => `
                                 <option value="${s}" ${s === t.status ? 'selected' : ''}>${PM_STAGE_LABEL[s] || s}</option>
@@ -1788,7 +1825,7 @@ function renderMyTasksList() {
                         </select>
                         ${t.status !== 'en_revision' && t.status !== 'finalizado_sin_errores' ? `
                             <button type="button" class="btn btn-primary btn-small" data-action="my-task-revision" data-id="${t.id}" title="Avanzar directamente a En revisión">
-                                🚀 A revisión
+                                ${PM_SVG_SEND} A revisión
                             </button>
                         ` : ''}
                     </div>
@@ -1828,8 +1865,11 @@ if (pmMyTasksList) {
 
 if (pmMyTasksBtn) {
     pmMyTasksBtn.addEventListener('click', () => {
-        openOverlay(pmMyTasksWindow);
-        loadMyTasks();
+        if (pmMyTasksView && !pmMyTasksView.classList.contains('hidden')) {
+            closeMyTasksView();
+        } else {
+            openMyTasksView();
+        }
     });
 }
 
@@ -1844,7 +1884,7 @@ function showChat() {
     closeOverlay(pmFormWindow);
     closeOverlay(pmTaskWindow);
     closeOverlay(pmTaskDetailWindow);
-    closeOverlay(pmMyTasksWindow);
+    closeMyTasksView();
     heroSection.classList.add('hidden');
     chatSection.classList.add('active');
     chatInput.focus();
@@ -1855,7 +1895,7 @@ function showHero() {
     pmView.classList.remove('active');
     chatView.classList.add('active');
     closeOverlay(pmTaskDetailWindow);
-    closeOverlay(pmMyTasksWindow);
+    closeMyTasksView();
     persistCurrentConversation();
     heroSection.classList.remove('hidden');
     chatSection.classList.remove('active');
@@ -2249,7 +2289,7 @@ function renderBellList() {
             ${expandedNotifId === n.id
                 ? `<div class="bell-item-detail">${escapeHtml(cleanMsg)}</div>`
                 : `<div class="bell-item-preview">${escapeHtml(bellItemPreview(cleanMsg))}</div>`}
-            ${taskInfo ? `<div class="bell-item-task-badge">🎯 Abrir tarea asignada →</div>` : ''}
+            ${taskInfo ? `<div class="bell-item-task-badge">${PM_SVG_ARROW_RIGHT} Abrir tarea asignada</div>` : ''}
         `;
         item.addEventListener('click', () => {
             openNotificationDetail(n.id);

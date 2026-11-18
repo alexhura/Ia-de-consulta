@@ -3676,23 +3676,40 @@ body::before {
     margin-left: 2px;
 }
 
-#pmMyTasksWindow {
-    z-index: 55;
-}
-
 #pmTaskDetailWindow {
     z-index: 70;
 }
 
-.pm-my-tasks-window .window-body {
-    max-width: 860px;
-    margin: 0 auto;
+#pmMyTasksView {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
-.pm-my-tasks-head-title {
+.pm-my-tasks-view-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pm-my-tasks-view-title-wrap {
     display: flex;
     align-items: center;
     gap: 12px;
+}
+
+.pm-my-tasks-view-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .pm-counter-pill {
@@ -3705,60 +3722,80 @@ body::before {
     border-radius: 999px;
 }
 
-.pm-my-tasks-intro {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    padding: 10px 14px;
-    margin-bottom: 16px;
-    font-size: 13px;
-    color: #a1a1aa;
-}
-
 .pm-my-tasks-list {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
+    width: 100%;
 }
 
-.pm-my-task-card {
+.pm-my-task-row {
+    width: 100%;
     background: #18181b;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.pm-my-task-row:hover {
+    border-color: rgba(255, 255, 255, 0.22);
+    background: #1f1f23;
+}
+
+.pm-my-task-row.is-correction {
+    border-color: rgba(239, 68, 68, 0.55);
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.12) 0%, rgba(24, 24, 27, 0.95) 100%);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.12);
+}
+
+.pm-my-task-col-info {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    transition: all 0.2s ease;
+    gap: 6px;
 }
 
-.pm-my-task-card:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-}
-
-.pm-my-task-card.is-correction {
-    border-color: rgba(239, 68, 68, 0.55);
-    background: linear-gradient(180deg, rgba(239, 68, 68, 0.08) 0%, rgba(24, 24, 27, 0.95) 100%);
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
-}
-
-.pm-correction-banner {
+.pm-my-task-tags {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(239, 68, 68, 0.15);
-    border: 1px solid rgba(239, 68, 68, 0.35);
-    color: #fca5a5;
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
+    flex-wrap: wrap;
 }
 
-.pm-correction-banner .pm-alert-icon {
-    font-size: 16px;
-    display: inline-block;
+.pm-my-task-project {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e4e4e7;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 5px;
+}
+
+.pm-alert-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(239, 68, 68, 0.18);
+    border: 1px solid rgba(239, 68, 68, 0.45);
+    color: #fca5a5;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 5px;
+}
+
+.pm-alert-pill svg {
     animation: pm-pulse 1.8s infinite;
 }
 
@@ -3767,34 +3804,16 @@ body::before {
     50% { transform: scale(1.18); opacity: 0.85; }
 }
 
-.pm-my-task-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.pm-my-task-project {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #e4e4e7;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 3px 9px;
-    border-radius: 6px;
-}
-
 .pm-my-task-title {
-    font-size: 16px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 600;
     color: #ffffff;
     margin: 0;
     cursor: pointer;
     transition: color 0.15s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .pm-my-task-title:hover {
@@ -3804,20 +3823,40 @@ body::before {
 .pm-my-task-meta {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     flex-wrap: wrap;
-    font-size: 12.5px;
+    font-size: 12px;
     color: #a1a1aa;
 }
 
-.pm-my-task-actions {
+.pm-my-task-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.pm-my-task-col-actions {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding-top: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
-    flex-wrap: wrap;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .pm-my-task-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .pm-my-task-col-actions {
+        width: 100%;
+        justify-content: space-between;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .pm-my-task-title {
+        white-space: normal;
+    }
 }
 
 .pm-status-select-wrap {
