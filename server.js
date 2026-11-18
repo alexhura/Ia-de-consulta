@@ -479,6 +479,7 @@ async function sendTicketResolvedEmail(task) {
   await emailService.sendTicketResolved({
     to,
     client: project.client,
+    business: project.business,
     ticketTitle: task.title,
     summary,
     isTicket: String(task.title || '').toLowerCase().includes('ticket')

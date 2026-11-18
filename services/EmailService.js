@@ -252,11 +252,12 @@ const TICKET_CC = [
   process.env.BREVO_HELP_EMAIL || 'help.academiadelimpieza@gmail.com'
 ];
 
-// Convierte texto plano (párrafos separados por doble salto de línea) a HTML.
+// Convierte texto plano (o con posibles <br>) a HTML con párrafos y saltos de línea sin mostrar etiquetas en texto.
 function textToHtml(text) {
   return String(text || '').trim()
+    .replace(/<br\s*[\/]?>/gi, '\n')
     .split(/\n{2,}/)
-    .map(p => `<p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#000000;">${esc(p.replace(/\n/g, '<br>'))}</p>`)
+    .map(p => `<p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#000000;">${esc(p).replace(/\n/g, '<br>')}</p>`)
     .join('');
 }
 
@@ -265,11 +266,16 @@ function textToHtml(text) {
 // ADL y al equipo de ayuda. El resumen (summary) lo genera el asistente.
 // Si la tarea no es un ticket (check "enviar correo al cliente"), usa un
 // asunto y encabezado genéricos ("Your Request Has Been Resolved").
-function sendTicketResolved({ to, client, ticketTitle, summary, isTicket = true }) {
+function sendTicketResolved({ to, client, business, ticketTitle, summary, isTicket = true }) {
   const clean = cleanLabel(ticketTitle);
+  const parts = [clean || ticketTitle || (isTicket ? 'Ticket' : 'Request')];
+  if (client) parts.push(client);
+  if (business && business !== client) parts.push(business);
+  const details = parts.filter(Boolean).join(' — ');
+
   const subject = isTicket
-    ? `Your Support Ticket Has Been Resolved — ${clean || ticketTitle || 'Ticket'}`
-    : `Your Request Has Been Resolved — ${clean || ticketTitle || 'Request'}`;
+    ? `Your Support Ticket Has Been Resolved — ${details}`
+    : `Your Request Has Been Resolved — ${details}`;
   const heading = isTicket ? 'Your Support Ticket Has Been Resolved' : 'Your Request Has Been Resolved';
   const label = isTicket ? 'Ticket' : 'Request';
   const cc = TICKET_CC;
@@ -283,7 +289,8 @@ function sendTicketResolved({ to, client, ticketTitle, summary, isTicket = true 
           ${emailHeader(heading)}
           <tr>
             <td style="padding:32px;">
-              <p style="margin:0 0 24px;font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">${label}: ${esc(clean || ticketTitle || '—')}</p>
+              <p style="margin:0 0 8px;font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">${label}: ${esc(clean || ticketTitle || '—')}</p>
+              ${(client || business) ? `<p style="margin:0 0 20px;font-size:14px;color:#374151;">${client ? `<strong>Client:</strong> ${esc(client)}` : ''}${client && business ? ' &nbsp;|&nbsp; ' : ''}${business ? `<strong>Business:</strong> ${esc(business)}` : ''}</p>` : ''}
               ${summary ? textToHtml(summary) : '<p style="margin:0 0 16px;font-size:16px;color:#000000;">Your request has been resolved.</p>'}
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0 0;">
                 <tr>
