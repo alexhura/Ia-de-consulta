@@ -101,7 +101,7 @@ function cleanLabel(title) {
   return String(title || '').trim().replace(/^(ticket|request)\s*[:#-]?\s*/i, '');
 }
 
-// Correo de aviso cuando se finaliza un proyecto "One page" / "Full web".
+// Correo de aviso cuando se finaliza una tarea "Dominio" (Google Notification).
 // HTML con fondo blanco, acentos naranjas y texto negro, con botón para
 // compartir el enlace del perfil de Google.
 function sendProjectFinished({ to, client, business, url, shareLink }) {
@@ -142,9 +142,9 @@ function sendProjectFinished({ to, client, business, url, shareLink }) {
   return send({ to, subject, html });
 }
 
-// Correo de aviso cuando se finaliza una tarea "Dominio". Similar al de One
-// page/Full web pero pide compartir los enlaces de redes sociales
-// (Facebook e Instagram) en lugar del perfil de Google.
+// Correo de aviso cuando se finaliza una tarea "Dominio" (Redes sociales).
+// Pide compartir los enlaces de redes sociales (Facebook e Instagram)
+// en lugar del perfil de Google.
 function sendProjectFinishedFb({ to, client, business, url, shareLink }) {
   const subject = `¡Proyecto ${business || client} finalizado!`;
   const site = url && /^https?:\/\//i.test(url) ? url : (url ? `https://${url}` : '');

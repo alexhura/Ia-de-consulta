@@ -325,9 +325,9 @@ app.delete('/api/admin/knowledge/:id', authMiddleware, async (req, res) => {
 // ---- Project Manager (solo admin y Desarrollo) ----
 const pmOnly = [authMiddleware, requireRole('admin', 'desarrollo')];
 
-// Envía el correo de "proyecto finalizado" cuando una tarea "One page"/"Full web"
+// Envía el correo de "proyecto finalizado" (aviso a Google) cuando una tarea "Dominio"
 // llega a "Finalizado sin errores". Utiliza el email de notificación configurable
-// del proyecto; si no hay, usa el email general del proyecto.
+// del proyecto (notif_email); si no hay, usa el email general del proyecto.
 async function sendProjectFinishedEmail(task) {
   const project = await pmService.getProject(task.project_id);
   const to = (project && (project.notif_email || project.email)) || '';
@@ -776,12 +776,10 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
     } catch (e) { /* si falla, se intenta notificar igual */ }
     const task = await pmService.updateTask(req.params.id, req.body);
     // Automatizaciones por correo al alcanzar "Finalizado sin errores":
-    // - "One page"/"Full web" + check "enviar correo al cliente" -> entrega
-    //   formal del sitio ("Your Website Is Now Live!", cliente + negocio)
-    // - "One page"/"Full web" (sin check)  -> aviso a Google (compartir perfil)
-    // - "Entrega y revision"               -> entrega formal del sitio
+    // - "Dominio"              -> aviso a Google (compartir perfil) y
+    //                             aviso de redes (compartir Facebook/Instagram)
+    // - "Entrega y revision"   -> entrega formal del sitio ("Your Website Is Now Live!")
     // - "ticket..." o check en otras tareas -> correo de resolución al cliente
-    // - "Dominio"              -> aviso de redes (compartir Facebook/Instagram)
     // - "Compartir perfil de Google"                     -> vinculación exitosa (Google)
     // - "Compartir redes sociales (Facebook/Instagram)"  -> vinculación exitosa (redes)
     // Se espera el envío dentro del request para que no sea cancelado por
@@ -789,23 +787,27 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
     if (task.status === 'finalizado_sin_errores') {
       const title = String(task.title || '').toLowerCase();
       const norm = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-      const isSiteProject = norm.includes('onepage') || norm.includes('fullweb') || norm.includes('fullwebsite');
       const isDelivery = norm.includes('entregayrevision');
       try {
-        if (isSiteProject && task.notify_client === true) {
-          await sendProjectDeliveredEmail(task);
+        if (norm.includes('dominio')) {
+          try {
+            await sendProjectFinishedEmail(task);
+          } catch (errGoogle) {
+            console.error('[email] Error enviando Google notification email en Dominio:', errGoogle.message);
+          }
+          try {
+            await sendProjectFinishedFbEmail(task);
+          } catch (errFb) {
+            console.error('[email] Error enviando Redes sociales email en Dominio:', errFb.message);
+          }
         } else if (isDelivery) {
           await sendProjectDeliveredEmail(task);
-        } else if (isSiteProject) {
-          await sendProjectFinishedEmail(task);
-        } else if (norm.includes('ticket') || task.notify_client === true) {
-          await sendTicketResolvedEmail(task);
         } else if (norm.includes('compartirperfil') && norm.includes('google')) {
           await sendProjectLinkedEmail(task);
         } else if (norm.includes('compartirredes') || (norm.includes('compartir') && norm.includes('redes'))) {
           await sendProjectLinkedFbEmail(task);
-        } else if (norm.includes('dominio')) {
-          await sendProjectFinishedFbEmail(task);
+        } else if (norm.includes('ticket') || task.notify_client === true) {
+          await sendTicketResolvedEmail(task);
         }
       } catch (err) {
         console.error('[email] no enviado:', err.message);
