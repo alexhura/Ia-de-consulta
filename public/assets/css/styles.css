@@ -3676,6 +3676,14 @@ body::before {
     margin-left: 2px;
 }
 
+#pmMyTasksWindow {
+    z-index: 55;
+}
+
+#pmTaskDetailWindow {
+    z-index: 70;
+}
+
 .pm-my-tasks-window .window-body {
     max-width: 860px;
     margin: 0 auto;

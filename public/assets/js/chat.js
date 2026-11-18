@@ -1014,8 +1014,37 @@ document.querySelectorAll('[data-close="pmTaskWindow"]').forEach(btn =>
 );
 
 document.querySelectorAll('[data-close="pmTaskDetailWindow"]').forEach(btn =>
-    btn.addEventListener('click', () => closeOverlay(pmTaskDetailWindow))
+    btn.addEventListener('click', () => {
+        closeOverlay(pmTaskDetailWindow);
+        loadMyTasks();
+    })
 );
+
+document.querySelectorAll('[data-close="pmMyTasksWindow"]').forEach(btn =>
+    btn.addEventListener('click', () => closeOverlay(pmMyTasksWindow))
+);
+
+// Cerrar overlays al hacer clic en el fondo oscuro
+[pmFormWindow, pmTaskWindow, pmTaskDetailWindow, pmMyTasksWindow].forEach(win => {
+    if (!win) return;
+    win.addEventListener('click', (e) => {
+        if (e.target === win) {
+            closeOverlay(win);
+            if (win === pmTaskDetailWindow) loadMyTasks();
+        }
+    });
+});
+
+// Listener global de respaldo para cualquier botón con [data-close]
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-close]');
+    if (!btn || !btn.dataset.close) return;
+    const target = document.getElementById(btn.dataset.close);
+    if (target) {
+        closeOverlay(target);
+        if (target === pmTaskDetailWindow) loadMyTasks();
+    }
+});
 
 // Tarjetas desplegables de "Datos del negocio" y "Acceso al sitio"
 pmDetailInfo.addEventListener('click', (e) => {
