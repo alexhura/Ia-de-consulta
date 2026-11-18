@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node local.js",
     "dev": "node --watch local.js",
+    "build": "node scripts/build-cf.mjs",
     "build:cf": "node scripts/build-cf.mjs",
     "dev:cf": "npm run build:cf && wrangler dev",
     "deploy": "npm run build:cf && wrangler deploy",
