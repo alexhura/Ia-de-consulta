@@ -224,6 +224,22 @@ export class PmService {
     d.status = d.status || 'pendiente';
     d.share_token = d.share_token || generateToken();
     d.share_token_fb = d.share_token_fb || generateToken();
+
+    // Asignar correos predeterminados de automatizaciones si no vienen definidos
+    if (!d.notif_email || !d.notif_email_fb) {
+      try {
+        const globalSettings = await this.getSettings();
+        if (!d.notif_email && globalSettings.notif_email) {
+          d.notif_email = globalSettings.notif_email;
+        }
+        if (!d.notif_email_fb && globalSettings.notif_email_fb) {
+          d.notif_email_fb = globalSettings.notif_email_fb;
+        }
+      } catch (e) {
+        // Continuar si falla la lectura de settings
+      }
+    }
+
     delete d.updated_at;
     const fields = {};
     for (const f of ['client', 'business', 'description', 'email', 'email2', 'phone', 'services', 'areas', 'url', 'wp_user', 'wp_pass', 'notif_email', 'notif_email_fb', 'share_token', 'share_token_fb', 'status', 'created_by']) {
@@ -532,5 +548,119 @@ export class PmService {
         await getSupabase().from('pm_projects').update({ share_token: generateToken() }).eq('id', p.id);
       }
     }
+  }
+
+  // Busca el id de un usuario por palabra clave (nombre de usuario o nombre completo).
+  async findUserByKeyword(keyword) {
+    const term = String(keyword || '').trim().toLowerCase();
+    if (!term) return null;
+    try {
+      const { data, error } = await getSupabase()
+        .from('users')
+        .select('id, username, full_name')
+        .or(`username.ilike.%${term}%,full_name.ilike.%${term}%`)
+        .limit(1);
+      if (!error && data && data[0]) {
+        return data[0].id;
+      }
+    } catch (e) {
+      console.warn(`[PmService] No se pudo encontrar usuario para "${term}":`, e.message);
+    }
+    return null;
+  }
+
+  // Carga la configuración global de automatizaciones (emails predeterminados de Google y Facebook).
+  async getSettings() {
+    // 1. Intentar leer desde tabla pm_settings
+    try {
+      const { data, error } = await getSupabase()
+        .from('pm_settings')
+        .select('key, value');
+      if (!error && data && data.length > 0) {
+        const s = {};
+        for (const r of data) s[r.key] = r.value;
+        return {
+          notif_email: s.notif_email || '',
+          notif_email_fb: s.notif_email_fb || ''
+        };
+      }
+    } catch (e) {
+      // Seguir al fallback
+    }
+
+    // 2. Fallback: categories con nombre '__pm_settings__'
+    try {
+      const { data, error } = await getSupabase()
+        .from('categories')
+        .select('description')
+        .eq('name', '__pm_settings__')
+        .maybeSingle();
+      if (!error && data && data.description) {
+        const parsed = JSON.parse(data.description);
+        return {
+          notif_email: parsed.notif_email || '',
+          notif_email_fb: parsed.notif_email_fb || ''
+        };
+      }
+    } catch (e) {
+      // Ignorar
+    }
+
+    return {
+      notif_email: '',
+      notif_email_fb: ''
+    };
+  }
+
+  // Guarda la configuración global de automatizaciones (persistente en Supabase).
+  async saveSettings(settings) {
+    const clean = {
+      notif_email: String(settings.notif_email || '').trim(),
+      notif_email_fb: String(settings.notif_email_fb || '').trim()
+    };
+
+    let saved = false;
+
+    // 1. Intentar guardar en pm_settings
+    try {
+      const rows = [
+        { key: 'notif_email', value: clean.notif_email },
+        { key: 'notif_email_fb', value: clean.notif_email_fb }
+      ];
+      const { error } = await getSupabase()
+        .from('pm_settings')
+        .upsert(rows);
+      if (!error) saved = true;
+    } catch (e) {
+      // Intentar fallback
+    }
+
+    // 2. Guardar en categories como respaldo garantizado
+    try {
+      const supabase = getSupabase();
+      const { data: existing } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('name', '__pm_settings__')
+        .maybeSingle();
+
+      const payload = {
+        name: '__pm_settings__',
+        description: JSON.stringify(clean),
+        icon: '⚙️'
+      };
+
+      if (existing) {
+        const { error } = await supabase.from('categories').update(payload).eq('id', existing.id);
+        if (!error) saved = true;
+      } else {
+        const { error } = await supabase.from('categories').insert(payload);
+        if (!error) saved = true;
+      }
+    } catch (e) {
+      if (!saved) throw e;
+    }
+
+    return clean;
   }
 }

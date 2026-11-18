@@ -240,6 +240,26 @@
                     <div id="pmProjectsView">
                         <div id="pmGrid" class="pm-grid"></div>
                         <p id="pmMsg" class="admin-msg"></p>
+
+                        <div class="pm-auto-card pm-general-auto-card pm-admin-only hidden" id="pmGeneralAutoCard">
+                            <h4 class="pm-auto-title">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                                Correos de automatización generales (Google y Facebook)
+                            </h4>
+                            <p class="pm-auto-desc">Estos correos se asignan automáticamente a cada proyecto nuevo que se cree para no tener que escribirlos cada vez.</p>
+                            <div class="pm-auto-field">
+                                <label for="pmGlobalNotifEmail">Google Notification email (perfil de Google)</label>
+                                <input type="email" id="pmGlobalNotifEmail" class="admin-input" placeholder="notificaciones@ejemplo.com" autocomplete="off">
+                                <button type="button" class="btn btn-primary btn-small pm-auto-icon-btn" id="pmGlobalNotifEmailSave" title="Guardar correo de Google" aria-label="Guardar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg></button>
+                                <span id="pmGlobalNotifEmailStatus" class="pm-auto-status"></span>
+                            </div>
+                            <div class="pm-auto-field">
+                                <label for="pmGlobalNotifEmailFb">Redes sociales (Facebook/Instagram) email</label>
+                                <input type="email" id="pmGlobalNotifEmailFb" class="admin-input" placeholder="redes@ejemplo.com" autocomplete="off">
+                                <button type="button" class="btn btn-primary btn-small pm-auto-icon-btn" id="pmGlobalNotifEmailFbSave" title="Guardar correo de redes" aria-label="Guardar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg></button>
+                                <span id="pmGlobalNotifEmailFbStatus" class="pm-auto-status"></span>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="pmDetailView" class="hidden">
@@ -715,6 +735,16 @@
                                 <div class="form-group">
                                     <label for="pmWpPass">Contraseña WordPress</label>
                                     <input type="text" id="pmWpPass" autocomplete="off" placeholder="Contraseña de acceso">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="pmFormNotifEmail">Google Notification email (automatización)</label>
+                                    <input type="email" id="pmFormNotifEmail" autocomplete="off" placeholder="notificaciones@ejemplo.com">
+                                </div>
+                                <div class="form-group">
+                                    <label for="pmFormNotifEmailFb">Redes sociales email (automatización)</label>
+                                    <input type="email" id="pmFormNotifEmailFb" autocomplete="off" placeholder="redes@ejemplo.com">
                                 </div>
                             </div>
                             <button type="submit" class="btn btn-primary">Guardar proyecto</button>

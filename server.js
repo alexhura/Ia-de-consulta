@@ -644,6 +644,7 @@ app.get('/api/share/project', async (req, res) => {
 });
 
 // Crea la tarea de "compartir perfil de Google" en el proyecto correspondiente.
+// Se asigna automáticamente al usuario Jessi.
 app.post('/api/share/link', async (req, res) => {
   try {
     const { token, url, profileName } = req.body || {};
@@ -652,13 +653,21 @@ app.post('/api/share/link', async (req, res) => {
     }
     const p = await pmService.findProjectByToken(token);
     if (!p) return res.status(404).json({ success: false, expired: true, error: 'El enlace ha expirado o ya fue utilizado.' });
-    await pmService.addTask({
+
+    const jessiId = await pmService.findUserByKeyword('jessi');
+    const task = await pmService.addTask({
       project_id: p.id,
       title: 'Compartir perfil de Google',
       description: `Enlace del perfil de Google a compartir: ${url}${profileName ? `\nNegocio: ${profileName}` : ''}`,
       status: 'por_iniciar',
-      priority: 'alta'
+      priority: 'alta',
+      assigned_to: jessiId || null
     }, 1);
+
+    if (task && task.assigned_to) {
+      await notifyTaskAssigned(task);
+    }
+
     // El enlace es de un solo uso: invalidamos el token para que no pueda
     // reutilizarse después de compartir.
     await pmService.rotateShareToken(p.id);
@@ -685,6 +694,7 @@ app.get('/api/share/fb-project', async (req, res) => {
 
 // Crea la tarea de "compartir redes sociales" (Facebook/Instagram) en el
 // proyecto correspondiente. Valida las URLs y rota el token (un solo uso).
+// Se asigna automáticamente al usuario Jessi.
 app.post('/api/share/fb-link', async (req, res) => {
   try {
     const { token, fbUrl, igUrl, profileName } = req.body || {};
@@ -696,13 +706,21 @@ app.post('/api/share/fb-link', async (req, res) => {
     }
     const p = await pmService.findProjectByFbToken(token);
     if (!p) return res.status(404).json({ success: false, expired: true, error: 'El enlace ha expirado o ya fue utilizado.' });
-    await pmService.addTask({
+
+    const jessiId = await pmService.findUserByKeyword('jessi');
+    const task = await pmService.addTask({
       project_id: p.id,
       title: 'Compartir redes sociales (Facebook/Instagram)',
       description: `Enlace de Facebook: ${fbUrl}${igUrl ? `\nEnlace de Instagram: ${igUrl}` : ''}${profileName ? `\nNegocio: ${profileName}` : ''}`,
       status: 'por_iniciar',
-      priority: 'alta'
+      priority: 'alta',
+      assigned_to: jessiId || null
     }, 1);
+
+    if (task && task.assigned_to) {
+      await notifyTaskAssigned(task);
+    }
+
     await pmService.rotateShareTokenFb(p.id);
     res.json({ success: true });
   } catch (error) {
@@ -764,9 +782,37 @@ app.delete('/api/pm/projects/:id', authMiddleware, requireRole('admin'), async (
   }
 });
 
+app.get('/api/pm/settings', pmOnly, async (req, res) => {
+  try {
+    const settings = await pmService.getSettings();
+    res.json({ success: true, settings });
+  } catch (error) {
+    console.error('Error getting PM settings:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/pm/settings', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const settings = await pmService.saveSettings(req.body || {});
+    res.json({ success: true, settings });
+  } catch (error) {
+    console.error('Error saving PM settings:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 app.post('/api/pm/tasks', pmOnly, async (req, res) => {
   try {
-    const task = await pmService.addTask(req.body, req.user.id);
+    const taskData = { ...req.body };
+    if (!taskData.assigned_to) {
+      const norm = String(taskData.title || '').toLowerCase();
+      if (norm.includes('google') || norm.includes('facebook') || norm.includes('redes')) {
+        const jessiId = await pmService.findUserByKeyword('jessi');
+        if (jessiId) taskData.assigned_to = jessiId;
+      }
+    }
+    const task = await pmService.addTask(taskData, req.user.id);
     await notifyTaskAssigned(task);
     res.json({ success: true, task });
   } catch (error) {

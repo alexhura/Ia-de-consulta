@@ -108,6 +108,12 @@ create table if not exists pm_task_attachments (
 create index if not exists idx_pm_comments_task on pm_task_comments(task_id);
 create index if not exists idx_pm_attachments_task on pm_task_attachments(task_id);
 
+create table if not exists pm_settings (
+  key text primary key,
+  value text,
+  updated_at timestamptz default now()
+);
+
 -- ============ RLS / POLÍTICAS ============
 -- Importante: la app se conecta con la API key de Supabase (anon/publishable),
 -- así que debe poder leer/escribir estas tablas.
@@ -119,6 +125,7 @@ alter table pm_projects enable row level security;
 alter table pm_tasks enable row level security;
 alter table pm_task_comments enable row level security;
 alter table pm_task_attachments enable row level security;
+alter table pm_settings enable row level security;
 
 drop policy if exists "all_categories" on categories;
 create policy "all_categories" on categories for all using (true) with check (true);
@@ -140,3 +147,6 @@ create policy "all_pm_comments" on pm_task_comments for all using (true) with ch
 
 drop policy if exists "all_pm_attachments" on pm_task_attachments;
 create policy "all_pm_attachments" on pm_task_attachments for all using (true) with check (true);
+
+drop policy if exists "all_pm_settings" on pm_settings;
+create policy "all_pm_settings" on pm_settings for all using (true) with check (true);

@@ -186,10 +186,16 @@ function sendProjectFinishedFb({ to, client, business, url, shareLink }) {
   return send({ to, subject, html });
 }
 
+// Direcciones fijas de Cc para entrega y vinculación exitosa (desarrollo y adl).
+const DELIVERY_CC = [
+  process.env.BREVO_HANDOVER_CC || 'adldigital00@gmail.com',
+  process.env.BREVO_DEV_EMAIL || 'desarrollo.academiadelimpieza@gmail.com'
+];
+
 // Corpus genérico para notificar que la vinculación (Google o redes sociales)
 // ya se completó con éxito. Se envía cuando la tarea creada al compartir los
-// enlaces llega a "Finalizado sin errores".
-function buildLinkedHtml(label, { to, client, business, url, shareLink }) {
+// enlaces llega a "Finalizado sin errores". Incluye copia fija a desarrollo y adl.
+function buildLinkedHtml(label, { to, client, business, url, shareLink, cc = DELIVERY_CC }) {
   const subject = `¡${label} vinculado con éxito!`;
   const site = url && /^https?:\/\//i.test(url) ? url : (url ? `https://${url}` : '');
   const html = `<!DOCTYPE html>
@@ -226,24 +232,18 @@ function buildLinkedHtml(label, { to, client, business, url, shareLink }) {
   </table>
 </body>
 </html>`;
-  return send({ to, subject, html });
+  return send({ to, subject, html, cc });
 }
 
-// Aviso de que el perfil de Google quedó vinculado.
-function sendProjectLinked({ to, client, business, url, shareLink }) {
-  return buildLinkedHtml('perfil de Google', { to, client, business, url, shareLink });
+// Aviso de que el perfil de Google quedó vinculado (con copia a desarrollo y adl).
+function sendProjectLinked({ to, client, business, url, shareLink, cc }) {
+  return buildLinkedHtml('perfil de Google', { to, client, business, url, shareLink, cc });
 }
 
-// Aviso de que los enlaces de redes sociales (Facebook/Instagram) quedaron vinculados.
-function sendProjectLinkedFb({ to, client, business, url, shareLink }) {
-  return buildLinkedHtml('perfil de Facebook e Instagram', { to, client, business, url, shareLink });
+// Aviso de que los enlaces de redes sociales (Facebook/Instagram) quedaron vinculados (con copia a desarrollo y adl).
+function sendProjectLinkedFb({ to, client, business, url, shareLink, cc }) {
+  return buildLinkedHtml('perfil de Facebook e Instagram', { to, client, business, url, shareLink, cc });
 }
-
-// Direcciones fijas de Cc para el correo de entrega.
-const DELIVERY_CC = [
-  process.env.BREVO_HANDOVER_CC || 'adldigital00@gmail.com',
-  process.env.BREVO_DEV_EMAIL || 'desarrollo.academiadelimpieza@gmail.com'
-];
 
 // Cc fijo para el correo de resolución de tickets.
 const TICKET_CC = [

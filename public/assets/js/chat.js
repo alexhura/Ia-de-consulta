@@ -93,6 +93,16 @@ const pmView = document.getElementById('pmView');
 const pmGrid = document.getElementById('pmGrid');
 const pmSearchInput = document.getElementById('pmSearchInput');
 const pmAutomationsCard = document.getElementById('pmAutomationsCard');
+const pmGeneralAutoCard = document.getElementById('pmGeneralAutoCard');
+const pmGlobalNotifEmail = document.getElementById('pmGlobalNotifEmail');
+const pmGlobalNotifEmailSave = document.getElementById('pmGlobalNotifEmailSave');
+const pmGlobalNotifEmailStatus = document.getElementById('pmGlobalNotifEmailStatus');
+const pmGlobalNotifEmailFb = document.getElementById('pmGlobalNotifEmailFb');
+const pmGlobalNotifEmailFbSave = document.getElementById('pmGlobalNotifEmailFbSave');
+const pmGlobalNotifEmailFbStatus = document.getElementById('pmGlobalNotifEmailFbStatus');
+const pmFormNotifEmail = document.getElementById('pmFormNotifEmail');
+const pmFormNotifEmailFb = document.getElementById('pmFormNotifEmailFb');
+let pmGlobalSettings = { notif_email: '', notif_email_fb: '' };
 const pmNotifEmail = document.getElementById('pmNotifEmail');
 const pmNotifEmailSave = document.getElementById('pmNotifEmailSave');
 const pmNotifEmailStatus = document.getElementById('pmNotifEmailStatus');
@@ -874,6 +884,20 @@ if (pmSearchInput) {
     });
 }
 
+async function loadPMSettings() {
+    if (!canUsePM()) return;
+    try {
+        const data = await apiRequest('/api/pm/settings');
+        if (data && data.settings) {
+            pmGlobalSettings = data.settings;
+            if (pmGlobalNotifEmail) pmGlobalNotifEmail.value = pmGlobalSettings.notif_email || '';
+            if (pmGlobalNotifEmailFb) pmGlobalNotifEmailFb.value = pmGlobalSettings.notif_email_fb || '';
+        }
+    } catch (e) {
+        console.warn('Error cargando configuración global de PM:', e.message);
+    }
+}
+
 async function loadPMProjects() {
     pmMsg.textContent = '';
     pmGrid.innerHTML = '<p class="pm-tasks-empty">Cargando proyectos...</p>';
@@ -882,6 +906,8 @@ async function loadPMProjects() {
         pmProjects = data.projects || [];
         renderPMProjects();
         loadMyTasks();
+        loadPMSettings();
+        document.querySelectorAll('.pm-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin()));
         if (pmDetailView.classList.contains('active')) {
             const cur = pmProjects.find(p => p.id === openProjectId);
             if (cur) renderProjectDetail(cur); else closeProjectDetail();
@@ -952,6 +978,8 @@ function openProjectForm(projectId) {
     pmUrl.value = p ? (p.url || '') : '';
     pmWpUser.value = p ? (p.wp_user || '') : '';
     pmWpPass.value = p ? (p.wp_pass || '') : '';
+    if (pmFormNotifEmail) pmFormNotifEmail.value = p ? (p.notif_email || '') : (pmGlobalSettings.notif_email || '');
+    if (pmFormNotifEmailFb) pmFormNotifEmailFb.value = p ? (p.notif_email_fb || '') : (pmGlobalSettings.notif_email_fb || '');
     pmStatusSelect.value = p ? (p.status || 'pendiente') : 'pendiente';
     pmFormMsg.textContent = '';
     openOverlay(pmFormWindow);
@@ -1081,6 +1109,8 @@ function collectProjectPayload() {
         url: pmUrl.value.trim(),
         wp_user: pmWpUser.value.trim(),
         wp_pass: pmWpPass.value.trim(),
+        notif_email: pmFormNotifEmail ? pmFormNotifEmail.value.trim() : '',
+        notif_email_fb: pmFormNotifEmailFb ? pmFormNotifEmailFb.value.trim() : '',
         status: pmStatusSelect.value
     };
 }
@@ -1159,6 +1189,39 @@ pmNotifEmailFbSave.addEventListener('click', async () => {
         pmNotifEmailFbStatus.textContent = err.message;
     }
 });
+
+// Guardar correos predeterminados de automatizaciones para todos los proyectos nuevos (General / solo admin).
+if (pmGlobalNotifEmailSave) {
+    pmGlobalNotifEmailSave.addEventListener('click', async () => {
+        try {
+            pmGlobalSettings.notif_email = pmGlobalNotifEmail.value.trim();
+            await apiRequest('/api/pm/settings', {
+                method: 'PUT',
+                body: JSON.stringify(pmGlobalSettings)
+            });
+            pmGlobalNotifEmailStatus.textContent = 'Guardado ✓';
+            setTimeout(() => { if (pmGlobalNotifEmailStatus) pmGlobalNotifEmailStatus.textContent = ''; }, 3000);
+        } catch (err) {
+            pmGlobalNotifEmailStatus.textContent = err.message;
+        }
+    });
+}
+
+if (pmGlobalNotifEmailFbSave) {
+    pmGlobalNotifEmailFbSave.addEventListener('click', async () => {
+        try {
+            pmGlobalSettings.notif_email_fb = pmGlobalNotifEmailFb.value.trim();
+            await apiRequest('/api/pm/settings', {
+                method: 'PUT',
+                body: JSON.stringify(pmGlobalSettings)
+            });
+            pmGlobalNotifEmailFbStatus.textContent = 'Guardado ✓';
+            setTimeout(() => { if (pmGlobalNotifEmailFbStatus) pmGlobalNotifEmailFbStatus.textContent = ''; }, 3000);
+        } catch (err) {
+            pmGlobalNotifEmailFbStatus.textContent = err.message;
+        }
+    });
+}
 
 // ---------- Detalle de proyecto ----------
 let openProjectId = null;
