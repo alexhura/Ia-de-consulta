@@ -1159,36 +1159,40 @@ pmTaskForm.addEventListener('submit', async (e) => {
 });
 
 // Guardar el email de Google Notification de la automatización (solo admin).
-pmNotifEmailSave.addEventListener('click', async () => {
-    if (!openProjectId) return;
-    try {
-        await apiRequest(`/api/pm/projects/${openProjectId}`, {
-            method: 'PUT',
-            body: JSON.stringify({ notif_email: pmNotifEmail.value.trim() })
-        });
-        pmNotifEmailStatus.textContent = 'Guardado ✓';
-        const p = pmProjects.find(x => x.id === openProjectId);
-        if (p) { p.notif_email = pmNotifEmail.value.trim(); }
-    } catch (err) {
-        pmNotifEmailStatus.textContent = err.message;
-    }
-});
+if (pmNotifEmailSave) {
+    pmNotifEmailSave.addEventListener('click', async () => {
+        if (!openProjectId) return;
+        try {
+            await apiRequest(`/api/pm/projects/${openProjectId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ notif_email: pmNotifEmail.value.trim() })
+            });
+            pmNotifEmailStatus.textContent = 'Guardado ✓';
+            const p = pmProjects.find(x => x.id === openProjectId);
+            if (p) { p.notif_email = pmNotifEmail.value.trim(); }
+        } catch (err) {
+            pmNotifEmailStatus.textContent = err.message;
+        }
+    });
+}
 
 // Guardar el email de redes sociales (Facebook/Instagram) de la automatización (solo admin).
-pmNotifEmailFbSave.addEventListener('click', async () => {
-    if (!openProjectId) return;
-    try {
-        await apiRequest(`/api/pm/projects/${openProjectId}`, {
-            method: 'PUT',
-            body: JSON.stringify({ notif_email_fb: pmNotifEmailFb.value.trim() })
-        });
-        pmNotifEmailFbStatus.textContent = 'Guardado ✓';
-        const p = pmProjects.find(x => x.id === openProjectId);
-        if (p) { p.notif_email_fb = pmNotifEmailFb.value.trim(); }
-    } catch (err) {
-        pmNotifEmailFbStatus.textContent = err.message;
-    }
-});
+if (pmNotifEmailFbSave) {
+    pmNotifEmailFbSave.addEventListener('click', async () => {
+        if (!openProjectId) return;
+        try {
+            await apiRequest(`/api/pm/projects/${openProjectId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ notif_email_fb: pmNotifEmailFb.value.trim() })
+            });
+            pmNotifEmailFbStatus.textContent = 'Guardado ✓';
+            const p = pmProjects.find(x => x.id === openProjectId);
+            if (p) { p.notif_email_fb = pmNotifEmailFb.value.trim(); }
+        } catch (err) {
+            pmNotifEmailFbStatus.textContent = err.message;
+        }
+    });
+}
 
 // Guardar correos predeterminados de automatizaciones para todos los proyectos nuevos (General / solo admin).
 if (pmGlobalNotifEmailSave) {
@@ -2481,7 +2485,7 @@ function renderNotifSettings() {
 
 // ---------------- Ventana de configuración (tabs) ----------------
 const settingsTabs = document.querySelectorAll('.settings-tab');
-const PANE_TABS = { notifications: 'paneNotifications', users: 'paneUsers', announcements: 'paneAnnouncements', knowledge: 'paneKnowledge' };
+const PANE_TABS = { notifications: 'paneNotifications', users: 'paneUsers', announcements: 'paneAnnouncements', knowledge: 'paneKnowledge', automations: 'paneAutomations' };
 
 function setSettingsTab(tab) {
     const isAdmin = currentUser && currentUser.role === 'admin';
@@ -2492,12 +2496,14 @@ function setSettingsTab(tab) {
         btn.classList.toggle('active', t === tab);
     });
     Object.keys(PANE_TABS).forEach(key => {
-        document.getElementById(PANE_TABS[key]).classList.toggle('active', key === tab);
+        const el = document.getElementById(PANE_TABS[key]);
+        if (el) el.classList.toggle('active', key === tab);
     });
     renderNotifSettings();
     if (tab === 'users') loadUsers();
     if (tab === 'announcements') loadAnnouncements();
     if (tab === 'knowledge') loadKnowledge();
+    if (tab === 'automations') loadPMSettings();
 }
 
 function openSettings(tab) {
@@ -2505,6 +2511,7 @@ function openSettings(tab) {
     topbarTitle.textContent = 'Configuración';
     openOverlay(adminPanel);
     setSettingsTab(tab || 'notifications');
+    loadPMSettings();
 }
 
 settingsTabs.forEach(btn => btn.addEventListener('click', () => setSettingsTab(btn.dataset.tab)));
@@ -2669,7 +2676,7 @@ editUserForm.addEventListener('submit', async (e) => {
             body: JSON.stringify(payload)
         });
         if (data.success) {
-            editUserMsg.textContent = '✅ Usuario actualizado.';
+            editUserMsg.textContent = 'Usuario actualizado.';
             editUserMsg.classList.add('success');
             const wasSelf = currentUser && currentUser.id === editingUserId;
             loadUsers();
@@ -2713,7 +2720,7 @@ createUserForm.addEventListener('submit', async (e) => {
         });
 
         if (data.success) {
-            createUserMsg.textContent = `✅ Usuario "${data.user.username}" creado con rol ${roleLabel(data.user.role)}`;
+            createUserMsg.textContent = `Usuario "${data.user.username}" creado con rol ${roleLabel(data.user.role)}`;
             createUserMsg.classList.add('success');
             createUserForm.reset();
             loadUsers();
@@ -2760,7 +2767,7 @@ announcementForm.addEventListener('submit', async (e) => {
         });
 
         if (data.success) {
-            annMsg.textContent = '✅ Anuncio publicado.';
+            annMsg.textContent = 'Anuncio publicado.';
             annMsg.classList.add('success');
             announcementForm.reset();
             refreshNotifications({ silent: true });
@@ -2875,7 +2882,7 @@ function renderKbCategories() {
     kbCategories.forEach(cat => {
         const chip = document.createElement('span');
         chip.className = 'kb-cat-chip';
-        chip.innerHTML = `${escapeHtml(cat.icon || '📄')} ${escapeHtml(cat.name)} <button class="cat-del" title="Eliminar">&times;</button>`;
+        chip.innerHTML = `${escapeHtml(cat.name)} <button class="cat-del" title="Eliminar">&times;</button>`;
         chip.querySelector('.cat-del').addEventListener('click', () => deleteKbCategory(cat));
         kbCatList.appendChild(chip);
     });
@@ -2892,7 +2899,7 @@ function renderKbCategorySelect() {
     kbCategories.forEach(cat => {
         const opt = document.createElement('option');
         opt.value = cat.id;
-        opt.textContent = `${cat.icon || '📄'} ${cat.name}`;
+        opt.textContent = cat.name;
         kbCategory.appendChild(opt);
     });
 }
@@ -2908,12 +2915,12 @@ kbCatForm.addEventListener('submit', async (e) => {
     try {
         const data = await apiRequest('/api/admin/knowledge/categories', {
             method: 'POST',
-            body: JSON.stringify({ name, icon: kbCatIcon.value.trim() || '📄' })
+            body: JSON.stringify({ name, icon: kbCatIcon.value.trim() || '' })
         });
         if (data.success) {
-            setKbMsg(kbCatMsg, `✅ Categoría "${data.category.name}" creada.`);
+            setKbMsg(kbCatMsg, `Categoría "${data.category.name}" creada.`);
             kbCatForm.reset();
-            kbCatIcon.value = '📄';
+            kbCatIcon.value = 'doc';
             await loadKnowledge();
         } else {
             setKbMsg(kbCatMsg, data.error, true);
@@ -2975,7 +2982,7 @@ kbForm.addEventListener('submit', async (e) => {
             });
         }
         if (data.success) {
-            setKbMsg(kbMsg, id ? '✅ Conocimiento actualizado.' : '✅ Conocimiento guardado. La IA ya puede usarlo en el chat.');
+            setKbMsg(kbMsg, id ? 'Conocimiento actualizado.' : 'Conocimiento guardado. La IA ya puede usarlo en el chat.');
             resetKbForm();
             await loadKnowledgeItems();
         } else {
@@ -2990,7 +2997,7 @@ function resetKbForm() {
     kbForm.reset();
     kbEditId.value = '';
     kbSubmitBtn.textContent = 'Guardar conocimiento';
-    kbFormTitle.textContent = '➕ Añadir conocimiento';
+    kbFormTitle.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> Añadir conocimiento';
     kbCancelEdit.classList.add('hidden');
     const firstCat = kbCategories[0];
     if (firstCat) kbCategory.value = firstCat.id;
@@ -3045,9 +3052,9 @@ function renderKbList() {
                 <div>
                     <div class="kb-item-title">${escapeHtml(it.title)}</div>
                     <div class="kb-item-badges">
-                        <span class="kb-badge">${escapeHtml(it.icon || '📄')} ${escapeHtml(it.category || 'Sin categoría')}</span>
+                        <span class="kb-badge">${escapeHtml(it.category || 'Sin categoría')}</span>
                         ${parseInt(it.priority) > 0 ? `<span class="kb-badge priority-2">Prioridad ${it.priority}</span>` : ''}
-                        <span class="kb-badge">✏ ${escapeHtml(formatDate(it.updated_at))}</span>
+                        <span class="kb-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg> ${escapeHtml(formatDate(it.updated_at))}</span>
                     </div>
                 </div>
                 <div class="kb-item-actions">
@@ -3071,7 +3078,7 @@ function editKnowledgeItem(it) {
     kbKeywords.value = it.keywords || '';
     kbPriority.value = String(it.priority || 0);
     kbSubmitBtn.textContent = 'Actualizar conocimiento';
-    kbFormTitle.textContent = '✏️ Editar conocimiento';
+    kbFormTitle.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg> Editar conocimiento';
     kbCancelEdit.classList.remove('hidden');
     setKbMsg(kbMsg, '');
     kbForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
