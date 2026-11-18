@@ -140,6 +140,53 @@ export class PmService {
     return (projects || []).map(p => computeMetrics(p, byProject.get(p.id) || []));
   }
 
+  // Lista todas las tareas activas asignadas a un usuario (ordenadas de más antigua a más reciente)
+  async listTasksForUser(userId) {
+    const uid = parseInt(userId);
+    if (!uid || isNaN(uid)) return [];
+
+    const { data: tasks, error: tErr } = await getSupabase()
+      .from('pm_tasks')
+      .select('*')
+      .eq('assigned_to', uid)
+      .neq('status', FINALIZADO)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true });
+    if (tErr) throw tErr;
+
+    if (!tasks || tasks.length === 0) return [];
+
+    const projectIds = [...new Set(tasks.map(t => t.project_id).filter(Boolean))];
+    let projectMap = new Map();
+    if (projectIds.length > 0) {
+      const { data: projects, error: pErr } = await getSupabase()
+        .from('pm_projects')
+        .select('id, client, business, status')
+        .in('id', projectIds);
+      if (!pErr && projects) {
+        projectMap = new Map(projects.map(p => [p.id, p]));
+      }
+    }
+
+    const users = await loadUsersMap();
+
+    return tasks.map(t => {
+      const p = projectMap.get(t.project_id) || {};
+      const owner = t.owner_id ? users.get(t.owner_id) : null;
+      const assignee = t.assigned_to ? users.get(t.assigned_to) : null;
+      return {
+        ...t,
+        project_client: p.client || null,
+        project_business: p.business || null,
+        project_status: p.status || null,
+        owner_name: owner ? (owner.full_name || owner.username) : null,
+        owner_user: owner ? owner.username : null,
+        assigned_name: assignee ? (assignee.full_name || assignee.username) : null,
+        assigned_user: assignee ? assignee.username : null
+      };
+    });
+  }
+
   async getProject(id) {
     const { data: project, error } = await getSupabase()
       .from('pm_projects')

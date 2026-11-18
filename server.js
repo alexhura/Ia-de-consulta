@@ -497,7 +497,7 @@ async function notifyTaskAssigned(task) {
       : `Proyecto #${task.project_id}`;
     await notificationService.create({
       title: 'Nueva tarea asignada',
-      message: `Se te asignó la tarea "${task.title}" del proyecto "${projectName}".`,
+      message: `Se te asignó la tarea "${task.title}" del proyecto "${projectName}".\n<!-- task:${task.id},project:${task.project_id} -->`,
       targetUserId: task.assigned_to
     });
     console.log(`[notif] Tarea #${task.id} asignada -> user ${task.assigned_to}`);
@@ -717,6 +717,17 @@ app.get('/api/pm/projects', pmOnly, async (req, res) => {
     res.json({ success: true, projects });
   } catch (error) {
     console.error('Error listing PM projects:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Tareas asignadas al usuario actual (desarrollo y admin)
+app.get('/api/pm/my-tasks', pmOnly, async (req, res) => {
+  try {
+    const tasks = await pmService.listTasksForUser(req.user.id);
+    res.json({ success: true, tasks });
+  } catch (error) {
+    console.error('Error listing user PM tasks:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });

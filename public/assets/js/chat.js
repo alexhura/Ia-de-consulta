@@ -160,6 +160,14 @@ const taskCommentInput = document.getElementById('taskCommentInput');
 const taskCommentSendBtn = document.getElementById('taskCommentSendBtn');
 const taskPendingImages = document.getElementById('taskPendingImages');
 const taskDetailMsg = document.getElementById('taskDetailMsg');
+const taskDetailStatusControl = document.getElementById('taskDetailStatusControl');
+
+const pmMyTasksBtn = document.getElementById('pmMyTasksBtn');
+const pmMyTasksCount = document.getElementById('pmMyTasksCount');
+const pmMyTasksWindow = document.getElementById('pmMyTasksWindow');
+const pmMyTasksCounter = document.getElementById('pmMyTasksCounter');
+const pmMyTasksList = document.getElementById('pmMyTasksList');
+const pmMyTasksMsg = document.getElementById('pmMyTasksMsg');
 
 let conversationHistory = [];
 let activeConvId = null;
@@ -862,6 +870,7 @@ async function loadPMProjects() {
         const data = await apiRequest('/api/pm/projects');
         pmProjects = data.projects || [];
         renderPMProjects();
+        loadMyTasks();
         if (pmDetailView.classList.contains('active')) {
             const cur = pmProjects.find(p => p.id === openProjectId);
             if (cur) renderProjectDetail(cur); else closeProjectDetail();
@@ -1331,6 +1340,7 @@ function moveTaskTo(id, stage) {
                 triggerRevisionCelebration(id);
             }
             loadPMProjects();
+            loadMyTasks();
         })
         .catch(err => { pmDetailMsg.textContent = err.message; });
 }
@@ -1426,6 +1436,39 @@ async function openTaskDetail(taskId) {
                 <span>Responsable: ${pmPeopleAvatar(task.owner_id, task.owner_name)} <b>${escapeHtml(task.owner_name || '—')}</b></span>
                 <span>Asignado: ${pmPeopleAvatar(task.assigned_to, task.assigned_name)} <b>${escapeHtml(task.assigned_name || '—')}</b></span>
             </span>`;
+
+        if (taskDetailStatusControl) {
+            const isUserAdmin = isAdmin();
+            const allowed = isUserAdmin
+                ? ['por_iniciar', 'en_progreso', 'en_revision', 'por_corregir', 'finalizado_sin_errores']
+                : ['por_iniciar', 'en_progreso', 'en_revision', 'por_corregir'];
+            taskDetailStatusControl.innerHTML = `
+                <label for="taskDetailStatusSelect">Estado:</label>
+                <select id="taskDetailStatusSelect" class="pm-status-select">
+                    ${allowed.map(s => `<option value="${s}" ${s === task.status ? 'selected' : ''}>${PM_STAGE_LABEL[s] || s}</option>`).join('')}
+                </select>
+                ${task.status !== 'en_revision' && task.status !== 'finalizado_sin_errores'
+                    ? `<button type="button" class="btn btn-primary btn-small" id="taskDetailAdvanceBtn">Enviar a En revisión 🚀</button>`
+                    : ''}
+            `;
+            const sel = document.getElementById('taskDetailStatusSelect');
+            if (sel) {
+                sel.addEventListener('change', () => {
+                    const newStatus = sel.value;
+                    if (newStatus !== task.status) {
+                        moveTaskTo(task.id, newStatus);
+                        setTimeout(() => { openTaskDetail(task.id); loadMyTasks(); }, 400);
+                    }
+                });
+            }
+            const adv = document.getElementById('taskDetailAdvanceBtn');
+            if (adv) {
+                adv.addEventListener('click', () => {
+                    moveTaskTo(task.id, 'en_revision');
+                    setTimeout(() => { openTaskDetail(task.id); loadMyTasks(); }, 400);
+                });
+            }
+        }
         taskDetailDescription.innerHTML = task.description ? `<p>${escapeHtml(task.description)}</p>` : '<p class="pm-muted">Sin descripción.</p>';
 
         taskAttachments.innerHTML = attachments.length
@@ -1634,6 +1677,133 @@ function onPMClick(e) {
 
 pmView.addEventListener('click', onPMClick);
 
+// ---------- Mis tareas asignadas (usuarios de desarrollo y admin) ----------
+let myTasks = [];
+
+async function loadMyTasks() {
+    if (!currentUser || !canUsePM()) return;
+    try {
+        const data = await apiRequest('/api/pm/my-tasks');
+        myTasks = (data.tasks || []).filter(t => t.status !== 'finalizado_sin_errores');
+        // Ordenar de la más antigua a la más nueva (antiguas arriba, nuevas abajo)
+        myTasks.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0) || a.id - b.id);
+
+        if (pmMyTasksCount) {
+            pmMyTasksCount.textContent = myTasks.length;
+            pmMyTasksCount.classList.toggle('hidden', myTasks.length === 0);
+        }
+        if (pmMyTasksCounter) {
+            pmMyTasksCounter.textContent = `${myTasks.length} ${myTasks.length === 1 ? 'pendiente' : 'pendientes'}`;
+        }
+        renderMyTasksList();
+    } catch (err) {
+        if (pmMyTasksMsg) pmMyTasksMsg.textContent = err.message;
+    }
+}
+
+function renderMyTasksList() {
+    if (!pmMyTasksList) return;
+    if (myTasks.length === 0) {
+        pmMyTasksList.innerHTML = `
+            <div style="text-align:center;padding:40px 20px;color:#a1a1aa;">
+                <p style="font-size:36px;margin:0 0 10px;">🎉</p>
+                <p style="font-size:16px;font-weight:600;color:#e4e4e7;margin:0 0 6px;">No tienes tareas pendientes asignadas</p>
+                <p style="font-size:13px;margin:0;">Todas tus tareas asignadas han sido finalizadas o están al día.</p>
+            </div>`;
+        return;
+    }
+
+    const isUserAdmin = isAdmin();
+    const allowedStages = isUserAdmin
+        ? ['por_iniciar', 'en_progreso', 'en_revision', 'por_corregir', 'finalizado_sin_errores']
+        : ['por_iniciar', 'en_progreso', 'en_revision', 'por_corregir'];
+
+    pmMyTasksList.innerHTML = myTasks.map(t => {
+        const isCorrection = t.status === 'por_corregir';
+        const projectLabel = t.project_business || t.project_client || 'Proyecto';
+        const createdDate = t.created_at ? new Date(t.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+        const dueDate = t.due_date ? `<span>📅 Vence: ${escapeHtml(fmtDate(t.due_date))}</span>` : '';
+
+        return `
+            <div class="pm-my-task-card ${isCorrection ? 'is-correction' : ''}" data-id="${t.id}">
+                ${isCorrection ? `
+                    <div class="pm-correction-banner">
+                        <span class="pm-alert-icon">⚠️</span>
+                        <span><b>¡Por corregir!</b> Esta tarea requiere atención y correcciones prioritarias.</span>
+                    </div>` : ''}
+                <div class="pm-my-task-top">
+                    <span class="pm-my-task-project">💼 ${escapeHtml(projectLabel)}</span>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span class="pm-priority pm-priority-${t.priority}">${PM_PRIORITY_LABEL[t.priority] || t.priority}</span>
+                        <span class="pm-stage-badge pm-stage-badge-${t.status}">
+                            ${isCorrection ? '❗ ' : ''}${PM_STAGE_LABEL[t.status] || t.status}
+                        </span>
+                    </div>
+                </div>
+                <h3 class="pm-my-task-title" data-action="open-my-task" data-id="${t.id}" title="Haz clic para ver detalles y comentarios">${escapeHtml(t.title)}</h3>
+                <div class="pm-my-task-meta">
+                    ${createdDate ? `<span>🕒 Creada: ${createdDate}</span>` : ''}
+                    ${dueDate}
+                    ${t.corrections > 0 ? `<span class="pm-corr">Correcciones: ${t.corrections}</span>` : ''}
+                </div>
+                <div class="pm-my-task-actions">
+                    <button type="button" class="btn btn-secondary btn-small" data-action="open-my-task" data-id="${t.id}">
+                        💬 Ver detalles y comentarios
+                    </button>
+                    <div class="pm-status-select-wrap">
+                        <label>Estado:</label>
+                        <select class="pm-status-select" data-action="my-task-status" data-id="${t.id}">
+                            ${allowedStages.map(s => `
+                                <option value="${s}" ${s === t.status ? 'selected' : ''}>${PM_STAGE_LABEL[s] || s}</option>
+                            `).join('')}
+                        </select>
+                        ${t.status !== 'en_revision' && t.status !== 'finalizado_sin_errores' ? `
+                            <button type="button" class="btn btn-primary btn-small" data-action="my-task-revision" data-id="${t.id}" title="Avanzar directamente a En revisión">
+                                🚀 A revisión
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+if (pmMyTasksList) {
+    pmMyTasksList.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const id = parseInt(btn.dataset.id);
+        if (!id) return;
+
+        if (action === 'open-my-task') {
+            openTaskDetail(id);
+        } else if (action === 'my-task-revision') {
+            moveTaskTo(id, 'en_revision');
+            setTimeout(() => loadMyTasks(), 450);
+        }
+    });
+
+    pmMyTasksList.addEventListener('change', (e) => {
+        if (e.target.dataset.action === 'my-task-status') {
+            const id = parseInt(e.target.dataset.id);
+            const newStatus = e.target.value;
+            if (id && newStatus) {
+                moveTaskTo(id, newStatus);
+                setTimeout(() => loadMyTasks(), 450);
+            }
+        }
+    });
+}
+
+if (pmMyTasksBtn) {
+    pmMyTasksBtn.addEventListener('click', () => {
+        openOverlay(pmMyTasksWindow);
+        loadMyTasks();
+    });
+}
+
 // ---------------- Chat ----------------
 function showChat() {
     stopPMPolling();
@@ -1645,6 +1815,7 @@ function showChat() {
     closeOverlay(pmFormWindow);
     closeOverlay(pmTaskWindow);
     closeOverlay(pmTaskDetailWindow);
+    closeOverlay(pmMyTasksWindow);
     heroSection.classList.add('hidden');
     chatSection.classList.add('active');
     chatInput.focus();
@@ -1655,6 +1826,7 @@ function showHero() {
     pmView.classList.remove('active');
     chatView.classList.add('active');
     closeOverlay(pmTaskDetailWindow);
+    closeOverlay(pmMyTasksWindow);
     persistCurrentConversation();
     heroSection.classList.remove('hidden');
     chatSection.classList.remove('active');
@@ -1949,8 +2121,28 @@ function playNotifSound() {
 }
 
 function bellItemPreview(message) {
-    const plain = String(message || '').replace(/[*#_`>]/g, '').replace(/\s+/g, ' ');
+    const plain = String(message || '').replace(/<!--.*?-->/g, '').replace(/[*#_`>]/g, '').replace(/\s+/g, ' ').trim();
     return plain.length > 140 ? plain.slice(0, 140) + '…' : plain;
+}
+
+function extractTaskFromNotification(n) {
+    if (!n || !n.message) return null;
+    const match = n.message.match(/<!--\s*task:(\d+)(?:,project:(\d+))?\s*-->/);
+    if (match) {
+        return { taskId: parseInt(match[1]), projectId: match[2] ? parseInt(match[2]) : null };
+    }
+    const isTaskTitle = n.title && n.title.toLowerCase().includes('tarea');
+    if (isTaskTitle) {
+        const titleMatch = n.message.match(/tarea\s+"([^"]+)"/i);
+        if (titleMatch) {
+            const taskTitle = titleMatch[1].trim().toLowerCase();
+            for (const p of pmProjects) {
+                const t = (p.tasks || []).find(x => x.title && x.title.trim().toLowerCase() === taskTitle);
+                if (t) return { taskId: t.id, projectId: p.id };
+            }
+        }
+    }
+    return null;
 }
 
 function renderBellBadge() {
@@ -1988,9 +2180,10 @@ function showNotificationToast(n) {
     if (!notifSettings.enabled) return;
     const toast = document.createElement('div');
     toast.className = 'toast';
+    const cleanMsg = String(n.message || '').replace(/<!--.*?-->/g, '').trim();
     toast.innerHTML = `
         <div class="toast-title">${escapeHtml(n.title)}</div>
-        <div class="toast-preview">${escapeHtml(bellItemPreview(n.message))}</div>
+        <div class="toast-preview">${escapeHtml(bellItemPreview(cleanMsg))}</div>
     `;
     toast.addEventListener('click', () => {
         openNotificationDetail(n.id);
@@ -2015,6 +2208,9 @@ function renderBellList() {
     notifications.forEach(n => {
         const item = document.createElement('div');
         item.className = 'bell-item' + (n.read ? ' read' : ' unread');
+        const cleanMsg = String(n.message || '').replace(/<!--.*?-->/g, '').trim();
+        const taskInfo = extractTaskFromNotification(n);
+
         item.innerHTML = `
             <div class="bell-item-head">
                 <span class="bell-item-dot"></span>
@@ -2022,15 +2218,11 @@ function renderBellList() {
                 <span class="bell-item-date">${formatDate(n.createdAt)}</span>
             </div>
             ${expandedNotifId === n.id
-                ? `<div class="bell-item-detail">${escapeHtml(n.message)}</div>`
-                : `<div class="bell-item-preview">${escapeHtml(bellItemPreview(n.message))}</div>`}
+                ? `<div class="bell-item-detail">${escapeHtml(cleanMsg)}</div>`
+                : `<div class="bell-item-preview">${escapeHtml(bellItemPreview(cleanMsg))}</div>`}
+            ${taskInfo ? `<div class="bell-item-task-badge">🎯 Abrir tarea asignada →</div>` : ''}
         `;
         item.addEventListener('click', () => {
-            if (expandedNotifId === n.id) {
-                expandedNotifId = null;
-                renderBellList();
-                return;
-            }
             openNotificationDetail(n.id);
         });
         bellList.appendChild(item);
@@ -2038,13 +2230,29 @@ function renderBellList() {
 }
 
 function openNotificationDetail(id) {
-    expandedNotifId = id;
-    openOverlay(bellDropdown);
-    renderBellList();
     const target = notifications.find(n => n.id === id);
     if (target && !target.read) {
         markNotifsRead([id]);
     }
+    const taskInfo = extractTaskFromNotification(target);
+    if (taskInfo && taskInfo.taskId) {
+        closeOverlay(bellDropdown);
+        if (canUsePM()) {
+            openPM();
+            if (taskInfo.projectId) {
+                openProjectDetail(taskInfo.projectId);
+            }
+            openTaskDetail(taskInfo.taskId);
+        }
+        return;
+    }
+    if (expandedNotifId === id) {
+        expandedNotifId = null;
+    } else {
+        expandedNotifId = id;
+    }
+    openOverlay(bellDropdown);
+    renderBellList();
 }
 
 function toggleBell() {
