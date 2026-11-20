@@ -416,6 +416,9 @@ async function sendProjectDeliveredEmail(task) {
     (project && project.email) || '',
     (project && project.email2) || ''
   ].filter(Boolean);
+  if (to.length === 0 && project && (project.notif_email || project.notif_email_fb)) {
+    to.push(project.notif_email || project.notif_email_fb);
+  }
   if (to.length === 0) {
     console.warn('[email] Proyecto sin email de cliente, correo de entrega no enviado.');
     return;
@@ -845,7 +848,11 @@ app.put('/api/pm/tasks/:id', pmOnly, async (req, res) => {
     if (task.status === 'finalizado_sin_errores') {
       const title = String(task.title || '').toLowerCase();
       const norm = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-      const isDelivery = norm.includes('entregayrevision');
+      const isDelivery = norm.includes('entregayrevision') ||
+                         norm.includes('onepage') ||
+                         norm.includes('fullweb') ||
+                         /one\s*page/i.test(title) ||
+                         /full\s*web/i.test(title);
       try {
         if (norm.includes('dominio')) {
           try {

@@ -261,23 +261,54 @@ function textToHtml(text) {
     .join('');
 }
 
+// Genera el subject para tareas de entrega ("Your Website Is Now Live! — Cliente — Negocio")
+function formatLiveSubject(client, business) {
+  const c = String(client || '').trim();
+  const b = String(business || '').trim();
+  const parts = [];
+  if (c) parts.push(c);
+  if (b && b.toLowerCase() !== c.toLowerCase()) {
+    parts.push(b);
+  } else if (b && !c) {
+    parts.push(b);
+  }
+  const scope = parts.join(' — ');
+  return scope ? `Your Website Is Now Live! — ${scope}` : 'Your Website Is Now Live!';
+}
+
+// Detecta si el título de una tarea corresponde a entrega de sitio ("One page", "Full web", etc.)
+function isWebsiteDeliveryTitle(title) {
+  const norm = String(title || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  return norm.includes('onepage') || norm.includes('fullweb') || /one\s*page/i.test(title) || /full\s*web/i.test(title);
+}
+
 // Correo de resolución al cliente: solo resume la tarea/ticket y cómo se
 // resolvió. Dirigido siempre al cliente (a sus múltiples emails), con copia a
 // ADL y al equipo de ayuda. El resumen (summary) lo genera el asistente.
-// Si la tarea no es un ticket (check "enviar correo al cliente"), usa un
-// asunto y encabezado genéricos ("Your Request Has Been Resolved").
+// Si la tarea es de tipo "One page", "Full web", etc., el subject se adapta a
+// "Your Website Is Now Live! — Cliente — Negocio".
 function sendTicketResolved({ to, client, business, ticketTitle, summary, isTicket = true }) {
   const clean = cleanLabel(ticketTitle);
-  const parts = [clean || ticketTitle || (isTicket ? 'Ticket' : 'Request')];
-  if (client) parts.push(client);
-  if (business && business !== client) parts.push(business);
-  const details = parts.filter(Boolean).join(' — ');
+  let subject;
+  let heading;
+  let label;
 
-  const subject = isTicket
-    ? `Your Support Ticket Has Been Resolved — ${details}`
-    : `Your Request Has Been Resolved — ${details}`;
-  const heading = isTicket ? 'Your Support Ticket Has Been Resolved' : 'Your Request Has Been Resolved';
-  const label = isTicket ? 'Ticket' : 'Request';
+  if (isWebsiteDeliveryTitle(ticketTitle)) {
+    subject = formatLiveSubject(client, business);
+    heading = 'Your Website Is Now Live!';
+    label = 'Website';
+  } else {
+    const parts = [clean || ticketTitle || (isTicket ? 'Ticket' : 'Request')];
+    if (client) parts.push(client);
+    if (business && business !== client) parts.push(business);
+    const details = parts.filter(Boolean).join(' — ');
+
+    subject = isTicket
+      ? `Your Support Ticket Has Been Resolved — ${details}`
+      : `Your Request Has Been Resolved — ${details}`;
+    heading = isTicket ? 'Your Support Ticket Has Been Resolved' : 'Your Request Has Been Resolved';
+    label = isTicket ? 'Ticket' : 'Request';
+  }
   const cc = TICKET_CC;
   const html = `<!DOCTYPE html>
 <html>
@@ -311,13 +342,12 @@ function sendTicketResolved({ to, client, business, ticketTitle, summary, isTick
   return send({ to, subject, html, cc });
 }
 
-// Correo de entrega formal al cliente cuando la tarea "Entrega y Revision"
+// Correo de entrega formal al cliente cuando la tarea ("Entrega y Revision", "One page", "Full web", etc.)
 // llega a "Finalizado sin errores". Menciona que el sitio web ya está listo y
 // que se hace la entrega formal con la URL. Redacción en inglés US, sin
-// mencionar el área de desarrollo — la agencia es ADL. CC siempre a adldigital00.
+// mencionar el área de desarrollo — la agencia es ADL. CC siempre a adldigital00 y desarrollo.
 function sendProjectDelivered({ to, client, business, url }) {
-  const scope = business && client && business !== client ? `${client} — ${business}` : (business || client || 'Your Website');
-  const subject = `Your Website Is Now Live! — ${scope}`;
+  const subject = formatLiveSubject(client, business);
   const site = url && /^https?:\/\//i.test(url) ? url : (url ? `https://${url}` : '');
   const html = `<!DOCTYPE html>
 <html>

@@ -835,6 +835,29 @@
                 </div>
             </div>
 
+            <!-- Lightbox / Visor de imágenes con slider -->
+            <div id="pmLightbox" class="pm-lightbox hidden" role="dialog" aria-modal="true" aria-label="Visor de imágenes">
+                <div class="pm-lightbox-backdrop" id="pmLightboxBackdrop"></div>
+                <div class="pm-lightbox-header">
+                    <span id="pmLightboxCounter" class="pm-lightbox-counter">1 / 1</span>
+                    <button type="button" class="pm-lightbox-close" id="pmLightboxClose" title="Cerrar (Esc)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+                <div class="pm-lightbox-body">
+                    <button type="button" class="pm-lightbox-arrow pm-lightbox-prev" id="pmLightboxPrev" title="Anterior (←)">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                    <div class="pm-lightbox-slide-wrap" id="pmLightboxSlideWrap">
+                        <img id="pmLightboxImg" class="pm-lightbox-img" src="" alt="Imagen de tarea ampliada">
+                    </div>
+                    <button type="button" class="pm-lightbox-arrow pm-lightbox-next" id="pmLightboxNext" title="Siguiente (→)">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                </div>
+                <div class="pm-lightbox-footer" id="pmLightboxDots"></div>
+            </div>
+
 
 
             <!-- History window -->

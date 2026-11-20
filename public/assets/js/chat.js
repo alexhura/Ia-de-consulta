@@ -1583,7 +1583,7 @@ async function openTaskDetail(taskId) {
         taskDetailDescription.innerHTML = task.description ? `<p>${escapeHtml(task.description)}</p>` : '<p class="pm-muted">Sin descripción.</p>';
 
         taskAttachments.innerHTML = attachments.length
-            ? attachments.map(a => `<div class="pm-attach"><img src="${escapeHtml(a.data_url)}" alt="adjunto"><button type="button" class="pm-btn-icon danger pm-admin-only hidden" data-action="pm-att-del" data-id="${a.id}" title="Eliminar imagen">×</button></div>`).join('')
+            ? attachments.map((a, idx) => `<div class="pm-attach" data-att-idx="${idx}"><img src="${escapeHtml(a.data_url)}" alt="adjunto" title="Haz clic para ampliar"><button type="button" class="pm-btn-icon danger pm-admin-only hidden" data-action="pm-att-del" data-id="${a.id}" title="Eliminar imagen">×</button></div>`).join('')
             : '';
 
         taskComments.innerHTML = comments.length
@@ -1628,13 +1628,21 @@ let editingDetailTaskId = null;
 
 taskAttachments.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-action="pm-att-del"]');
-    if (!btn) return;
-    if (!confirm('¿Eliminar esta imagen?')) return;
-    try {
-        await apiRequest(`/api/pm/attachments/${btn.dataset.id}`, { method: 'DELETE' });
-        await openTaskDetail(editingDetailTaskId);
-    } catch (err) {
-        taskDetailMsg.textContent = err.message;
+    if (btn) {
+        if (!confirm('¿Eliminar esta imagen?')) return;
+        try {
+            await apiRequest(`/api/pm/attachments/${btn.dataset.id}`, { method: 'DELETE' });
+            await openTaskDetail(editingDetailTaskId);
+        } catch (err) {
+            taskDetailMsg.textContent = err.message;
+        }
+        return;
+    }
+    const attachEl = e.target.closest('.pm-attach');
+    if (attachEl) {
+        const imgs = Array.from(taskAttachments.querySelectorAll('.pm-attach img')).map(img => img.src);
+        const idx = parseInt(attachEl.dataset.attIdx || '0');
+        if (imgs.length) openLightbox(imgs, idx);
     }
 });
 
@@ -1699,8 +1707,8 @@ let pendingCommentImages = [];
 
 function taskPendingImagesRender() {
     taskPendingImages.innerHTML = pendingCommentImages.map((u, i) => `
-        <div class="pm-pending-img">
-            <img src="${u}" alt="imagen pendiente">
+        <div class="pm-pending-img" data-pending-idx="${i}" style="cursor:zoom-in;">
+            <img src="${u}" alt="imagen pendiente" title="Haz clic para ampliar">
             <button type="button" class="pm-btn-icon danger" data-pminx="${i}" title="Quitar imagen">×</button>
         </div>`).join('');
     taskPendingImages.classList.toggle('hidden', pendingCommentImages.length === 0);
@@ -1726,6 +1734,12 @@ taskPendingImages.addEventListener('click', (e) => {
         const idx = parseInt(btn.dataset.pminx);
         pendingCommentImages.splice(idx, 1);
         taskPendingImagesRender();
+        return;
+    }
+    const pendingEl = e.target.closest('.pm-pending-img');
+    if (pendingEl) {
+        const idx = parseInt(pendingEl.dataset.pendingIdx || '0');
+        if (pendingCommentImages.length) openLightbox(pendingCommentImages, idx);
     }
 });
 
@@ -1760,6 +1774,131 @@ taskCommentInput.addEventListener('drop', (e) => {
     taskPendingImages.classList.remove('drag-over');
     addPendingImageFiles(e.dataTransfer && e.dataTransfer.files);
 });
+
+// ============ Lightbox / Visor de imágenes con slider ============
+const pmLightbox = document.getElementById('pmLightbox');
+const pmLightboxBackdrop = document.getElementById('pmLightboxBackdrop');
+const pmLightboxClose = document.getElementById('pmLightboxClose');
+const pmLightboxPrev = document.getElementById('pmLightboxPrev');
+const pmLightboxNext = document.getElementById('pmLightboxNext');
+const pmLightboxImg = document.getElementById('pmLightboxImg');
+const pmLightboxCounter = document.getElementById('pmLightboxCounter');
+const pmLightboxDots = document.getElementById('pmLightboxDots');
+
+let lightboxImages = [];
+let lightboxCurrentIndex = 0;
+
+function openLightbox(images, startIndex = 0) {
+    if (!images || !images.length || !pmLightbox) return;
+    lightboxImages = images;
+    lightboxCurrentIndex = Math.max(0, Math.min(startIndex, images.length - 1));
+    pmLightbox.classList.remove('hidden');
+    renderLightboxSlide();
+}
+
+function closeLightbox() {
+    if (!pmLightbox) return;
+    pmLightbox.classList.add('hidden');
+    if (pmLightboxImg) pmLightboxImg.src = '';
+    lightboxImages = [];
+    lightboxCurrentIndex = 0;
+}
+
+function renderLightboxSlide() {
+    if (!lightboxImages.length || !pmLightboxImg) return;
+    const total = lightboxImages.length;
+    const src = lightboxImages[lightboxCurrentIndex];
+
+    // Animación de cambio entre imágenes
+    pmLightboxImg.classList.add('is-switching');
+    setTimeout(() => {
+        pmLightboxImg.src = src;
+        pmLightboxImg.classList.remove('is-switching');
+    }, 120);
+
+    const hasMultiple = total > 1;
+    if (pmLightboxPrev) pmLightboxPrev.classList.toggle('hidden', !hasMultiple);
+    if (pmLightboxNext) pmLightboxNext.classList.toggle('hidden', !hasMultiple);
+    if (pmLightboxCounter) {
+        pmLightboxCounter.classList.toggle('hidden', !hasMultiple);
+        pmLightboxCounter.textContent = `${lightboxCurrentIndex + 1} / ${total}`;
+    }
+
+    if (pmLightboxDots) {
+        if (hasMultiple) {
+            pmLightboxDots.classList.remove('hidden');
+            pmLightboxDots.innerHTML = lightboxImages.map((_, i) => `
+                <div class="pm-lightbox-dot ${i === lightboxCurrentIndex ? 'active' : ''}" data-dot-idx="${i}" title="Ir a imagen ${i + 1}"></div>
+            `).join('');
+        } else {
+            pmLightboxDots.classList.add('hidden');
+            pmLightboxDots.innerHTML = '';
+        }
+    }
+}
+
+function nextLightboxSlide() {
+    if (lightboxImages.length <= 1) return;
+    lightboxCurrentIndex = (lightboxCurrentIndex + 1) % lightboxImages.length;
+    renderLightboxSlide();
+}
+
+function prevLightboxSlide() {
+    if (lightboxImages.length <= 1) return;
+    lightboxCurrentIndex = (lightboxCurrentIndex - 1 + lightboxImages.length) % lightboxImages.length;
+    renderLightboxSlide();
+}
+
+if (pmLightboxClose) pmLightboxClose.addEventListener('click', closeLightbox);
+if (pmLightboxBackdrop) pmLightboxBackdrop.addEventListener('click', closeLightbox);
+if (pmLightboxNext) pmLightboxNext.addEventListener('click', (e) => { e.stopPropagation(); nextLightboxSlide(); });
+if (pmLightboxPrev) pmLightboxPrev.addEventListener('click', (e) => { e.stopPropagation(); prevLightboxSlide(); });
+
+if (pmLightboxDots) {
+    pmLightboxDots.addEventListener('click', (e) => {
+        const dot = e.target.closest('[data-dot-idx]');
+        if (dot) {
+            e.stopPropagation();
+            const idx = parseInt(dot.dataset.dotIdx);
+            if (!isNaN(idx) && idx !== lightboxCurrentIndex) {
+                lightboxCurrentIndex = idx;
+                renderLightboxSlide();
+            }
+        }
+    });
+}
+
+// Navegación con teclado (Escape, flechas)
+window.addEventListener('keydown', (e) => {
+    if (!pmLightbox || pmLightbox.classList.contains('hidden')) return;
+    if (e.key === 'Escape') {
+        closeLightbox();
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        nextLightboxSlide();
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        prevLightboxSlide();
+    }
+});
+
+// Soporte touch / swipe en móviles
+let lbTouchStartX = 0;
+if (pmLightbox) {
+    pmLightbox.addEventListener('touchstart', (e) => {
+        if (e.changedTouches && e.changedTouches[0]) {
+            lbTouchStartX = e.changedTouches[0].screenX;
+        }
+    }, { passive: true });
+
+    pmLightbox.addEventListener('touchend', (e) => {
+        if (e.changedTouches && e.changedTouches[0]) {
+            const diff = e.changedTouches[0].screenX - lbTouchStartX;
+            if (Math.abs(diff) > 40) {
+                if (diff < 0) nextLightboxSlide();
+                else prevLightboxSlide();
+            }
+        }
+    }, { passive: true });
+}
 
 // Delegacion principal de clics del PM
 function onPMClick(e) {
