@@ -109,6 +109,20 @@ async function seedIfEmpty(supabase) {
   const catIds = Object.fromEntries(catRows.map(c => [c.name, c.id]));
 
   const items = [
+    ['cambios', 'Tiempos y costos de cambios múltiples (acumulación de tiempos y costo total)', `Cuando se solicitan varios cambios menores al mismo tiempo (ejemplo: cambio de imágenes, cambio de teléfono, cambio de email, cambio de color, ajustes de texto):
+
+1. **Desglose individual y gratuidad**:
+   - Cambio de teléfono: 2-4 horas (Costo: $0 USD / sin costo adicional).
+   - Cambio de email/correo: 2-4 horas (Costo: $0 USD / sin costo adicional).
+   - Cambio de imágenes / banners / logo: 1-2 días hábiles (Costo: $0 USD / sin costo adicional).
+   - Cambio de colores o tipografías: 1-2 días hábiles (Costo: $0 USD / sin costo adicional).
+   - Ajustes de textos menores: 2-4 horas (Costo: $0 USD / sin costo adicional).
+
+2. **Suma de tiempos para solicitudes múltiples**:
+   - Cuando se piden varias cosas a la vez, los tiempos estimados de cada tarea (incluso los gratuitos) SE SUMAN para dar el resultado del TIEMPO TOTAL acumulado de entrega.
+
+3. **Costo total**:
+   - Se especifica de manera clara el COSTO TOTAL resultante (si todos son cambios menores incluidos, el costo total es $0 USD / sin costo adicional).`, 'cambio, teléfono, email, correo, imágenes, fotos, logo, color, colores, texto, textos, costo, tiempo, gratis, varios, múltiples, suma', 10],
     ['cambios', 'Proceso de solicitud de cambios', `Para solicitar un cambio en tu proyecto web:
 
 1. **Registro**: Envía tu solicitud por email a cambios@agencia.com o usa el formulario en el portal del cliente

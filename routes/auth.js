@@ -96,7 +96,8 @@ router.post('/login', async (req, res) => {
         username: user.username,
         email: user.email,
         fullName: user.fullName,
-        role: user.role
+        role: user.role,
+        avatar: user.avatar || null
       }
     });
   } catch (error) {
@@ -108,6 +109,29 @@ router.post('/login', async (req, res) => {
 // GET /api/auth/me
 router.get('/me', authMiddleware, (req, res) => {
   res.json({ success: true, user: req.user });
+});
+
+// PUT /api/auth/avatar (actualizar foto de perfil del usuario actual)
+router.put('/avatar', authMiddleware, async (req, res) => {
+  try {
+    const { avatar } = req.body || {};
+    const updated = await userService.updateAvatar(req.user.id, avatar || null);
+    res.json({ success: true, avatar: updated });
+  } catch (error) {
+    console.error('Error updating avatar:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/auth/avatars (mapa de todos los avatares para sincronizar entre navegadores)
+router.get('/avatars', authMiddleware, async (req, res) => {
+  try {
+    const avatars = await userService.getAllAvatars();
+    res.json({ success: true, avatars });
+  } catch (error) {
+    console.error('Error getting avatars:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // POST /api/auth/logout

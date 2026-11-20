@@ -120,7 +120,11 @@ export class UserService {
       .eq('username', username)
       .maybeSingle();
     if (error) throw error;
-    if (data) return this.toUser(data);
+    if (data) {
+      const u = this.toUser(data);
+      if (!u.avatar) u.avatar = await this.getAvatar(u.id);
+      return u;
+    }
 
     ({ data, error } = await getSupabase()
       .from('users')
@@ -129,7 +133,12 @@ export class UserService {
       .limit(1));
     if (error) throw error;
 
-    return data && data[0] ? this.toUser(data[0]) : null;
+    if (data && data[0]) {
+      const u = this.toUser(data[0]);
+      if (!u.avatar) u.avatar = await this.getAvatar(u.id);
+      return u;
+    }
+    return null;
   }
 
   async findByEmail(email) {
@@ -139,7 +148,12 @@ export class UserService {
       .eq('email', email)
       .maybeSingle();
     if (error) throw error;
-    return data ? this.toUser(data) : null;
+    if (data) {
+      const u = this.toUser(data);
+      if (!u.avatar) u.avatar = await this.getAvatar(u.id);
+      return u;
+    }
+    return null;
   }
 
   async findById(id) {
@@ -149,7 +163,12 @@ export class UserService {
       .eq('id', parseInt(id))
       .maybeSingle();
     if (error) throw error;
-    return data ? this.toUser(data) : null;
+    if (data) {
+      const u = this.toUser(data);
+      if (!u.avatar) u.avatar = await this.getAvatar(u.id);
+      return u;
+    }
+    return null;
   }
 
   toUser(row) {
@@ -162,8 +181,109 @@ export class UserService {
       role: row.role,
       isActive: row.is_active,
       createdAt: row.created_at,
-      lastLogin: row.last_login
+      lastLogin: row.last_login,
+      avatar: row.avatar || null
     };
+  }
+
+  // Carga el mapa de todos los avatares desde Supabase (tabla users y respaldo garantizado)
+  async getAllAvatars() {
+    if (this._avatarsCache) return { ...this._avatarsCache };
+
+    const avatars = {};
+
+    // 1. Intentar leer desde columna avatar de tabla users
+    try {
+      const { data, error } = await getSupabase()
+        .from('users')
+        .select('id, avatar');
+      if (!error && data) {
+        for (const u of data) {
+          if (u.avatar) avatars[u.id] = u.avatar;
+        }
+      }
+    } catch (e) {
+      // Ignorar si la columna aún no existe
+    }
+
+    // 2. Leer desde store de respaldo en categories '__user_avatars__'
+    try {
+      const { data, error } = await getSupabase()
+        .from('categories')
+        .select('description')
+        .eq('name', '__user_avatars__')
+        .maybeSingle();
+      if (!error && data && data.description) {
+        const stored = JSON.parse(data.description);
+        for (const [uid, av] of Object.entries(stored)) {
+          if (av && !avatars[uid]) avatars[uid] = av;
+        }
+      }
+    } catch (e) {
+      // Ignorar
+    }
+
+    this._avatarsCache = avatars;
+    return { ...avatars };
+  }
+
+  async getAvatar(userId) {
+    const all = await this.getAllAvatars();
+    return all[userId] || null;
+  }
+
+  async updateAvatar(userId, avatar) {
+    const uid = parseInt(userId);
+    if (!uid) throw new Error('ID de usuario requerido');
+
+    // 1. Intentar guardar en la tabla users directamente
+    try {
+      await getSupabase()
+        .from('users')
+        .update({ avatar })
+        .eq('id', uid);
+    } catch (e) {
+      // Si la columna no existe en Supabase, se guarda en el store de respaldo
+    }
+
+    // 2. Guardar en el store de respaldo garantizado en categories ('__user_avatars__')
+    try {
+      const all = await this.getAllAvatars();
+      if (avatar) {
+        all[uid] = avatar;
+      } else {
+        delete all[uid];
+      }
+      this._avatarsCache = all;
+
+      const supabase = getSupabase();
+      const { data: existing } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('name', '__user_avatars__')
+        .maybeSingle();
+
+      const payload = {
+        name: '__user_avatars__',
+        description: JSON.stringify(all),
+        icon: '👤'
+      };
+
+      if (existing) {
+        await supabase
+          .from('categories')
+          .update(payload)
+          .eq('id', existing.id);
+      } else {
+        await supabase
+          .from('categories')
+          .insert(payload);
+      }
+    } catch (e) {
+      console.error('Error guardando avatar en respaldo:', e.message);
+    }
+
+    return avatar;
   }
 
   async createUser({ username, email, password, fullName, role = 'user' }) {
@@ -219,6 +339,7 @@ export class UserService {
   }
 
   async getAllUsers() {
+    const avatars = await this.getAllAvatars();
     const { data, error } = await getSupabase()
       .from('users')
       .select('id, username, email, full_name, role, is_active, created_at, last_login')
@@ -233,7 +354,8 @@ export class UserService {
       role: r.role,
       isActive: r.is_active,
       createdAt: r.created_at,
-      lastLogin: r.last_login
+      lastLogin: r.last_login,
+      avatar: avatars[r.id] || null
     }));
   }
 

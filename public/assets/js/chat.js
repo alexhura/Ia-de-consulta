@@ -281,7 +281,7 @@ function initials(user) {
     return ((parts[0][0] || '') + (parts[1] ? parts[1][0] : '')).toUpperCase();
 }
 
-// ---------------- Avatar del usuario (local, por dispositivo) ----------------
+// ---------------- Avatar del usuario (sincronizado con servidor) ----------------
 const AVATARS_KEY = 'userAvatars';
 
 function getAvatars() {
@@ -293,6 +293,8 @@ function getAvatars() {
 }
 
 function avatarFor(userId) {
+    if (!userId) return null;
+    if (currentUser && currentUser.id === userId && currentUser.avatar) return currentUser.avatar;
     return getAvatars()[userId] || null;
 }
 
@@ -304,6 +306,27 @@ function saveAvatar(userId, dataUrl) {
         delete map[userId];
     }
     localStorage.setItem(AVATARS_KEY, JSON.stringify(map));
+}
+
+// Sincroniza todos los avatares desde el servidor para que se muestren en cualquier navegador
+async function syncAvatarsFromServer() {
+    if (!authToken) return;
+    try {
+        const data = await apiRequest('/api/auth/avatars');
+        if (data && data.avatars) {
+            const map = getAvatars();
+            Object.assign(map, data.avatars);
+            localStorage.setItem(AVATARS_KEY, JSON.stringify(map));
+            if (currentUser && data.avatars[currentUser.id]) {
+                currentUser.avatar = data.avatars[currentUser.id];
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            }
+            renderSidebarAvatar();
+            renderProfileAvatar();
+        }
+    } catch (e) {
+        // Silencioso
+    }
 }
 
 function setChatBrandTitle() {
@@ -537,7 +560,11 @@ function setAuth(token, user) {
     currentUser = user;
     localStorage.setItem('authToken', token);
     localStorage.setItem('currentUser', JSON.stringify(user));
+    if (user && user.avatar) {
+        saveAvatar(user.id, user.avatar);
+    }
     updateUIForAuth();
+    syncAvatarsFromServer();
 }
 
 function clearAuth() {
@@ -680,21 +707,30 @@ avatarFileInput.addEventListener('change', async () => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
         profileMsg.textContent = 'Selecciona un archivo de imagen.';
-        profileMsg.classList.add('error');
+        profileMsg.className = 'admin-msg error';
         return;
     }
     try {
+        profileMsg.textContent = 'Guardando foto de perfil...';
+        profileMsg.className = 'admin-msg';
         const dataUrl = await resizeImage(file, 200, 0.85);
+
+        // Guardar en el servidor para que esté disponible en cualquier dispositivo/navegador
+        await apiRequest('/api/auth/avatar', {
+            method: 'PUT',
+            body: JSON.stringify({ avatar: dataUrl })
+        });
+
         saveAvatar(currentUser.id, dataUrl);
         currentUser.avatar = dataUrl;
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         renderProfileAvatar();
         renderSidebarAvatar();
-        profileMsg.textContent = '✅ Avatar actualizado';
-        profileMsg.classList.add('success');
+        profileMsg.textContent = 'Foto de perfil actualizada correctamente.';
+        profileMsg.className = 'admin-msg success';
     } catch (err) {
-        profileMsg.textContent = 'No se pudo procesar la imagen.';
-        profileMsg.classList.add('error');
+        profileMsg.textContent = err.message || 'No se pudo procesar la imagen.';
+        profileMsg.className = 'admin-msg error';
     } finally {
         avatarFileInput.value = '';
     }

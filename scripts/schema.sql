@@ -41,6 +41,7 @@ create table if not exists users (
 
 alter table users add column if not exists active_session_token text;
 alter table users add column if not exists session_expires_at timestamptz;
+alter table users add column if not exists avatar text;
 
 -- ============ PROJECT MANAGER ============
 
