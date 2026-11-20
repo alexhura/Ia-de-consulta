@@ -106,13 +106,34 @@ const HOST_SUFFIX = [
 const PRIVATE_IP =
   /^(127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2[0-9]|3[01])\.|0\.|::1$|fd|fe8)/;
 
-// Extrae la primera URL de un texto (http/https o www.). Normaliza y evita
-// enteras IP privadas (protección básica contra SSRF).
+const NON_WEB_EXT = new Set([
+  'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'mp3', 'mp4',
+  'zip', 'rar', 'tar', 'gz', 'json', 'xml', 'txt', 'csv', 'doc',
+  'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'js', 'css', 'exe', 'dmg'
+]);
+
+// Extrae la primera URL o nombre de dominio de un texto (http/https, www o dominio plano como negocio.com).
+// Normaliza y evita IP privadas (protección básica contra SSRF).
 export function extractUrl(text) {
   if (!text) return null;
-  const m = text.match(/(?:https?:\/\/|www\.)[^\s<>"'\u]+\S*/i);
-  if (!m) return null;
-  let url = m[0].replace(/[),.;:!?}\]>"'`]+$/, '');
+  // 1. URL explícita con http/https o www
+  let m = text.match(/(?:https?:\/\/|www\.)[^\s<>"'`]+\S*/i);
+  let raw = m ? m[0] : null;
+
+  // 2. Si no hay http/www, buscar dominio tipo nombre.tld
+  if (!raw) {
+    const dm = text.match(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}(?:\/[^\s<>"'`]*)?/i);
+    if (dm) {
+      const parts = dm[0].split('/')[0].split('.');
+      const tld = parts[parts.length - 1].toLowerCase();
+      if (!NON_WEB_EXT.has(tld)) {
+        raw = dm[0];
+      }
+    }
+  }
+
+  if (!raw) return null;
+  let url = raw.replace(/[),.;:!?}\]>"'`]+$/, '');
   if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
 
   let host;
@@ -121,7 +142,7 @@ export function extractUrl(text) {
   } catch {
     return null;
   }
-  if (host === 'localhost' || PRIVATE_IP.test(host)) return null;
+  if (!host || host === 'localhost' || !host.includes('.') || PRIVATE_IP.test(host)) return null;
   return url;
 }
 
@@ -155,47 +176,60 @@ export function verdictFor(platform) {
   };
 }
 
-// Detecta la plataforma de una URL. Devuelve un objeto con resumen listo
+// Detecta la plataforma de una URL o dominio. Devuelve un objeto con resumen listo
 // para inyectar en el contexto del chat.
 export async function detectPlatform(url) {
   let hostname = '';
   try { hostname = new URL(url).hostname; } catch { hostname = ''; }
 
+  const candidates = [url];
+  if (hostname && !hostname.startsWith('www.')) {
+    candidates.push(`https://www.${hostname}`);
+  }
+  if (url.startsWith('https://')) {
+    candidates.push(`http://${hostname}`);
+    if (hostname && !hostname.startsWith('www.')) {
+      candidates.push(`http://www.${hostname}`);
+    }
+  }
+
   let body = '';
   let status = 0;
-  let blocked = false;
-  try {
-    const res = await fetch(url, {
-      redirect: 'follow',
-      headers: {
-        'user-agent': BROWSER_UA,
-        accept: 'text/html,application/xhtml+xml,*/*',
-        'accept-language': 'es,en;q=0.8'
-      },
-      signal: AbortSignal.timeout(15000)
-    });
-    status = res.status;
-    const ctype = (res.headers.get('content-type') || '').toLowerCase();
-    if (!ctype.includes('html')) {
-      const det = {
-        url, hostname,
-        platform: 'No es una página HTML',
-        apta: null,
-        mensaje: 'La URL no devuelve una página HTML (parece un PDF, imagen u otro archivo), lo revisamos con un humano.'
-      };
-      return { ...det, status, summary: buildSummary(url, det.platform, det) };
+  let finalUrl = url;
+
+  for (const targetUrl of candidates) {
+    try {
+      const res = await fetch(targetUrl, {
+        redirect: 'follow',
+        headers: {
+          'user-agent': BROWSER_UA,
+          accept: 'text/html,application/xhtml+xml,*/*',
+          'accept-language': 'es,en;q=0.8'
+        },
+        signal: AbortSignal.timeout(9000)
+      });
+      status = res.status;
+      const ctype = (res.headers.get('content-type') || '').toLowerCase();
+      if (!ctype.includes('html')) {
+        continue;
+      }
+      const text = await res.text();
+      if (text && text.trim().length > 30) {
+        body = text;
+        finalUrl = targetUrl;
+        break;
+      }
+    } catch (err) {
+      // Reintentar con siguiente candidato
     }
-    body = await res.text();
-  } catch (err) {
-    blocked = true;
   }
 
   if (!body) {
     const blockedMsg = (status === 403 || status === 401)
-      ? 'El sitio bloquea el análisis (protección anti-bots), no se pudo verificar.'
-      : 'No se pudo acceder al sitio para analizarlo.';
-    const det = { url, hostname, platform: 'No verificado', apta: null, mensaje: blockedMsg, status };
-    return { ...det, summary: buildSummary(url, det.platform, det) };
+      ? 'El sitio bloquea el escaneo automatizado (protección anti-bots o Cloudflare), por lo que se requiere revisión manual.'
+      : 'No se pudo acceder al sitio para analizarlo (posiblemente esté fuera de línea, no responda o el dominio no tenga una web activa).';
+    const det = { url: finalUrl, hostname, platform: 'No verificado', apta: null, mensaje: blockedMsg, status };
+    return { ...det, summary: buildSummary(finalUrl, det.platform, det) };
   }
 
   const fullText = body.slice(0, 800000);
