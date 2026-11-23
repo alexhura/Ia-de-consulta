@@ -2950,6 +2950,24 @@ body::before {
     width: 100%;
 }
 
+.auth-error-msg {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    margin-bottom: 14px;
+    text-align: left;
+    display: block;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.auth-error-msg.hidden {
+    display: none !important;
+}
+
 .auth-hint {
     text-align: center;
     color: #6b7280;

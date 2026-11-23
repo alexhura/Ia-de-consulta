@@ -37,6 +37,7 @@
                             <div class="form-group">
                                 <input type="password" id="loginPassword" placeholder="Contraseña" required autocomplete="current-password">
                             </div>
+                            <div id="loginErrorMsg" class="auth-error-msg hidden"></div>
                             <button type="submit" class="btn btn-primary btn-full">Entrar</button>
                         </form>
                         <p class="auth-hint">Acceso autorizado por el administrador</p>
@@ -618,6 +619,7 @@
                                 <input type="email" id="editEmail" autocomplete="off">
                             </div>
                             <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                            <button type="button" class="btn btn-secondary" id="editClearSessionBtn" style="margin-top:10px;">Cerrar sesión activa</button>
                         </form>
                         <p id="editUserMsg" class="admin-msg"></p>
                     </div>

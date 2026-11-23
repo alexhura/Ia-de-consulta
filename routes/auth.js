@@ -81,10 +81,25 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Credenciales inválidas' });
     }
 
+    // Comprobar si ya existe una sesión abierta y activa en otro dispositivo/navegador.
+    // El navegador actual se mantiene abierto y en el nuevo se bloquea el acceso.
+    const activeToken = await userService.getActiveSessionToken(user.id);
+    if (activeToken) {
+      const clientToken = (req.headers.authorization && req.headers.authorization.startsWith('Bearer '))
+        ? req.headers.authorization.substring(7)
+        : null;
+
+      // Si no es la misma sesión ya autenticada en este cliente, rechazar con 409
+      if (!clientToken || clientToken !== activeToken) {
+        return res.status(409).json({
+          success: false,
+          error: 'Ya hay una sesión abierta con esta cuenta en otro navegador o dispositivo. No es posible iniciar sesión mientras la otra sesión siga abierta.'
+        });
+      }
+    }
+
     await userService.updateLastLogin(user.id);
 
-    // Login único: la nueva sesión reemplaza/invalida cualquier sesión anterior del usuario.
-    // El token nuevo se registra como la sesión activa; el middleware rechazará el token viejo.
     const token = userService.generateToken(user);
     await userService.registerSession(user.id, token);
     
@@ -236,6 +251,17 @@ router.delete('/admin/users/:id', authMiddleware, requireRole('admin'), async (r
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({ success: false, error: 'Error eliminando usuario' });
+  }
+});
+
+// Admin: POST /api/admin/users/:id/clear-session (permite al administrador liberar la sesión activa de un usuario)
+router.post('/admin/users/:id/clear-session', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    await userService.clearSession(req.params.id);
+    res.json({ success: true, message: 'Sesión liberada correctamente' });
+  } catch (error) {
+    console.error('Error clearing user session:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

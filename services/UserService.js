@@ -37,19 +37,25 @@ export class UserService {
     return `${header}.${payload}.${signature}`;
   }
 
-  // Verifica si un usuario ya tiene una sesión activa (no expirada)
-  async hasActiveSession(userId) {
+  // Obtiene el token de la sesión activa si sigue vigente (no expirada)
+  async getActiveSessionToken(userId) {
     const { data, error } = await getSupabase()
       .from('users')
       .select('active_session_token, session_expires_at')
       .eq('id', parseInt(userId))
       .maybeSingle();
     if (error) throw error;
-    if (!data || !data.active_session_token) return false;
+    if (!data || !data.active_session_token) return null;
     const expires = data.session_expires_at ? new Date(data.session_expires_at).getTime() : 0;
-    // Si la sesión expiró, se considera libre para un nuevo login
-    if (expires && Date.now() < expires) return true;
-    return false;
+    if (expires && Date.now() < expires) return data.active_session_token;
+    await this.clearSession(userId);
+    return null;
+  }
+
+  // Verifica si un usuario ya tiene una sesión activa (no expirada)
+  async hasActiveSession(userId) {
+    const token = await this.getActiveSessionToken(userId);
+    return !!token;
   }
 
   // Registra el token como la sesión activa del usuario

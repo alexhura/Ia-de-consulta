@@ -642,10 +642,17 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 // Auth form handlers
+const loginErrorMsg = document.getElementById('loginErrorMsg');
+
 loginFormElement.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = document.getElementById('loginUsername').value;
+    const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value;
+
+    if (loginErrorMsg) {
+        loginErrorMsg.textContent = '';
+        loginErrorMsg.classList.add('hidden');
+    }
 
     try {
         const data = await apiRequest('/api/auth/login', {
@@ -657,11 +664,33 @@ loginFormElement.addEventListener('submit', async (e) => {
             setAuth(data.token, data.user);
             showHero();
             loginFormElement.reset();
+            if (loginErrorMsg) loginErrorMsg.classList.add('hidden');
         } else {
-            alert(data.error || 'Error al iniciar sesión');
+            const msg = data.error || 'Error al iniciar sesión';
+            if (loginErrorMsg) {
+                loginErrorMsg.textContent = msg;
+                loginErrorMsg.classList.remove('hidden');
+            } else {
+                alert(msg);
+            }
         }
     } catch (error) {
-        alert(error.message);
+        const msg = error.message || 'Error al iniciar sesión';
+        if (loginErrorMsg) {
+            loginErrorMsg.textContent = msg;
+            loginErrorMsg.classList.remove('hidden');
+        } else {
+            alert(msg);
+        }
+    }
+});
+
+['loginUsername', 'loginPassword'].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) {
+        input.addEventListener('input', () => {
+            if (loginErrorMsg) loginErrorMsg.classList.add('hidden');
+        });
     }
 });
 
@@ -2870,6 +2899,22 @@ editUserForm.addEventListener('submit', async (e) => {
         editUserMsg.classList.add('error');
     }
 });
+
+const editClearSessionBtn = document.getElementById('editClearSessionBtn');
+if (editClearSessionBtn) {
+    editClearSessionBtn.addEventListener('click', async () => {
+        if (!editingUserId) return;
+        if (!confirm('¿Deseas cerrar la sesión activa de este usuario para que pueda volver a iniciar sesión?')) return;
+        try {
+            await apiRequest(`/api/auth/admin/users/${editingUserId}/clear-session`, { method: 'POST' });
+            editUserMsg.textContent = 'Sesión activa liberada correctamente.';
+            editUserMsg.className = 'admin-msg success';
+        } catch (err) {
+            editUserMsg.textContent = err.message || 'Error al liberar sesión.';
+            editUserMsg.className = 'admin-msg error';
+        }
+    });
+}
 
 document.querySelectorAll('[data-close="editWindow"]').forEach(btn => {
     btn.addEventListener('click', () => closeOverlay(editWindow));
