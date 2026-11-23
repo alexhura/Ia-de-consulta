@@ -405,4 +405,89 @@ function sendProjectDelivered({ to, client, business, url }) {
   return send({ to, subject, html, cc: DELIVERY_CC });
 }
 
-export const emailService = { send, configured, sender, sendProjectFinished, sendProjectFinishedFb, sendProjectLinked, sendProjectLinkedFb, sendProjectDelivered, sendTicketResolved };
+// Correo de alerta de seguridad cuando se detecta un intento de inicio de sesión
+// con credenciales válidas mientras ya existe una sesión activa en otro dispositivo.
+function sendLoginAttemptAlert({ to, user, cc, timestamp = new Date() }) {
+  const name = user.fullName || user.username || 'Usuario';
+  const subject = `Alerta de seguridad: Intento de inicio de sesión detectado (${name})`;
+
+  const timeFormatted = new Intl.DateTimeFormat('es-MX', {
+    dateStyle: 'full',
+    timeStyle: 'medium',
+    timeZone: 'America/Mexico_City'
+  }).format(timestamp instanceof Date ? timestamp : new Date(timestamp));
+
+  const html = `<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background-color:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#000000;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#ffffff;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden;">
+          ${emailHeader('Alerta de seguridad')}
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.6;font-weight:bold;color:#000000;">
+                Hola ${esc(name)},
+              </p>
+              <div style="background-color:#fef2f2;border-left:4px solid #ef4444;padding:16px;border-radius:6px;margin:0 0 24px;">
+                <p style="margin:0;font-size:15px;line-height:1.6;color:#991b1b;font-weight:bold;">
+                  Se ha detectado e impedido un intento de inicio de sesión en tu cuenta.
+                </p>
+              </div>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#000000;">
+                Alguien ingresó correctamente tu usuario y contraseña desde otro navegador o dispositivo mientras ya tenías una sesión activa. Con base en las políticas de seguridad de la plataforma, <strong>el nuevo acceso fue bloqueado automáticamente</strong> para proteger tu sesión abierta.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin:20px 0 24px;">
+                <tr>
+                  <td style="padding:6px 12px;font-size:14px;color:#4b5563;width:140px;"><strong>Usuario:</strong></td>
+                  <td style="padding:6px 12px;font-size:14px;color:#000000;font-weight:bold;">${esc(user.username)}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 12px;font-size:14px;color:#4b5563;"><strong>Nombre:</strong></td>
+                  <td style="padding:6px 12px;font-size:14px;color:#000000;">${esc(user.fullName || '—')}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 12px;font-size:14px;color:#4b5563;"><strong>Rol:</strong></td>
+                  <td style="padding:6px 12px;font-size:14px;color:#000000;">${esc(user.role || '—')}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 12px;font-size:14px;color:#4b5563;"><strong>Fecha y hora:</strong></td>
+                  <td style="padding:6px 12px;font-size:14px;color:#000000;">${esc(timeFormatted)} (CDMX)</td>
+                </tr>
+              </table>
+              <div style="background-color:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
+                <p style="margin:0 0 8px;font-size:14px;font-weight:bold;color:#92400e;">
+                  ¿No fuiste tú?
+                </p>
+                <p style="margin:0;font-size:13px;line-height:1.5;color:#b45309;">
+                  Si no reconoces este intento, te recomendamos cambiar tu contraseña de inmediato desde el panel de usuario o comunicarte con el administrador del sistema para revisar la seguridad de tu cuenta.
+                </p>
+              </div>
+              <p style="margin:24px 0 0;font-size:13px;color:#6b7280;text-align:center;">
+                Este es un mensaje automático de seguridad generado por el sistema de IA Consulta.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return send({ to, subject, html, cc });
+}
+
+export const emailService = {
+  send,
+  configured,
+  sender,
+  sendProjectFinished,
+  sendProjectFinishedFb,
+  sendProjectLinked,
+  sendProjectLinkedFb,
+  sendProjectDelivered,
+  sendTicketResolved,
+  sendLoginAttemptAlert
+};

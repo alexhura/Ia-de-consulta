@@ -633,6 +633,27 @@ app.post('/api/pm/email-test-delivery', authMiddleware, requireRole('admin'), as
   }
 });
 
+// Diagnóstico: correo de prueba de alerta de intento de acceso concurrente.
+app.post('/api/pm/email-test-login-alert', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const to = (req.body && req.body.to) ? String(req.body.to).trim() : 'alejandro23.academiadelimpieza@gmail.com';
+    const result = await emailService.sendLoginAttemptAlert({
+      to,
+      user: {
+        username: 'test.user',
+        fullName: 'Usuario de Prueba',
+        role: 'desarrollo'
+      },
+      cc: ['alejandro23.academiadelimpieza@gmail.com'],
+      timestamp: new Date()
+    });
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('Error en email-test-login-alert:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 // Datos públicos (solo nombre del cliente/negocio) para mostrar en la página.
 app.get('/api/share/project', async (req, res) => {
   try {

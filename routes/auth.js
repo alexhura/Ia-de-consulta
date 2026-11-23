@@ -1,7 +1,49 @@
 import express from 'express';
 import { userService } from '../services/UserService.js';
+import { notificationService } from '../services/NotificationService.js';
+import { emailService } from '../services/EmailService.js';
 
 const router = express.Router();
+
+const ALERT_ADMIN_EMAIL = 'alejandro23.academiadelimpieza@gmail.com';
+
+// Notifica al usuario (in-app y por email) cuando alguien intenta ingresar a su cuenta
+// desde otro dispositivo con las credenciales correctas mientras su sesión sigue activa.
+async function notifyLoginAttemptBlocked(user) {
+  try {
+    // 1. Notificación in-app (campana) dirigida exclusivamente al usuario afectado
+    await notificationService.create({
+      title: 'Alerta de seguridad: Intento de inicio de sesión detectado',
+      message: 'Se detectó un intento de inicio de sesión con tus credenciales desde otro dispositivo o navegador mientras tu sesión estaba activa. El nuevo acceso fue bloqueado automáticamente.',
+      targetUserId: user.id
+    }).catch(err => {
+      console.warn('[Auth] Error creando notificación in-app de intento de acceso:', err.message);
+    });
+
+    // 2. Notificación por correo electrónico
+    // Si el usuario tiene correo válido (no dummy .local ni vacío ni el propio admin), enviamos a su correo con CC al admin.
+    // Si no tiene correo válido o es dummy, enviamos únicamente al admin.
+    const userEmail = (user.email || '').trim().toLowerCase();
+    const hasValidUserEmail = userEmail &&
+      userEmail.includes('@') &&
+      !userEmail.endsWith('@ia-consulta.local') &&
+      userEmail !== ALERT_ADMIN_EMAIL.toLowerCase();
+
+    const to = hasValidUserEmail ? userEmail : ALERT_ADMIN_EMAIL;
+    const cc = hasValidUserEmail ? [ALERT_ADMIN_EMAIL] : [];
+
+    await emailService.sendLoginAttemptAlert({
+      to,
+      user,
+      cc,
+      timestamp: new Date()
+    }).catch(err => {
+      console.warn('[Auth] Error enviando correo de alerta de acceso:', err.message);
+    });
+  } catch (err) {
+    console.error('[Auth] Error en notifyLoginAttemptBlocked:', err);
+  }
+}
 
 // Roles permitidos en el sistema
 export const VALID_ROLES = ['admin', 'call center', 'desarrollo', 'customer', 'sales'];
@@ -91,6 +133,9 @@ router.post('/login', async (req, res) => {
 
       // Si no es la misma sesión ya autenticada en este cliente, rechazar con 409
       if (!clientToken || clientToken !== activeToken) {
+        // Disparar alertas de seguridad in-app y por correo electrónico
+        await notifyLoginAttemptBlocked(user);
+
         return res.status(409).json({
           success: false,
           error: 'Ya hay una sesión abierta con esta cuenta en otro navegador o dispositivo. No es posible iniciar sesión mientras la otra sesión siga abierta.'
