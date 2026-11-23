@@ -406,10 +406,11 @@ async function sendProjectLinkedFbEmail(task) {
   });
 }
 
-// Correo formal de entrega al cliente cuando la tarea "Entrega y Revision"
+// Correo formal de entrega al cliente cuando la tarea ("Entrega y Revision", "One page", "Full web", etc.)
 // llega a "Finalizado sin errores". El destinatario es el email del cliente
 // (project.email y project.email2 — al cliente se le puede registrar un
-// segundo email). Siempre incluye Cc a ADL.
+// segundo email). Si no hay email de cliente, usa notif_email, wp_user (si es email) o las cuentas del equipo.
+// Siempre incluye Cc a ADL y desarrollo.
 async function sendProjectDeliveredEmail(task) {
   const project = await pmService.getProject(task.project_id);
   const to = [
@@ -419,15 +420,21 @@ async function sendProjectDeliveredEmail(task) {
   if (to.length === 0 && project && (project.notif_email || project.notif_email_fb)) {
     to.push(project.notif_email || project.notif_email_fb);
   }
+  if (to.length === 0 && project && project.wp_user && project.wp_user.includes('@')) {
+    to.push(project.wp_user);
+  }
   if (to.length === 0) {
-    console.warn('[email] Proyecto sin email de cliente, correo de entrega no enviado.');
-    return;
+    to.push(
+      process.env.BREVO_HANDOVER_CC || 'adldigital00@gmail.com',
+      process.env.BREVO_DEV_EMAIL || 'desarrollo.academiadelimpieza@gmail.com'
+    );
   }
   await emailService.sendProjectDelivered({
     to,
     client: project.client,
     business: project.business,
-    url: project.url
+    url: project.url,
+    completionDate: task.completed_at || task.updated_at || new Date()
   });
 }
 

@@ -346,9 +346,24 @@ function sendTicketResolved({ to, client, business, ticketTitle, summary, isTick
 // llega a "Finalizado sin errores". Menciona que el sitio web ya está listo y
 // que se hace la entrega formal con la URL. Redacción en inglés US, sin
 // mencionar el área de desarrollo — la agencia es ADL. CC siempre a adldigital00 y desarrollo.
-function sendProjectDelivered({ to, client, business, url }) {
+function sendProjectDelivered({ to, client, business, url, completionDate }) {
   const subject = formatLiveSubject(client, business);
   const site = url && /^https?:\/\//i.test(url) ? url : (url ? `https://${url}` : '');
+
+  let dateFormatted = '';
+  if (completionDate) {
+    try {
+      const d = completionDate instanceof Date ? completionDate : new Date(completionDate);
+      dateFormatted = new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: 'America/Mexico_City'
+      }).format(d);
+    } catch (e) {}
+  }
+
   const html = `<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background-color:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#000000;">
@@ -367,6 +382,7 @@ function sendProjectDelivered({ to, client, business, url }) {
                 We are excited to let you know that your website has been completed
                 and is officially live.
               </p>
+              ${dateFormatted ? `<p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#4b5563;"><strong>Completion Date:</strong> ${esc(dateFormatted)}</p>` : ''}
               <p style="margin:0 0 24px;font-size:16px;line-height:1.7;color:#000000;">
                 Your new site is now live at:
               </p>
