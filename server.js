@@ -104,6 +104,16 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
     // Buscar conocimiento relevante
     let context = await kbService.getContextForQuery(message, 8);
 
+    // Buscar información de proyectos de PM si la consulta menciona a un cliente o proyecto
+    try {
+      const projectContext = await pmService.findProjectContextForChat(message);
+      if (projectContext) {
+        context += (context ? '\n\n' : '') + projectContext;
+      }
+    } catch (pmErr) {
+      console.warn('Error buscando proyecto para el chat:', pmErr.message);
+    }
+
     // Detección de plataforma: si el usuario manda una URL (en texto o dentro
     // de una imagen), el servidor inspecciona el sitio y decide si es apto
     // para migrar/trabajar (WordPress o HTML puro = sí; otro CMS/constructor = no).

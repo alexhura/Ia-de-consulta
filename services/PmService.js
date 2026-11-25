@@ -663,4 +663,172 @@ export class PmService {
 
     return clean;
   }
+
+  // Busca información de un proyecto en base a la consulta del usuario en el chat de IA.
+  // Protege la privacidad omitiendo contraseñas, teléfonos, correos y datos sensibles.
+  async findProjectContextForChat(query) {
+    if (!query || typeof query !== 'string') return null;
+    const raw = query.trim();
+    if (!raw) return null;
+
+    const normQuery = raw
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+    // Palabras vacías comunes en consultas de proyectos
+    const STOP_WORDS = new Set([
+      'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas',
+      'de', 'del', 'al', 'a', 'en', 'con', 'por', 'para', 'sin', 'sobre',
+      'que', 'cual', 'quien', 'como', 'donde', 'cuando', 'cuanto', 'porque',
+      'va', 'esta', 'estan', 'estara', 'ha', 'han', 'sido', 'fue', 'era', 'son',
+      'proyecto', 'projecto', 'proyectos', 'projectos', 'cliente', 'clientes',
+      'negocio', 'empresa', 'sitio', 'web', 'website', 'pagina', 'paginas',
+      'one', 'page', 'onepage', 'full', 'fullweb', 'dominio', 'entrega', 'entregado', 'entregada',
+      'hola', 'buenas', 'buenos', 'dias', 'tardes', 'noches', 'favor', 'dime', 'saber',
+      'tiene', 'tienen', 'cuenta', 'cuentan', 'contratado', 'servicio', 'servicios',
+      'informacion', 'info', 'avance', 'estatus', 'status', 'ver', 'revisar'
+    ]);
+
+    const isProjectQuery = /(proyecto|projecto|cliente|negocio|one\s*page|full\s*web|dominio|como\s*va|c[oó]mo\s*va|estatus|status|avance|portal\s*de\s*pagos|tienda|sitio\s*web|p[aá]gina)/i.test(raw);
+
+    // Obtener proyectos (solo campos seguros)
+    let projects = [];
+    try {
+      const { data, error } = await getSupabase()
+        .from('pm_projects')
+        .select('id, client, business, url, status')
+        .order('id', { ascending: false });
+      if (!error && data) projects = data;
+    } catch (e) {
+      console.warn('[PmService] Error obteniendo proyectos para el chat:', e.message);
+      return null;
+    }
+
+    if (!projects.length) return null;
+
+    // Tokens de la consulta
+    const queryTokens = normQuery
+      .split(/[^a-z0-9]+/)
+      .filter(t => t.length >= 3 && !STOP_WORDS.has(t));
+
+    let bestScore = 0;
+    let bestProject = null;
+
+    for (const p of projects) {
+      const normClient = (p.client || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      const normBusiness = (p.business || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      let score = 0;
+
+      // Coincidencia exacta de frase completa
+      if (normClient && normQuery.includes(normClient)) score += 14;
+      if (normBusiness && normQuery.includes(normBusiness)) score += 14;
+
+      // Coincidencia por tokens de cliente
+      const clientTokens = normClient.split(/[^a-z0-9]+/).filter(t => t.length >= 3);
+      for (const t of clientTokens) {
+        if (queryTokens.includes(t)) score += 4;
+        else if (normQuery.includes(t)) score += 2;
+      }
+
+      // Coincidencia por tokens de negocio
+      const businessTokens = normBusiness.split(/[^a-z0-9]+/).filter(t => t.length >= 3);
+      for (const t of businessTokens) {
+        if (queryTokens.includes(t)) score += 4;
+        else if (normQuery.includes(t)) score += 2;
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestProject = p;
+      }
+    }
+
+    // Si la consulta pregunta explícitamente por un proyecto/cliente pero no hubo coincidencia:
+    if (bestScore < 3) {
+      if (isProjectQuery && queryTokens.length > 0) {
+        return `[BÚSQUEDA DE PROYECTOS]:\nEl usuario preguntó por un proyecto o cliente, pero NO se encontró ningún proyecto registrado en el sistema que coincida con esa búsqueda.\nInstrucción: Informa brevemente que no se encontró ningún proyecto registrado para ese cliente o negocio.`;
+      }
+      return null;
+    }
+
+    // Cargar tareas y comentarios del proyecto encontrado (estrictamente seguro, sin contraseñas ni datos sensibles)
+    try {
+      const supabase = getSupabase();
+      const { data: tasks, error: tErr } = await supabase
+        .from('pm_tasks')
+        .select('id, project_id, title, description, status, completed_at, updated_at, created_at')
+        .eq('project_id', bestProject.id)
+        .order('id', { ascending: true });
+
+      if (tErr) throw tErr;
+
+      const taskList = tasks || [];
+      const taskIds = taskList.map(t => t.id);
+
+      const commentsMap = new Map();
+      if (taskIds.length > 0) {
+        const { data: comments } = await supabase
+          .from('pm_task_comments')
+          .select('task_id, content, created_at')
+          .in('task_id', taskIds)
+          .order('created_at', { ascending: false });
+        for (const c of comments || []) {
+          if (!commentsMap.has(c.task_id)) commentsMap.set(c.task_id, []);
+          commentsMap.get(c.task_id).push(c.content);
+        }
+      }
+
+      const totalTasks = taskList.length;
+      const completedTasks = taskList.filter(t => t.status === FINALIZADO);
+      const progressPercent = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
+
+      const statusMap = {
+        'por_iniciar': 'Por iniciar',
+        'en_progreso': 'En progreso',
+        'en_revision': 'En revisión',
+        'por_corregir': 'Por corregir',
+        'finalizado_sin_errores': 'Finalizado sin errores'
+      };
+
+      function formatDateEs(dStr) {
+        if (!dStr) return null;
+        try {
+          const d = new Date(dStr);
+          return new Intl.DateTimeFormat('es-MX', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            timeZone: 'America/Mexico_City'
+          }).format(d);
+        } catch (e) {
+          return dStr;
+        }
+      }
+
+      const taskLines = taskList.map((t, idx) => {
+        const st = statusMap[t.status] || t.status;
+        const compDate = t.status === FINALIZADO && t.completed_at ? formatDateEs(t.completed_at) : null;
+        const notes = commentsMap.get(t.id) || [];
+        const notesStr = notes.length ? notes.map(n => `"${n.trim()}"`).join(', ') : 'Ninguna';
+        return `  ${idx + 1}. Tarea: "${t.title}"
+     - Estado: ${st}${compDate ? ` (Entregado / Finalizado el: ${compDate})` : ''}
+     - Descripción: ${t.description || 'Sin descripción'}
+     - Comentarios / Notas: ${notesStr}`;
+      });
+
+      return `[INFORMACIÓN DEL PROYECTO]:
+- Nombre del Cliente: ${bestProject.client || 'No especificado'}
+- Nombre del Negocio: ${bestProject.business || 'No especificado'}
+- Link del Website: ${bestProject.url || 'No especificado'}
+- Avance General: ${progressPercent}% (${completedTasks.length} de ${totalTasks} tareas finalizadas)
+- Estado General: ${bestProject.status || 'pendiente'}
+- Tareas Registradas en este Proyecto:
+${taskLines.length ? taskLines.join('\n') : '  (No hay tareas registradas en este proyecto)'}
+[FIN DE INFORMACIÓN DEL PROYECTO]`;
+    } catch (err) {
+      console.warn('[PmService] Error enriqueciendo proyecto para chat:', err.message);
+      return null;
+    }
+  }
 }
